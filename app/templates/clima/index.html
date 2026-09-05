@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Clima{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cloud-sun me-2"></i>Clima — Campos Gerais/MG</h2>
+        <a href="{{ url_for('clima.previsao') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week me-1"></i>Previsão</a>
+    </div>
+    {% if alertas %}
+    {% for a in alertas %}
+    <div class="alert alert-{{ 'danger' if a.severidade == 'alto' else 'warning' }} alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-1"></i>{{ a.mensagem }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% if clima %}
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body text-center">
+                    <i class="bi {{ get_icone_clima(clima.condition) if clima.condition else 'bi-cloud' }}" style="font-size:3rem"></i>
+                    <h1 class="mt-2">{{ clima.temperatura }}°C</h1>
+                    <p class="mb-0">{{ clima.descricao|title if clima.descricao else '-' }}</p>
+                    <small>Sensação: {{ clima.sensacao }}°C</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Detalhes</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr><th style="width:200px">Umidade</th><td>{{ clima.umidade }}%</td></tr>
+                        <tr><th>Vento</th><td>{{ clima.vento }} km/h</td></tr>
+                        <tr><th>Pressão</th><td>{{ clima.pressao }} hPa</td></tr>
+                        <tr><th>Temp. Mínima</th><td>{{ clima.temp_min }}°C</td></tr>
+                        <tr><th>Temp. Máxima</th><td>{{ clima.temp_max }}°C</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">Não foi possível carregar os dados do clima. Verifique a conexão com a internet.</div>
+    {% endif %}
+</div>
+{% endblock %}

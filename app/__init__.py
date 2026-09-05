@@ -52,6 +52,10 @@ def create_app(config_class=Config):
     from app.routes.pulverizacao_routes import pulverizacao_bp
     from app.routes.adubacao_routes import adubacao_bp
     from app.routes.manejo_mato_routes import manejo_mato_bp
+    from app.routes.analises_routes import analises_bp
+    from app.routes.clima_routes import clima_bp
+    from app.routes.notas_fiscais_routes import notas_fiscais_bp
+    from app.routes.devolucao_embalagens_routes import devolucao_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(talhoes_bp)
@@ -60,6 +64,10 @@ def create_app(config_class=Config):
     app.register_blueprint(pulverizacao_bp)
     app.register_blueprint(adubacao_bp)
     app.register_blueprint(manejo_mato_bp)
+    app.register_blueprint(analises_bp)
+    app.register_blueprint(clima_bp)
+    app.register_blueprint(notas_fiscais_bp)
+    app.register_blueprint(devolucao_bp)
 
     from app.modules.auth import criar_tabela_usuarios
     criar_tabela_usuarios()

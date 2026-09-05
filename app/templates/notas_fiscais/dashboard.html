@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Notas Fiscais{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-receipt me-2"></i>Notas Fiscais</h2>
+        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Nota</a>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3"><div class="card text-white bg-success"><div class="card-body"><h6>Total de Notas</h6><h2>{{ resumo.total_notas if resumo else 0 }}</h2></div></div></div>
+        <div class="col-md-3"><div class="card text-white bg-info"><div class="card-body"><h6>Fornecedores</h6><h2>{{ resumo.total_fornecedores if resumo else 0 }}</h2></div></div></div>
+        <div class="col-md-3"><div class="card text-white bg-primary"><div class="card-body"><h6>Valor Total</h6><h2>{{ resumo.valor_total|format_moeda if resumo else 'R$ 0,00' }}</h2></div></div></div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header"><h5 class="mb-0">Últimas Notas</h5></div>
+        <div class="card-body">
+            {% if notas %}
+            <table class="table table-hover">
+                <thead><tr><th>Número</th><th>Fornecedor</th><th>Data Recebimento</th><th>Valor</th><th>Produtos</th><th>Ações</th></tr></thead>
+                <tbody>
+                    {% for n in notas %}
+                    <tr>
+                        <td>{{ n.numero_nota }}</td>
+                        <td>{{ n.fornecedor }}</td>
+                        <td>{{ n.data_recebimento|format_data if n.data_recebimento else '-' }}</td>
+                        <td>{{ n.valor_total|format_moeda if n.valor_total else '-' }}</td>
+                        <td>{{ n.total_produtos if n.total_produtos else 0 }}</td>
+                        <td><a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="text-center text-muted py-3">Nenhuma nota cadastrada.</p>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
