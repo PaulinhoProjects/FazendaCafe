@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block titulo %}Histórico de Manejo do Mato{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-list-ul text-success me-2"></i>Histórico de Manejo do Mato</h1>
+    <a href="/manejo-mato/novo" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Novo Manejo
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        {% if manejos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Talhão</th>
+                        <th>Tipo de Manejo</th>
+                        <th>Produtos</th>
+                        <th>Responsável</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in manejos %}
+                    <tr>
+                        <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ m.data_manejo }}</td>
+                        <td><i class="bi bi-pin-map-fill text-success me-1"></i>{{ m.talhao_nome }}</td>
+                        <td><span class="badge bg-info bg-opacity-10 text-info">{{ m.tipo_manejo }}</span></td>
+                        <td>{{ m.produtos or '—' }}</td>
+                        <td>{% if m.responsavel %}<i class="bi bi-person me-1"></i>{{ m.responsavel }}{% else %}—{% endif %}</td>
+                        <td class="text-center">
+                            <a href="/manejo-mato/{{ m.id }}" class="btn btn-sm btn-outline-primary" title="Ver">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="text-muted mt-3">Nenhum manejo registrado.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

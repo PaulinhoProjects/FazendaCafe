@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block titulo %}Estoque{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho com botões de ação -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-boxes text-success me-2"></i>Controle de Estoque</h1>
+    <div class="btn-group">
+        <a href="/estoque/produtos" class="btn btn-outline-primary">
+            <i class="bi bi-list-ul me-1"></i>Ver Produtos
+        </a>
+        <a href="/estoque/produto/novo" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>Novo Produto
+        </a>
+        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+            <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/estoque/movimentacao/nova?tipo=entrada">
+                <i class="bi bi-box-arrow-in-down text-success me-2"></i>Registrar Entrada
+            </a></li>
+            <li><a class="dropdown-item" href="/estoque/movimentacao/nova?tipo=saida">
+                <i class="bi bi-box-arrow-up text-danger me-2"></i>Registrar Saída
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/estoque/relatorio">
+                <i class="bi bi-file-earmark-text me-2"></i>Relatório de Movimentações
+            </a></li>
+            <li><a class="dropdown-item" href="/estoque/movimentacoes">
+                <i class="bi bi-arrow-left-right me-2"></i>Todas Movimentações
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/estoque/devolucoes">
+                <i class="bi bi-arrow-return-left text-success me-2"></i>Devolução de Embalagens
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/estoque/notas">
+                <i class="bi bi-receipt text-primary me-2"></i>Notas Fiscais
+            </a></li>
+            <!-- NOVO ITEM - Relatório com Filtros -->
+            <li><a class="dropdown-item" href="/estoque/relatorio-produtos/filtros">
+                <i class="bi bi-funnel text-primary me-2"></i>Relatório com Filtros (categorias)
+            </a></li>
+            <li><a class="dropdown-item" href="/estoque/relatorio-produtos-simples">
+                <i class="bi bi-table me-2"></i>Relatório de Produtos (simples)
+            </a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="row mb-4 g-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total de Produtos</h6>
+                        <h2 class="mb-0">{{ resumo.total_produtos }}</h2>
+                    </div>
+                    <i class="bi bi-box-seam" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Valor em Estoque</h6>
+                        <h2 class="mb-0">R$ {{ "%.2f"|format(resumo.valor_total) }}</h2>
+                    </div>
+                    <i class="bi bi-currency-dollar" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Estoque Baixo</h6>
+                        <h2 class="mb-0">{{ resumo.estoque_baixo }}</h2>
+                    </div>
+                    <i class="bi bi-exclamation-triangle" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Mov. no Mês</h6>
+                        <h2 class="mb-0">{{ resumo.movimentacoes_mes }}</h2>
+                    </div>
+                    <i class="bi bi-arrow-left-right" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seção de Alertas -->
+{% if alertas %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Atenção!</strong> Existem {{ alertas|length }} produtos com estoque baixo.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Últimas Movimentações e Produtos com Estoque Baixo -->
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Últimas Movimentações</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if movimentacoes %}
+                <div class="list-group list-group-flush">
+                    {% for m in movimentacoes %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge {% if m.tipo == 'entrada' %}bg-success{% else %}bg-danger{% endif %} me-2">
+                                    <i class="bi {% if m.tipo == 'entrada' %}bi-box-arrow-in-down{% else %}bi-box-arrow-up{% endif %}"></i>
+                                    {{ m.tipo|capitalize }}
+                                </span>
+                                <strong>{{ m.produto_nome }}</strong>
+                                <small class="text-muted ms-2">{{ m.quantidade|format_quantidade }} {{ m.unidade }}</small>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ m.data_movimento }}
+                                </small>
+                            </div>
+                            <a href="/estoque/movimentacao/{{ m.id }}/editar" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nenhuma movimentação registrada</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Produtos com Estoque Baixo</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if alertas %}
+                <div class="list-group list-group-flush">
+                    {% for p in alertas %}
+                    <a href="/estoque/produto/{{ p.id }}" class="list-group-item list-group-item-action list-group-item-warning">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ p.nome }}</strong>
+                                <br>
+                                <small>Atual: {{ p.quantidade_atual|format_quantidade }} {{ p.unidade }} | Mínimo: {{ p.estoque_minimo|format_quantidade }} {{ p.unidade }}</small>
+                            </div>
+                            <span class="badge bg-danger">Urgente</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-circle text-success display-4"></i>
+                    <p class="text-muted mt-2">Todos os produtos estão com estoque adequado</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

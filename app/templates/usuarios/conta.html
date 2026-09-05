@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block titulo %}Minha Conta{% endblock %}
+
+{% block conteudo %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>👤 Minha Conta</h3>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Nome:</th>
+                        <td>{{ current_user.nome }}</td>
+                    </tr>
+                    <tr>
+                        <th>Login:</th>
+                        <td>{{ current_user.login }}</td>
+                    </tr>
+                    <tr>
+                        <th>Nível de Acesso:</th>
+                        <td>
+                            {% if current_user.is_admin() %}
+                                <span class="badge bg-danger">Administrador</span>
+                            {% else %}
+                                <span class="badge bg-info">Usuário Comum</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Permissões:</th>
+                        <td>
+                            {% if current_user.is_admin() %}
+                                <span class="text-success">✓ Pode registrar, editar e excluir registros</span>
+                            {% else %}
+                                <span class="text-warning">✓ Pode registrar novos registros</span><br>
+                                <span class="text-danger">✗ Não pode editar registros existentes</span><br>
+                                <span class="text-danger">✗ Não pode excluir registros</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="mt-3">
+                    <a href="/logout" class="btn btn-danger">Sair do Sistema</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

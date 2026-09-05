@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block titulo %}Histórico de Pulverizações{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="/pulverizacao">Pulverizações</a></li>
+<li class="breadcrumb-item active">Histórico</li>
+{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho com estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="display-5 fw-bold">
+            <i class="bi bi-list-ul text-primary me-2"></i>
+            Histórico de Pulverizações
+        </h1>
+        <p class="text-muted lead">
+            Total de {{ aplicacoes|length }} pulverizações registradas
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="/pulverizacao/relatorio" class="btn btn-danger">
+                <i class="bi bi-file-pdf me-2"></i>Relatório PDF
+            </a>
+            <a href="/pulverizacao/nova" class="btn btn-success">
+                <i class="bi bi-plus-circle me-2"></i>Nova Pulverização
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de estatísticas rápidas -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total</h6>
+                        <h2 class="mb-0">{{ aplicacoes|length }}</h2>
+                    </div>
+                    <i class="bi bi-droplet" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Foliares</h6>
+                        <h2 class="mb-0">{{ aplicacoes|selectattr('tipo_aplicacao', 'equalto', 'Foliar')|list|length }}</h2>
+                    </div>
+                    <i class="bi bi-droplet" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Solo</h6>
+                        <h2 class="mb-0">{{ aplicacoes|selectattr('tipo_aplicacao', 'equalto', 'solo')|list|length }}</h2>
+                    </div>
+                    <i class="bi bi-tree" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Talhões</h6>
+                        <h2 class="mb-0">{{ aplicacoes|map(attribute='talhao_nome')|unique|list|length }}</h2>
+                    </div>
+                    <i class="bi bi-pin-map-fill" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e busca -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="busca" placeholder="🔍 Buscar...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filtroMes">
+                    <option value="">Todos os meses</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filtroAno">
+                    <option value="">Todos os anos</option>
+                    {% set anos = [] %}
+                    {% for app in aplicacoes %}
+                        {% if app.ano not in anos %}
+                            {% set _ = anos.append(app.ano) %}
+                            <option value="{{ app.ano }}">{{ app.ano }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filtroTalhao">
+                    <option value="">Todos talhões</option>
+                    {% set talhoes = aplicacoes|map(attribute='talhao_nome')|unique|list %}
+                    {% for t in talhoes %}
+                        <option value="{{ t }}">{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filtroTipo">
+                    <option value="">Todos tipos</option>
+                    <option value="Foliar">Foliar</option>
+                    <option value="solo">Solo</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-outline-secondary w-100" onclick="limparFiltros()">
+                    <i class="bi bi-eraser"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de pulverizações -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tabelaPulverizacoes">
+                <thead class="table-light">
+                    <tr>
+                        <th onclick="ordenarPor(0)" style="cursor: pointer;">Data <i class="bi bi-arrow-down-up ms-1"></i></th>
+                        <th onclick="ordenarPor(1)" style="cursor: pointer;">Talhão <i class="bi bi-arrow-down-up ms-1"></i></th>
+                        <th>Período</th>
+                        <th>Tipo</th>
+                        <th>Receita</th>
+                        <th>Responsável</th>
+                        <th>Status Retorno</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaBody">
+{% for app in aplicacoes %}
+<tr class="pulv-row" 
+    data-data="{{ app.data_aplicacao_str }}"
+    data-talhao="{{ app.talhao_nome }}"
+    data-mes="{{ app.mes }}"
+    data-ano="{{ app.ano }}"
+    data-tipo="{{ app.tipo_aplicacao }}">
+    <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ app.data_aplicacao }}</td>
+    <td>
+        <i class="bi bi-pin-map-fill text-success me-1"></i>
+        {{ app.talhao_nome }}
+    </td>
+    <td>
+        <span class="badge bg-info bg-opacity-10 text-info">
+            <i class="bi bi-calendar-range me-1"></i>{{ app.periodo_nome }}
+        </span>
+    </td>
+    <td>
+        {% if app.tipo_aplicacao == 'solo' %}
+            <span class="badge bg-secondary">
+                <i class="bi bi-tree me-1"></i>Solo
+            </span>
+        {% else %}
+            <span class="badge bg-primary">
+                <i class="bi bi-droplet me-1"></i>Foliar
+            </span>
+        {% endif %}
+    </td>
+    <td>
+        {% if app.receita_nome and app.receita_nome != 'Receita não informada' %}
+            <i class="bi bi-file-earmark-text me-1 text-primary"></i>{{ app.receita_nome }}
+        {% else %}
+            <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if app.responsavel %}
+            <i class="bi bi-person me-1 text-secondary"></i>{{ app.responsavel }}
+        {% else %}
+            <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if app.data_prevista_retorno %}
+            <div class="d-flex flex-column">
+                <small class="text-muted">Previsto: {{ app.data_prevista_retorno }}</small>
+                
+                {% if app.status_retorno == 'concluido' %}
+                    <span class="badge bg-success mt-1">
+                        <i class="bi bi-check-circle me-1"></i>Resolvido
+                        {% if app.data_retorno_realizado %}
+                            em {{ app.data_retorno_realizado }}
+                        {% endif %}
+                    </span>
+                {% elif app.status_retorno == 'nao_resolvido' %}
+                    <span class="badge bg-danger mt-1">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Não resolvido
+                    </span>
+                    <a href="/pulverizacao/aplicacao/{{ app.id }}/retorno" class="btn btn-sm btn-warning mt-1">
+                        <i class="bi bi-arrow-repeat me-1"></i>Novo retorno
+                    </a>
+                {% else %}
+                    {% if app.data_prevista_retorno < data_atual %}
+                        <span class="badge bg-danger mt-1">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Atrasado
+                        </span>
+                    {% else %}
+                        <span class="badge bg-warning mt-1">
+                            <i class="bi bi-clock me-1"></i>Pendente
+                        </span>
+                    {% endif %}
+                    <a href="/pulverizacao/aplicacao/{{ app.id }}/retorno" class="btn btn-sm btn-primary mt-1">
+                        <i class="bi bi-check2 me-1"></i>Registrar retorno
+                    </a>
+                {% endif %}
+            </div>
+        {% else %}
+            <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <div class="btn-group btn-group-sm">
+            <a href="/pulverizacao/aplicacao/{{ app.id }}" class="btn btn-outline-primary" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+            </a>
+            {% if app.data_prevista_retorno and app.status_retorno != 'concluido' %}
+            <a href="/pulverizacao/aplicacao/{{ app.id }}/retorno" class="btn btn-outline-warning" title="Registrar retorno">
+                <i class="bi bi-calendar2-check"></i>
+            </a>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white text-muted">
+        <small><i class="bi bi-info-circle me-1"></i>Mostrando <span id="contador">{{ aplicacoes|length }}</span> pulverizações</small>
+    </div>
+</div>
+
+<script>
+// Filtros
+document.getElementById('busca').addEventListener('keyup', filtrar);
+document.getElementById('filtroMes').addEventListener('change', filtrar);
+document.getElementById('filtroAno').addEventListener('change', filtrar);
+document.getElementById('filtroTalhao').addEventListener('change', filtrar);
+document.getElementById('filtroTipo').addEventListener('change', filtrar);
+
+function filtrar() {
+    let termo = document.getElementById('busca').value.toLowerCase();
+    let mes = document.getElementById('filtroMes').value;
+    let ano = document.getElementById('filtroAno').value;
+    let talhao = document.getElementById('filtroTalhao').value;
+    let tipo = document.getElementById('filtroTipo').value;
+    
+    let linhas = document.querySelectorAll('.pulv-row');
+    let contador = 0;
+    
+    linhas.forEach(linha => {
+        let data = linha.getAttribute('data-data');
+        let talhaoNome = linha.getAttribute('data-talhao');
+        let mesLinha = linha.getAttribute('data-mes');
+        let anoLinha = linha.getAttribute('data-ano');
+        let tipoLinha = linha.getAttribute('data-tipo');
+        
+        let texto = linha.textContent.toLowerCase();
+        let matchBusca = termo === '' || texto.includes(termo);
+        let matchMes = mes === '' || mesLinha === mes;
+        let matchAno = ano === '' || anoLinha === ano;
+        let matchTalhao = talhao === '' || talhaoNome === talhao;
+        let matchTipo = tipo === '' || tipoLinha === tipo;
+        
+        if (matchBusca && matchMes && matchAno && matchTalhao && matchTipo) {
+            linha.style.display = '';
+            contador++;
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('contador').textContent = contador;
+}
+
+function limparFiltros() {
+    document.getElementById('busca').value = '';
+    document.getElementById('filtroMes').value = '';
+    document.getElementById('filtroAno').value = '';
+    document.getElementById('filtroTalhao').value = '';
+    document.getElementById('filtroTipo').value = '';
+    filtrar();
+}
+
+// Ordenação
+let colunaAtual = 0;
+let ordemCrescente = true;
+
+function ordenarPor(coluna) {
+    let tbody = document.getElementById('tabelaBody');
+    let linhas = Array.from(tbody.querySelectorAll('.pulv-row'));
+    
+    linhas.sort((a, b) => {
+        let valorA, valorB;
+        
+        if (coluna === 0) { // Data
+            valorA = a.getAttribute('data-data');
+            valorB = b.getAttribute('data-data');
+        } else if (coluna === 1) { // Talhão
+            valorA = a.getAttribute('data-talhao');
+            valorB = b.getAttribute('data-talhao');
+        }
+        
+        if (coluna === colunaAtual) {
+            ordemCrescente = !ordemCrescente;
+        } else {
+            colunaAtual = coluna;
+            ordemCrescente = true;
+        }
+        
+        if (ordemCrescente) {
+            return valorA > valorB ? 1 : -1;
+        } else {
+            return valorA < valorB ? 1 : -1;
+        }
+    });
+    
+    // Reordenar a tabela
+    linhas.forEach(linha => tbody.appendChild(linha));
+}
+</script>
+{% endblock %}

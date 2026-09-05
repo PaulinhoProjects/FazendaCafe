@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block titulo %}Gerenciar Usuários{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>👥 Gerenciar Usuários</h1>
+    <a href="/admin/usuario/novo" class="btn btn-success">➕ Novo Usuário</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Cadastro</th>
+                        <th>Último Acesso</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.nome }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>
+                            {% if u.tipo == 'admin' %}
+                                <span class="badge bg-danger">Admin</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Usuário</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-dark">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.data_cadastro.strftime('%d/%m/%Y') if u.data_cadastro else '—' }}</td>
+                        <td>{{ u.ultimo_acesso.strftime('%d/%m/%Y %H:%M') if u.ultimo_acesso else '—' }}</td>
+                        <td>
+                            {% if u.id != user.id %}
+                                <a href="/admin/usuario/{{ u.id }}/toggle-tipo" class="btn btn-sm btn-warning" 
+                                   onclick="return confirm('Alterar tipo do usuário?')">
+                                    {% if u.tipo == 'admin' %}🔽 Rebaixar{% else %}🔼 Promover{% endif %}
+                                </a>
+                                {% if u.ativo %}
+                                    <a href="/admin/usuario/{{ u.id }}/desativar" class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Desativar usuário?')">
+                                        🚫 Desativar
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">(você)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

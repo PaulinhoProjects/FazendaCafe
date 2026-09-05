@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block titulo %}Usuários do Sistema{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>👥 Usuários do Sistema</h1>
+    <a href="/usuario/novo" class="btn btn-success">➕ Novo Usuário</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Login</th>
+                        <th>Nível</th>
+                        <th>Status</th>
+                        <th>Último Acesso</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.nome }}</td>
+                        <td>{{ u.login }}</td>
+                        <td>
+                            {% if u.nivel == 'admin' %}
+                                <span class="badge bg-danger">Administrador</span>
+                            {% else %}
+                                <span class="badge bg-info">Usuário</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.ultimo_acesso or 'Nunca' }}</td>
+                        <td>
+                            {% if u.id != current_user.id %}
+                                <a href="/usuario/{{ u.id }}/alterar-nivel/{{ 'usuario' if u.nivel == 'admin' else 'admin' }}" 
+                                   class="btn btn-sm btn-warning"
+                                   onclick="return confirm('Alterar nível de acesso?')">
+                                    🔄 Alterar Nível
+                                </a>
+                                {% if u.ativo %}
+                                <a href="/usuario/{{ u.id }}/desativar" 
+                                   class="btn btn-sm btn-danger"
+                                   onclick="return confirm('Desativar este usuário?')">
+                                    ❌ Desativar
+                                </a>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

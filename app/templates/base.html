@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sítio do Morro do Paiol - {% block titulo %}{% endblock %}</title>
+    <!-- Bootstrap e ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- CSS personalizado -->
+    <style>
+        :root {
+            --primary: #2c5f2d;
+            --primary-dark: #1f4520;
+            --primary-light: #4a8b4a;
+            --secondary: #97bc62;
+            --accent: #ffc107;
+            --light-bg: #f8f9fa;
+            --dark-text: #2c3e50;
+            --shadow-sm: 0 4px 6px rgba(0,0,0,0.07);
+            --shadow-md: 0 6px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 15px 25px rgba(0,0,0,0.1);
+        }
+        body {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf0 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+/* Navbar moderna com z-index alto */
+.navbar-moderna {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+    margin-bottom: 30px;
+    border-radius: 50px;
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem 1.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    z-index: 9999;  /* Força a navbar ficar acima de tudo */
+}
+.navbar-moderna .navbar-brand {
+    color: white !important;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+    padding: 0.8rem 0;
+    transition: all 0.3s;
+}
+.navbar-moderna .navbar-brand:hover {
+    transform: translateY(-2px);
+    text-shadow: 0 2px 10px rgba(255,255,255,0.3);
+}
+.navbar-moderna .navbar-brand i {
+    font-size: 1.8rem;
+    margin-right: 10px;
+    color: var(--accent);
+}
+.navbar-moderna .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500;
+    padding: 0.8rem 1.2rem !important;
+    margin: 0 2px;
+    border-radius: 40px;
+    transition: all 0.3s;
+    position: relative;
+}
+.navbar-moderna .nav-link:hover {
+    background: rgba(255,255,255,0.15);
+    color: white !important;
+    transform: translateY(-2px);
+}
+.navbar-moderna .nav-link.active {
+    background: rgba(255,255,255,0.2);
+    color: white !important;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.navbar-moderna .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 10px;
+}
+.navbar-moderna .dropdown-menu {
+    background: white;
+    border: none;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    margin-top: 10px;
+    padding: 0.8rem 0;
+    border: 1px solid rgba(0,0,0,0.05);
+    z-index: 10000;  /* Dropdown ainda mais alto */
+}
+        .navbar-moderna .dropdown-item {
+            padding: 0.7rem 1.5rem;
+            font-weight: 500;
+            color: var(--dark-text);
+            transition: all 0.2s;
+        }
+        .navbar-moderna .dropdown-item:hover {
+            background: linear-gradient(90deg, var(--primary-light) 0%, var(--secondary) 100%);
+            color: white;
+            padding-left: 2rem;
+        }
+        .navbar-moderna .dropdown-item i {
+            width: 1.5rem;
+            font-size: 1.1rem;
+        }
+        .navbar-moderna .dropdown-divider {
+            margin: 0.5rem 0;
+            opacity: 0.1;
+        }
+        .navbar-moderna .navbar-toggler {
+            border: none;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 0.8rem;
+        }
+        .navbar-moderna .navbar-toggler:focus {
+            box-shadow: none;
+        }
+        .navbar-moderna .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        /* Cards com estilo moderno */
+        .card {
+            border: none;
+            border-radius: 25px;
+            transition: all 0.3s;
+            box-shadow: var(--shadow-sm);
+        }
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-5px);
+        }
+        .card-header {
+            border-radius: 25px 25px 0 0 !important;
+            background: white;
+            border-bottom: 2px solid rgba(0,0,0,0.05);
+            font-weight: 600;
+        }
+
+        /* Breadcrumbs elegantes */
+        .breadcrumb {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(5px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 40px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 25px;
+        }
+        .breadcrumb-item a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .breadcrumb-item a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        /* Botões personalizados */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 40px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 95, 45, 0.3);
+        }
+        .btn-outline-primary {
+            border-radius: 40px;
+            padding: 0.6rem 1.5rem;
+            border-width: 2px;
+        }
+
+        /* Footer elegante */
+        .footer {
+            margin-top: 60px;
+            padding: 30px 0 20px;
+            text-align: center;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 50px 50px 0 0;
+            color: var(--dark-text);
+            font-size: 0.95em;
+            border-top: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Animações suaves */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .container {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .container { padding-left: 15px; padding-right: 15px; }
+            .navbar-moderna { border-radius: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Menu de navegação moderno -->
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-moderna">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">
+                    <i class="bi bi-cup-hot-fill me-2"></i>
+                    Sítio do Morro do Paiol
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                                <i class="bi bi-house-door me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/talhoes' in request.path %}active{% endif %}" href="/talhoes">
+                                <i class="bi bi-pin-map me-1"></i>Talhões
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-grid me-1"></i>Módulos
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/pulverizacao"><i class="bi bi-droplet me-2"></i>Pulverizações</a></li>
+                                <li><a class="dropdown-item" href="/manejo-mato"><i class="bi bi-tree me-2"></i>Manejo do Mato</a></li>
+                                <li><a class="dropdown-item" href="/estoque"><i class="bi bi-box-seam me-2"></i>Estoque</a></li>
+                                <li><a class="dropdown-item" href="/analises"><i class="bi bi-clipboard-data me-2"></i>Análises</a></li>
+                                <li><a class="dropdown-item" href="/adubacao"><i class="bi bi-flower1 me-2"></i>Adubação</a></li>
+                                <li><a class="dropdown-item" href="/pdfs"><i class="bi bi-file-pdf text-danger me-2"></i>Arquivos PDF</a></li>
+                                
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Breadcrumbs elegantes -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb p-2 px-3 d-inline-flex bg-light rounded-pill shadow-sm">
+        {% block breadcrumb %}
+        <li class="breadcrumb-item"><a href="/"><i class="bi bi-house-door"></i></a></li>
+        {% endblock %}
+    </ol>
+</nav>
+
+        <!-- Mensagens flash com estilo -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm rounded-4" role="alert">
+                        <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Conteúdo da página -->
+        {% block conteudo %}{% endblock %}
+        
+        <!-- Rodapé personalizado -->
+        <div class="footer">
+            <p class="mb-1">
+                <i class="bi bi-c-circle me-1"></i> 2026 - Sítio do Morro do Paiol
+            </p>
+            <p class="small text-muted">
+                Desenvolvido por <strong>Paulo César</strong> para gestão profissional da sua produção de café
+            </p>
+            <p class="small text-muted">
+                <i class="bi bi-geo-alt me-1"></i>Produtores de Café | Campos Gerais MG
+            </p>
+        </div>
+    </div>
+
+    <!-- Scripts do Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Espaço para scripts adicionais -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

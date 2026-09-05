@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block titulo %}Novo Talhão{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="/talhoes">Talhões</a></li>
+<li class="breadcrumb-item active">Novo Talhão</li>
+{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="/talhoes" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar para Lista
+        </a>
+    </div>
+    <div class="text-muted">
+        <i class="bi bi-plus-circle me-1"></i>Cadastrando novo talhão
+    </div>
+</div>
+
+<!-- Card de Cadastro -->
+<div class="card shadow-lg border-0">
+    <div class="card-header bg-success text-white py-3">
+        <h3 class="mb-0">
+            <i class="bi bi-plus-circle me-2"></i>
+            Cadastrar Novo Talhão
+        </h3>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST" action="/talhao/novo">
+            <div class="row g-4">
+                <!-- Coluna Esquerda -->
+                <div class="col-md-6">
+                    <div class="bg-light p-4 rounded-3 h-100">
+                        <h5 class="text-success mb-3">
+                            <i class="bi bi-info-circle-fill me-2"></i>Informações Básicas
+                        </h5>
+                        
+                        <!-- Nome -->
+                        <div class="mb-3">
+                            <label for="nome" class="form-label fw-semibold">
+                                <i class="bi bi-pencil-square text-success me-1"></i>Nome do Talhão <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="nome" name="nome" 
+                                   required placeholder="Ex: 1- Sede">
+                            <div class="form-text text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Use números para facilitar a ordenação (ex: 1- Sede, 2- Sede 2...)
+                            </div>
+                        </div>
+
+                        <!-- Área -->
+                        <div class="mb-3">
+                            <label for="area" class="form-label fw-semibold">
+                                <i class="bi bi-arrows-angle-expand text-success me-1"></i>Área (hectares) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" id="area" name="area" 
+                                       required placeholder="0.00">
+                                <span class="input-group-text">ha</span>
+                            </div>
+                        </div>
+
+                        <!-- Data de Plantio -->
+                        <div class="mb-3">
+                            <label for="data_plantio" class="form-label fw-semibold">
+                                <i class="bi bi-calendar3 text-warning me-1"></i>Data de Plantio
+                            </label>
+                            <input type="date" class="form-control" id="data_plantio" name="data_plantio">
+                            <div class="form-text text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Deixe em branco se não souber a data exata
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna Direita -->
+                <div class="col-md-6">
+                    <div class="bg-light p-4 rounded-3 h-100">
+                        <h5 class="text-success mb-3">
+                            <i class="bi bi-droplet-fill me-2"></i>Detalhes do Cultivo
+                        </h5>
+
+                        <!-- Variedade -->
+                        <div class="mb-3">
+                            <label for="variedade" class="form-label fw-semibold">
+                                <i class="bi bi-droplet text-primary me-1"></i>Variedade do Café
+                            </label>
+                            <input type="text" class="form-control" id="variedade" name="variedade" 
+                                   placeholder="Ex: Catuaí, Mundo Novo, Bourbon">
+                            <div class="form-text text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Principal variedade cultivada
+                            </div>
+                        </div>
+
+                        <!-- Altitude -->
+                        <div class="mb-3">
+                            <label for="altitude" class="form-label fw-semibold">
+                                <i class="bi bi-bar-chart-steps text-info me-1"></i>Altitude Média
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="1" class="form-control" id="altitude" name="altitude" 
+                                       placeholder="Ex: 950">
+                                <span class="input-group-text">m</span>
+                            </div>
+                        </div>
+
+                        <!-- Espaçamento -->
+                        <div class="mb-3">
+                            <label for="espacamento" class="form-label fw-semibold">
+                                <i class="bi bi-grid-3x3-gap-fill text-secondary me-1"></i>Espaçamento
+                            </label>
+                            <input type="text" class="form-control" id="espacamento" name="espacamento" 
+                                   placeholder="Ex: 3.5 x 0.8">
+                            <div class="form-text text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Distância entre linhas x entre plantas (metros)
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                Exemplos: <code>3.5 x 0.8</code>, <code>3,5x1,2</code>, <code>3.0 x 0.5</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observações (Linha Inteira) -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="bg-light p-4 rounded-3">
+                        <h5 class="text-secondary mb-3">
+                            <i class="bi bi-chat-text me-2"></i>Observações
+                        </h5>
+                        <textarea class="form-control" id="observacoes" name="observacoes" rows="4" 
+                                  placeholder="Informações adicionais sobre o talhão (ex: relevo, exposição solar, histórico...)""></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview dos dados (opcional) -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-0 bg-info bg-opacity-10">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-info-circle-fill text-info me-3 fs-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Dica importante</h6>
+                                    <p class="mb-0 text-muted small">
+                                        Após cadastrar, você poderá adicionar pulverizações, manejos e análises para este talhão.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="/talhoes" class="btn btn-outline-secondary btn-lg px-4">
+                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg px-5">
+                            <i class="bi bi-save me-1"></i>Salvar Talhão
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estilo para destacar campos obrigatórios -->
+<style>
+.form-label .text-danger {
+    font-size: 1.2em;
+}
+.input-group-text {
+    background-color: #f8f9fa;
+}
+/* Efeito de foco nos inputs */
+.form-control:focus, .input-group-text:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+</style>
+{% endblock %}

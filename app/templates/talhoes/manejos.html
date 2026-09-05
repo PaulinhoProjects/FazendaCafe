@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block titulo %}Manejos - {{ talhao[1] }}{% endblock %}
+
+{% block conteudo %}
+<div class="mb-4">
+    <a href="/talhao/{{ talhao[0] }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar ao Talhão
+    </a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-tree text-success me-2"></i>Manejos do Mato - {{ talhao[1] }}</h1>
+    <a href="/manejo-mato/novo" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Novo Manejo
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        {% if manejos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Produtos</th>
+                        <th>Responsável</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in manejos %}
+                    <tr>
+                        <td><i class="bi bi-calendar3 me-1"></i>{{ m.data_manejo }}</td>
+                        <td><span class="badge bg-info">{{ m.tipo_manejo }}</span></td>
+                        <td>{{ m.produtos or '—' }}</td>
+                        <td>{% if m.responsavel %}<i class="bi bi-person me-1"></i>{{ m.responsavel }}{% else %}—{% endif %}</td>
+                        <td class="text-center">
+                            <a href="/manejo-mato/{{ m.id }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">Nenhum manejo registrado para este talhão.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

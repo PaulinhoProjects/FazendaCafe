@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Variáveis de Ambiente & Segurança (CRÍTICO: não subir senhas para o GitHub)
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Uploads e Arquivos de Usuário
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
+# IDEs e Ferramentas de IA
+.vscode/
+.idea/
+.continue/
+*.sublime-project
+*.sublime-workspace
+
+# Backups de Banco de Dados locais
+database/backups/*
+!database/backups/.gitkeep
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini

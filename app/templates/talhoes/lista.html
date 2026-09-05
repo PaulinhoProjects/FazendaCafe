@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block titulo %}Talhões da Fazenda{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Talhões</li>
+{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho com estatísticas e botões -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="display-5 fw-bold">
+            <i class="bi bi-pin-map-fill text-success me-2"></i>
+            Talhões da Fazenda
+        </h1>
+        <p class="text-muted lead">
+            Gerencie todos os {{ talhoes|length }} talhões cadastrados
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="/talhoes/pdf" class="btn btn-danger">
+                <i class="bi bi-file-pdf me-2"></i>PDF
+            </a>
+            <a href="/talhao/novo" class="btn btn-success">
+                <i class="bi bi-plus-circle me-2"></i>Novo Talhão
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de estatísticas rápidas -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total de Talhões</h6>
+                        <h2 class="mb-0">{{ talhoes|length }}</h2>
+                    </div>
+                    <i class="bi bi-pin-map-fill" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Área Total</h6>
+                        <h2 class="mb-0">{{ "%.2f"|format(talhoes|sum(attribute='area')) }} ha</h2>
+                    </div>
+                    <i class="bi bi-arrows-angle-expand" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total de Pés</h6>
+                        <h2 class="mb-0">{{ "{:,.0f}".format(talhoes|sum(attribute='pes_cafe')).replace(',', '.') }}</h2>
+                    </div>
+                    <i class="bi bi-tree-fill" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Altitude Média</h6>
+                        <h2 class="mb-0">{{ "%.0f"|format(talhoes|map(attribute='altitude')|select('!=', None)|list|sum / talhoes|map(attribute='altitude')|select('!=', None)|list|length) if talhoes|map(attribute='altitude')|select('!=', None)|list|length > 0 else '—' }} m</h2>
+                    </div>
+                    <i class="bi bi-bar-chart-steps" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e busca -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="buscaTalhao" placeholder="🔍 Buscar talhão...">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filtroVariedade">
+                    <option value="">Todas as variedades</option>
+                    {% set variedades = talhoes|map(attribute='variedade')|unique|list %}
+                    {% for v in variedades %}
+                        {% if v and v != 'Não informada' %}
+                        <option value="{{ v }}">{{ v }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de talhões -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tabelaTalhoes">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome do Talhão</th>
+                        <th>Área (ha)</th>
+                        <th>Plantio</th>
+                        <th>Variedade</th>
+                        <th>Altitude (m)</th>
+                        <th>Espaçamento</th>
+                        <th>Pés de Café</th>
+                        <th class="text-center" style="width: 120px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for talhao in talhoes %}
+                    <tr class="talhao-row">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-2">
+                                    <i class="bi bi-pin-map-fill text-success"></i>
+                                </div>
+                                <div>
+                                    <strong class="d-block">{{ talhao.nome }}</strong>
+                                    <small class="text-muted">ID: {{ talhao.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-bold">{{ "%.2f"|format(talhao.area) }}</span>
+                            <small class="text-muted d-block">ha</small>
+                        </td>
+                        <td>
+                            {% if talhao.data_plantio %}
+                                <span class="badge bg-info bg-opacity-10 text-info p-2">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ talhao.data_plantio }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary p-2">
+                                <i class="bi bi-droplet me-1"></i>{{ talhao.variedade or 'Não informada' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if talhao.altitude %}
+                                <span class="fw-bold">{{ "%.0f"|format(talhao.altitude) }}</span>
+                                <small class="text-muted">m</small>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if talhao.espacamento %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary p-2">
+                                    <i class="bi bi-grid-3x3-gap-fill me-1"></i>{{ talhao.espacamento }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-success">
+                            {% if talhao.pes_cafe and talhao.pes_cafe > 0 %}
+                                {{ "{:,.0f}".format(talhao.pes_cafe).replace(',', '.') }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/talhao/{{ talhao.id }}" class="btn btn-outline-primary" title="Ver detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/talhao/{{ talhao.id }}/editar" class="btn btn-outline-warning" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="Excluir"
+                                        onclick="confirmarExclusao({{ talhao.id }}, '{{ talhao.nome }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="6" class="text-end">Total aproximado:</th>
+                        <th class="text-success">
+                            {{ "{:,.0f}".format(talhoes|sum(attribute='pes_cafe')).replace(',', '.') }}
+                        </th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white text-muted d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-info-circle me-1"></i>Mostrando {{ talhoes|length }} talhões
+        </div>
+        <div>
+            <small class="text-muted">
+                <i class="bi bi-tree-fill text-success me-1"></i>
+                Total de pés: <strong>{{ "{:,.0f}".format(talhoes|sum(attribute='pes_cafe')).replace(',', '.') }}</strong>
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div class="modal fade" id="modalExcluir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o talhão <strong id="nomeTalhaoExcluir"></strong>?</p>
+                <p class="text-danger mb-0"><small>Esta ação não pode ser desfeita!</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" id="btnConfirmarExclusao" class="btn btn-danger">Excluir</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para confirmar exclusão com modal
+function confirmarExclusao(id, nome) {
+    document.getElementById('nomeTalhaoExcluir').textContent = nome;
+    document.getElementById('btnConfirmarExclusao').href = '/talhao/' + id + '/excluir';
+    var modal = new bootstrap.Modal(document.getElementById('modalExcluir'));
+    modal.show();
+}
+
+// Filtro de busca
+document.getElementById('buscaTalhao').addEventListener('keyup', function() {
+    let termo = this.value.toLowerCase();
+    let linhas = document.querySelectorAll('.talhao-row');
+    
+    linhas.forEach(linha => {
+        let nome = linha.querySelector('td:first-child').textContent.toLowerCase();
+        if (nome.includes(termo)) {
+            linha.style.display = '';
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+});
+
+// Filtro por variedade
+document.getElementById('filtroVariedade').addEventListener('change', function() {
+    let variedade = this.value;
+    let linhas = document.querySelectorAll('.talhao-row');
+    
+    linhas.forEach(linha => {
+        if (!variedade) {
+            linha.style.display = '';
+            return;
+        }
+        
+        let variedadeCelula = linha.querySelector('td:nth-child(4)').textContent.trim();
+        if (variedadeCelula.includes(variedade)) {
+            linha.style.display = '';
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

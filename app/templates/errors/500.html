@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Erro Interno — Fazenda Café{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-danger text-center">
+        <h2 class="mb-3">Ops! Algo deu errado.</h2>
+        <p>Ocorreu um erro interno no servidor. Nossa equipe já foi notificada.</p>
+        <p class="text-muted small">Tente novamente em alguns instantes.</p>
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary mt-3">
+            Voltar ao início
+        </a>
+    </div>
+</div>
+{% endblock %}

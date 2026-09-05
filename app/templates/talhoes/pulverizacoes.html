@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block titulo %}Histórico do Talhão {{ talhao[1] }}{% endblock %}
+
+{% block conteudo %}
+<div class="mb-4">
+    <a href="/talhao/{{ talhao[0] }}" class="btn btn-outline-secondary">← Voltar ao Talhão</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h3>📊 Histórico de Pulverizações - {{ talhao[1] }}</h3>
+    </div>
+    <div class="card-body">
+        <!-- Resumo do Talhão -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h5>Total de Aplicações</h5>
+                        <h2>{{ aplicacoes|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h5>Total de Ocorrências</h5>
+                        <h2>{{ ocorrencias|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h5>Última Aplicação</h5>
+                        <h6>{{ aplicacoes[0].data_aplicacao if aplicacoes else 'Nenhuma' }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Histórico de Aplicações -->
+        <h5 class="mt-4">🚜 Pulverizações Realizadas</h5>
+        {% if aplicacoes %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Período</th>
+                        <th>Receita</th>
+                        <th>Responsável</th>
+                        <th>Retorno</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in aplicacoes %}
+                    <tr>
+                        <td>{{ app.data_aplicacao }}</td>
+                        <td>{{ app.periodo_nome }}</td>
+                        <td>{{ app.receita_nome }}</td>
+                        <td>{{ app.responsavel or '—' }}</td>
+                        <td>{{ app.data_retorno or '—' }}</td>
+                        <td>
+                            <a href="/pulverizacao/aplicacao/{{ app.id }}" class="btn btn-sm btn-primary">🔍 Ver</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Nenhuma pulverização registrada para este talhão.</p>
+        {% endif %}
+        
+        <!-- Histórico de Ocorrências -->
+        <h5 class="mt-4">🐛 Pragas e Doenças Detectadas</h5>
+        {% if ocorrencias %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Praga/Doença</th>
+                        <th>Tipo</th>
+                        <th>Nível</th>
+                        <th>Tratado</th>
+                        <th>Data Tratamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for occ in ocorrencias %}
+                    <tr>
+                        <td>{{ occ.data_deteccao }}</td>
+                        <td>{{ occ.praga }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if occ.tipo == 'praga' else 'warning' }}">
+                                {{ occ.tipo }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if occ.nivel == 'baixo' %}
+                                <span class="badge bg-success">Baixo</span>
+                            {% elif occ.nivel == 'medio' %}
+                                <span class="badge bg-warning">Médio</span>
+                            {% elif occ.nivel == 'alto' %}
+                                <span class="badge bg-danger">Alto</span>
+                            {% elif occ.nivel == 'critico' %}
+                                <span class="badge bg-dark">Crítico</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if occ.tratado %}
+                                <span class="badge bg-success">Sim</span>
+                            {% else %}
+                                <span class="badge bg-danger">Não</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ occ.data_tratamento or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Nenhuma ocorrência registrada para este talhão.</p>
+        {% endif %}
+        
+        <div class="mt-4">
+            <a href="/pulverizacao/nova" class="btn btn-success">➕ Nova Pulverização neste Talhão</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block titulo %}Editar Manejo{% endblock %}
+
+{% block conteudo %}
+<div class="mb-4">
+    <a href="/manejo-mato/{{ manejo.id }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-warning text-white py-3">
+        <h3 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Editar Manejo</h3>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Talhão</label>
+                    <select class="form-select" name="talhao_id" required>
+                        {% for t in talhoes %}
+                        <option value="{{ t.id }}" {% if t.id == manejo.talhao_id %}selected{% endif %}>
+                            {{ t.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Data</label>
+                    <input type="date" class="form-control" name="data_manejo" value="{{ manejo.data_manejo }}" required>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Tipo de Manejo</label>
+                    <input type="text" class="form-control" name="tipo_manejo" value="{{ manejo.tipo_manejo }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Responsável</label>
+                    <input type="text" class="form-control" name="responsavel" value="{{ manejo.responsavel or '' }}">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Produtos</label>
+                    <input type="text" class="form-control" name="produtos" value="{{ manejo.produtos or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Dosagem</label>
+                    <input type="text" class="form-control" name="dosagem" value="{{ manejo.dosagem or '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Observações</label>
+                <textarea class="form-control" name="observacoes" rows="3">{{ manejo.observacoes or '' }}</textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning px-4">
+                    <i class="bi bi-save me-1"></i>Salvar
+                </button>
+                <a href="/manejo-mato/{{ manejo.id }}" class="btn btn-outline-secondary px-4">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

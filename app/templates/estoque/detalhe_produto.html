@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ produto.nome }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="/estoque">Estoque</a></li>
+<li class="breadcrumb-item"><a href="/estoque/produtos">Produtos</a></li>
+<li class="breadcrumb-item active">{{ produto.nome }}</li>
+{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho com ações -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="/estoque/produtos" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar para lista
+        </a>
+    </div>
+    <div class="btn-group">
+        <a href="/estoque/produto/{{ produto.id }}/editar" class="btn btn-warning">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        <form action="/estoque/produto/{{ produto.id }}/excluir" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Excluir produto?')">
+                <i class="bi bi-trash me-1"></i>Excluir
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Cards de Informação -->
+<div class="row g-4">
+    <!-- Card Principal -->
+    <div class="col-md-8">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h4 class="mb-0"><i class="bi bi-box me-2"></i>{{ produto.nome }}</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="bg-light p-3 rounded-3">
+                            <h6 class="text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Informações</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="ps-0 text-muted">Unidade:</td>
+                                    <td class="fw-bold">{{ produto.unidade }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0 text-muted">Categoria:</td>
+                                    <td>
+                                        {% if produto.categoria %}
+                                            <span class="badge bg-info">{{ produto.categoria }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0 text-muted">Quantidade Atual:</td>
+                                    <td>
+                                        <span class="badge {% if produto.estoque_minimo is not none and produto.quantidade_atual <= produto.estoque_minimo %}bg-danger{% else %}bg-success{% endif %} fs-6">
+                                            {{ produto.quantidade_atual }} {{ produto.unidade }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0 text-muted">Estoque Mínimo:</td>
+                                    <td>{{ produto.estoque_minimo|format_quantidade if produto.estoque_minimo else 'Não definido' }} {{ produto.unidade }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light p-3 rounded-3">
+                            <h6 class="text-primary mb-3"><i class="bi bi-lightning-charge me-2"></i>Ações Rápidas</h6>
+                            <div class="d-grid gap-2">
+                                <a href="/estoque/movimentacao/nova?tipo=entrada&produto_id={{ produto.id }}" class="btn btn-success">
+                                    <i class="bi bi-box-arrow-in-down me-1"></i>Registrar Entrada
+                                </a>
+                                <a href="/estoque/movimentacao/nova?tipo=saida&produto_id={{ produto.id }}" class="btn btn-warning">
+                                    <i class="bi bi-box-arrow-up me-1"></i>Registrar Saída
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                {% if produto.observacoes %}
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="bg-light p-3 rounded-3">
+                            <h6 class="text-secondary mb-2"><i class="bi bi-chat-text me-2"></i>Observações</h6>
+                            <p class="mb-0">{{ produto.observacoes }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Lateral - Estatísticas -->
+    <div class="col-md-4">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-info text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Resumo</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="display-1 text-info opacity-25">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <h3 class="mt-2">{{ "%.2f"|format(produto.quantidade_atual) }}</h3>
+                    <p class="text-muted">Quantidade atual</p>
+                </div>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    <div class="d-flex justify-content-between p-2 bg-light rounded">
+                        <span>ID do Produto:</span>
+                        <strong>#{{ produto.id }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between p-2 bg-light rounded">
+                        <span>Estoque Mínimo:</span>
+                        <strong>{{ produto.estoque_minimo|format_quantidade if produto.estoque_minimo else '—' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Histórico de Movimentações -->
+{% if movimentacoes %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-secondary text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Histórico de Movimentações</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Valor Unit.</th>
+                                <th>Valor Total</th>
+                                <th>Observações</th>
+                                <th class="text-center">Ações</th>  <!-- NOVA COLUNA -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in movimentacoes %}
+                            <tr>
+                                <td>{{ m.data_movimento }}</td>
+                                <td>
+                                    {% if m.tipo == 'entrada' %}
+                                        <span class="badge bg-success"><i class="bi bi-box-arrow-in-down me-1"></i>Entrada</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="bi bi-box-arrow-up me-1"></i>Saída</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ m.quantidade }} {{ m.unidade or produto.unidade }}</td>
+                                <td>R$ {{ "%.2f"|format(m.valor_unitario) if m.valor_unitario else '—' }}</td>
+                                <td><strong>R$ {{ "%.2f"|format(m.quantidade * m.valor_unitario) if m.valor_unitario else '—' }}</strong></td>
+                                <td>{{ m.observacoes or '—' }}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        {% if not m.nota_fiscal_id %}
+                                            <!-- Se NÃO tiver nota fiscal, mostra botão de excluir -->
+                                            <form action="/estoque/movimentacao/{{ m.id }}/excluir" method="POST" 
+                                                  style="display:inline;" 
+                                                  onsubmit="return confirm('Excluir esta movimentação?\n\nIsso vai ajustar o estoque!')">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                        title="Excluir movimentação">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <!-- Se tiver nota fiscal, mostra link para a nota -->
+                                            <a href="/estoque/notas/{{ m.nota_fiscal_id }}" 
+                                               class="btn btn-outline-info btn-sm" 
+                                               title="Ver nota fiscal">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

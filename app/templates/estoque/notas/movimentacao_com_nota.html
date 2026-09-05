@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block titulo %}Entrada com Nota Fiscal{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="/estoque">Estoque</a></li>
+<li class="breadcrumb-item"><a href="/estoque/notas">Notas Fiscais</a></li>
+<li class="breadcrumb-item active">Entrada com Nota</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="mb-4">
+    <a href="/estoque/notas" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar para Notas
+    </a>
+</div>
+
+<div class="card shadow-lg border-0">
+    <div class="card-header bg-success text-white py-3">
+        <h3 class="mb-0"><i class="bi bi-receipt me-2"></i>Registrar Entrada com Nota Fiscal</h3>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data" id="formNota">
+            <!-- Dados da Nota Fiscal -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <h5 class="text-success mb-3"><i class="bi bi-receipt me-2"></i>Dados da Nota Fiscal</h5>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Número da Nota <span class="text-danger">*</span></label>
+                    <input type="text" name="numero_nota" class="form-control" required>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Série</label>
+                    <input type="text" name="serie" class="form-control">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Data Emissão <span class="text-danger">*</span></label>
+                    <input type="date" name="data_emissao" class="form-control" value="{{ data_atual }}" required>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Data Recebimento <span class="text-danger">*</span></label>
+                    <input type="date" name="data_recebimento" class="form-control" value="{{ data_atual }}" required>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Fornecedor <span class="text-danger">*</span></label>
+                    <input type="text" name="fornecedor" class="form-control" required>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">CNPJ</label>
+                    <input type="text" name="cnpj_fornecedor" class="form-control" placeholder="00.000.000/0000-00">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Valor Total</label>
+                    <input type="number" step="0.01" name="valor_total" class="form-control">
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">PDF da Nota</label>
+                    <input type="file" name="arquivo_pdf" class="form-control" accept=".pdf">
+                </div>
+                
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Observações da Nota</label>
+                    <textarea name="observacoes_nota" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Produtos -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <h5 class="text-success mb-3"><i class="bi bi-box-seam me-2"></i>Produtos da Nota</h5>
+                </div>
+            </div>
+
+            <div id="produtos-container">
+                <!-- Primeiro produto (já vem preenchido) -->
+                <div class="row g-3 mb-3 produto-item">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Produto</label>
+                        <select name="produto_id[]" class="form-select" required>
+                            <option value="">Selecione</option>
+                            {% for p in produtos %}
+                            <option value="{{ p.id }}">{{ p.nome }} ({{ p.unidade }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Quantidade</label>
+                        <input type="number" step="0.01" name="quantidade[]" class="form-control" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Valor Unit.</label>
+                        <input type="number" step="0.01" name="valor_unitario[]" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Observações</label>
+                        <input type="text" name="observacoes[]" class="form-control">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-danger remover-produto" style="display: none;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botão Adicionar Produto -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="button" class="btn btn-outline-success" id="adicionarProduto">
+                        <i class="bi bi-plus-circle me-1"></i>Adicionar outro produto
+                    </button>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="/estoque/notas" class="btn btn-outline-secondary px-4">
+                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success px-5">
+                            <i class="bi bi-save me-1"></i>Registrar Entrada
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('adicionarProduto').addEventListener('click', function() {
+    const container = document.getElementById('produtos-container');
+    const primeiroProduto = container.querySelector('.produto-item');
+    const novoProduto = primeiroProduto.cloneNode(true);
+    
+    // Limpar os valores
+    novoProduto.querySelectorAll('input, select').forEach(input => {
+        if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+        } else {
+            input.value = '';
+        }
+    });
+    
+    // Mostrar botão de remover
+    const btnRemover = novoProduto.querySelector('.remover-produto');
+    btnRemover.style.display = 'block';
+    
+    // Adicionar evento ao botão de remover
+    btnRemover.addEventListener('click', function() {
+        novoProduto.remove();
+    });
+    
+    container.appendChild(novoProduto);
+});
+</script>
+{% endblock %}

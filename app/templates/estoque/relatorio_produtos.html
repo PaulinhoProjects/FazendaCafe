@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block titulo %}Relatório de Produtos{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-table text-primary me-2"></i>Relatório de Produtos</h1>
+    <div>
+        <a href="/estoque" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="bi bi-printer me-1"></i>Imprimir / PDF
+        </button>
+    </div>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h6 class="card-title">Total de Produtos</h6>
+                <h3>{{ total_produtos }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h6 class="card-title">Valor Total em Estoque</h6>
+                <h3>R$ {{ "%.2f"|format(valor_total) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h6 class="card-title">Total de Itens</h6>
+                <h3>{{ "%.0f"|format(total_itens) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data do relatório -->
+<div class="text-muted mb-3">
+    <i class="bi bi-calendar3 me-1"></i>Relatório gerado em: {{ data_atual }}
+</div>
+
+<!-- Tabela de produtos -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Produto</th>
+                        <th>Unidade</th>
+                        <th>Quantidade</th>
+                        <th>Estoque Mínimo</th>
+                        <th>Status</th>
+                        <th>Último Valor</th>
+                        <th>Valor Total</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in produtos %}
+                    <tr>
+                        <td>
+                            <a href="/estoque/produto/{{ p.id }}" class="text-decoration-none">
+                                <strong>{{ p.nome }}</strong>
+                            </a>
+                        </td>
+                        <td>{{ p.unidade }}</td>
+                        <td class="{% if p.estoque_baixo %}text-danger fw-bold{% endif %}">
+                            {{ "%.2f"|format(p.quantidade_atual) }}
+                        </td>
+                        <td>{{ "%.2f"|format(p.estoque_minimo) if p.estoque_minimo else '—' }}</td>
+                        <td>
+                            {% if p.estoque_baixo %}
+                                <span class="badge bg-danger">Baixo</span>
+                            {% else %}
+                                <span class="badge bg-success">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>R$ {{ "%.2f"|format(p.ultimo_valor) if p.ultimo_valor else '—' }}</td>
+                        <td>R$ {{ "%.2f"|format(p.valor_total) if p.valor_total else '—' }}</td>
+                        <td>{{ p.observacoes or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="6" class="text-end">Totais:</th>
+                        <th>R$ {{ "%.2f"|format(valor_total) }}</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style media="print">
+    .btn, .footer, .navbar { display: none; }
+    body { padding: 20px; }
+    .card { border: none; }
+    .table { font-size: 12px; }
+</style>
+
+<div class="mt-4 text-center">
+    <a href="/estoque/relatorio-produtos/filtros" class="btn btn-primary">
+        <i class="bi bi-funnel me-1"></i>Gerar Relatório com Filtros
+    </a>
+    <small class="d-block text-muted mt-2">
+        Use filtros para separar por categoria (herbicidas, inseticidas, etc.)
+    </small>
+</div>
+
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block titulo %}Dashboard{% endblock %}
+
+{% block conteudo %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>📊 Dashboard da Fazenda</h1>
+        <p class="text-muted">Visão geral dos seus talhões</p>
+    </div>
+</div>
+
+<!-- Cards de resumo -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card card-dashboard text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Total de Talhões</h5>
+                <h2 class="card-text">{{ total_talhoes }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-dashboard text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Área Total</h5>
+                <h2 class="card-text">{{ "%.2f"|format(area_total) }} ha</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-dashboard text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Variedades</h5>
+                <h2 class="card-text">{{ variedades|length }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista dos últimos talhões -->
+<div class="row">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <h5>📋 Últimos Talhões Cadastrados</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Área (ha)</th>
+                                <th>Variedade</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for talhao in talhoes %}
+                            <tr>
+                                <td>{{ talhao.id }}</td>
+                                <td>{{ talhao.nome }}</td>
+                                <td>{{ "%.2f"|format(talhao.area) }}</td>
+                                <td>{{ talhao.variedade }}</td>
+                                <td>
+                                    <a href="/talhao/{{ talhao.id }}" class="btn btn-sm btn-primary">Ver</a>
+                                    <a href="/talhao/{{ talhao.id }}/editar" class="btn btn-sm btn-secondary">Editar</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <a href="/talhao/novo" class="btn btn-success">➕ Novo Talhão</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico simples de distribuição de variedades -->
+<div class="row mt-4">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <h5>📈 Distribuição de Variedades</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for variedade, quantidade in variedades.items() %}
+                    <div class="col-md-3">
+                        <div class="progress mb-2">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ (quantidade / total_talhoes * 100)|int }}%">
+                                {{ variedade }} ({{ quantidade }})
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block titulo %}Detalhes da Pulverização{% endblock %}
+
+{% block conteudo %}
+<div class="mb-4">
+    <a href="/pulverizacao/aplicacoes" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar para lista
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-primary text-white py-3">
+        <h3 class="mb-0"><i class="bi bi-droplet-half me-2"></i>Pulverização em {{ aplicacao.talhao_nome }}</h3>
+    </div>
+    <div class="card-body p-4">
+        <!-- Informações principais em duas colunas -->
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="bg-light p-3 rounded">
+                    <h5 class="mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Informações da Aplicação</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <th class="ps-0">Data:</th>
+                            <td><i class="bi bi-calendar3 me-1 text-muted"></i>{{ aplicacao.data_aplicacao }}</td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Talhão:</th>
+                            <td><i class="bi bi-pin-map-fill text-success me-1"></i>{{ aplicacao.talhao_nome }}</td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Período:</th>
+                            <td><span class="badge bg-info"><i class="bi bi-calendar-range me-1"></i>{{ aplicacao.periodo_nome }}</span></td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Receita:</th>
+                            <td>
+                                {% if aplicacao.receita_nome and aplicacao.receita_nome != 'Não informada' %}
+                                    <i class="bi bi-file-earmark-text text-info me-1"></i>{{ aplicacao.receita_nome }}
+                                {% else %}
+                                    <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Não informada</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Tipo:</th>
+                            <td>
+                                {% if aplicacao.tipo_aplicacao == 'solo' %}
+                                    <span class="badge bg-secondary"><i class="bi bi-tree me-1"></i>Solo</span>
+                                {% else %}
+                                    <span class="badge bg-primary"><i class="bi bi-droplet me-1"></i>Foliar</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="bg-light p-3 rounded">
+                    <h5 class="mb-3"><i class="bi bi-person-badge text-success me-2"></i>Responsável e Retorno</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <th class="ps-0">Responsável:</th>
+                            <td>
+                                {% if aplicacao.responsavel %}
+                                    <i class="bi bi-person me-1 text-muted"></i>{{ aplicacao.responsavel }}
+                                {% else %}
+                                    <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Não informado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Data Prevista:</th>
+                            <td>
+                                {% if aplicacao.data_prevista_retorno %}
+                                    <i class="bi bi-calendar2-week me-1 text-warning"></i>{{ aplicacao.data_prevista_retorno }}
+                                {% else %}
+                                    <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Não definida</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="ps-0">Status Retorno:</th>
+                            <td>
+                                {% if aplicacao.status_retorno == 'concluido' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Resolvido</span>
+                                {% elif aplicacao.status_retorno == 'nao_resolvido' %}
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Não resolvido</span>
+                                {% elif aplicacao.data_prevista_retorno and aplicacao.data_prevista_retorno < data_atual %}
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Atrasado</span>
+                                {% elif aplicacao.data_prevista_retorno %}
+                                    <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>Pendente</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if aplicacao.data_retorno_realizado %}
+                        <tr>
+                            <th class="ps-0">Realizado em:</th>
+                            <td><i class="bi bi-calendar-check me-1 text-success"></i>{{ aplicacao.data_retorno_realizado }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Observações do Retorno (se houver) -->
+        {% if aplicacao.observacoes_retorno %}
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-light border-0">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="bi bi-chat-text text-info me-2"></i>Observações do Retorno</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ aplicacao.observacoes_retorno }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Fórmula da Receita (se houver) -->
+        {% if aplicacao.receita_formula %}
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-light border-0">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="bi bi-file-text text-primary me-2"></i>Fórmula da Receita</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="mb-0 p-3 bg-white rounded">{{ aplicacao.receita_formula }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Pragas/Doenças Detectadas -->
+        {% if pragas %}
+        <div class="row mt-4">
+            <div class="col">
+                <h5 class="mb-3"><i class="bi bi-bug text-danger me-2"></i>Pragas/Doenças Detectadas</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Praga/Doença</th>
+                                <th>Tipo</th>
+                                <th>Nível</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pragas %}
+                            <tr>
+                                <td>
+                                    {% if p.tipo == 'praga' %}
+                                        <i class="bi bi-bug-fill text-danger me-1"></i>
+                                    {% else %}
+                                        <i class="bi bi-virus-fill text-warning me-1"></i>
+                                    {% endif %}
+                                    {{ p.nome }}
+                                </td>
+                                <td>
+                                    <span class="badge {% if p.tipo == 'praga' %}bg-danger{% else %}bg-warning{% endif %} bg-opacity-10 text-dark">
+                                        {% if p.tipo == 'praga' %}Praga{% else %}Doença{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if p.nivel == 'baixo' %}
+                                        <span class="badge bg-success">Baixo</span>
+                                    {% elif p.nivel == 'medio' %}
+                                        <span class="badge bg-warning">Médio</span>
+                                    {% elif p.nivel == 'alto' %}
+                                        <span class="badge bg-danger">Alto</span>
+                                    {% elif p.nivel == 'critico' %}
+                                        <span class="badge bg-dark">Crítico</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ p.observacoes or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Observações Gerais -->
+        {% if aplicacao.observacoes %}
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-light border-0">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="bi bi-chat-text text-secondary me-2"></i>Observações da Aplicação</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ aplicacao.observacoes }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Condições Climáticas -->
+        {% if aplicacao.condicoes %}
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-light border-0">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="bi bi-cloud-sun text-info me-2"></i>Condições Climáticas</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ aplicacao.condicoes }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Botões de Ação -->
+        <div class="row mt-4">
+            <div class="col d-flex gap-2 flex-wrap align-items-center">
+                <a href="/pulverizacao/aplicacao/{{ aplicacao.id }}/editar" class="btn btn-warning">
+                    <i class="bi bi-pencil-square me-1"></i>Editar
+                </a>
+                
+                <!-- BOTÃO DE RETORNO - Aparece se tiver data prevista e não estiver concluído -->
+                {% if aplicacao.data_prevista_retorno and aplicacao.status_retorno != 'concluido' %}
+                <a href="/pulverizacao/aplicacao/{{ aplicacao.id }}/retorno" class="btn btn-primary">
+                    <i class="bi bi-calendar2-check me-1"></i>Registrar Retorno
+                </a>
+                {% endif %}
+                
+                <!-- BOTÕES PARA EDITAR/EXCLUIR RETORNO (aparecem se já tiver retorno registrado) -->
+                {% if aplicacao.status_retorno %}
+                <div class="btn-group">
+                    <a href="/pulverizacao/aplicacao/{{ aplicacao.id }}/retorno/editar" class="btn btn-outline-warning" title="Editar retorno">
+                        <i class="bi bi-pencil"></i> Editar Retorno
+                    </a>
+                    <form action="/pulverizacao/aplicacao/{{ aplicacao.id }}/retorno/excluir" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-outline-danger" title="Remover retorno" 
+                                onclick="return confirm('Remover este registro de retorno? O alerta voltará a aparecer.')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                
+                <form action="/pulverizacao/aplicacao/{{ aplicacao.id }}/excluir" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta aplicação?')">
+                        <i class="bi bi-trash me-1"></i>Excluir Aplicação
+                    </button>
+                </form>
+                
+                <a href="/pulverizacao/aplicacoes" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

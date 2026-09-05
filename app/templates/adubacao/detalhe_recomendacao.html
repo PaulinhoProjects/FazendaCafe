@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block titulo %}Detalhes da Recomendação{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="/adubacao/recomendacoes" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+    <div class="btn-group">
+        <a href="/adubacao/recomendacao/{{ recomendacao.id }}/aplicar" class="btn btn-success">
+            <i class="bi bi-check2-circle me-1"></i>Registrar Aplicação
+        </a>
+        <a href="#" class="btn btn-warning" onclick="alert('Edição em desenvolvimento')">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        <form action="/adubacao/recomendacao/{{ recomendacao.id }}/excluir" method="POST" style="display: inline;"
+              onsubmit="return confirm('Tem certeza que deseja excluir esta recomendação?')">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i>Excluir
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-success text-white py-3">
+        <h3 class="mb-0">
+            <i class="bi bi-flower1 me-2"></i>
+            Recomendação - {{ recomendacao.talhao_nome }}
+        </h3>
+    </div>
+    <div class="card-body p-4">
+        <!-- Informações gerais -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="bg-light p-3 rounded">
+                    <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Informações da Recomendação</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Data:</th>
+                            <td>{{ recomendacao.data_recomendacao }}</td>
+                        </tr>
+                        <tr>
+                            <th>Talhão:</th>
+                            <td>{{ recomendacao.talhao_nome }}</td>
+                        </tr>
+                        <tr>
+                            <th>Validade:</th>
+                            <td>{{ recomendacao.data_validade or 'Não definida' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Responsável:</th>
+                            <td>{{ recomendacao.responsavel or 'Não informado' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="bg-light p-3 rounded">
+                    <h5 class="mb-3"><i class="bi bi-flask me-2"></i>Análise de Referência</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Análise:</th>
+                            <td>
+                                {% if recomendacao.analise_id %}
+                                    <a href="/analises/{{ recomendacao.analise_id }}">
+                                        {{ recomendacao.analise_data }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">Nenhuma análise vinculada</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if recomendacao.status == 'Pendente' %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% elif recomendacao.status == 'Aplicada' %}
+                                    <span class="badge bg-success">Aplicada</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Cancelada</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Itens da Recomendação -->
+        <div class="row mt-4">
+            <div class="col">
+                <h5 class="mb-3"><i class="bi bi-list-check me-2"></i>Nutrientes Recomendados</h5>
+                
+                {% if itens %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nutriente</th>
+                                <th>Quantidade</th>
+                                <th>Unidade</th>
+                                <th>Fonte Recomendada</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens %}
+                            <tr>
+                                <td class="fw-bold">{{ item.nutriente }}</td>
+                                <td>{{ item.quantidade|format_quantidade }}</td>
+                                <td>{{ item.unidade }}</td>
+                                <td>{{ item.fonte or '—' }}</td>
+                                <td>{{ item.observacoes or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Nenhum nutriente recomendado ainda.
+                    {% if recomendacao.analise_id %}
+                    <a href="/adubacao/recomendacao/{{ recomendacao.id }}/gerar-de-analise/{{ recomendacao.analise_id }}" 
+                       class="alert-link">Clique aqui</a> para gerar automaticamente.
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Observações -->
+        {% if recomendacao.observacoes %}
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-light border-0">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="bi bi-chat-text me-2"></i>Observações</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ recomendacao.observacoes }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Botões de ação (status) -->
+        <div class="row mt-4">
+            <div class="col">
+                <div class="btn-group" role="group">
+                    <a href="/adubacao/recomendacao/{{ recomendacao.id }}/status/Pendente" 
+                       class="btn btn-outline-warning {% if recomendacao.status == 'Pendente' %}active{% endif %}">
+                        Pendente
+                    </a>
+                    <a href="/adubacao/recomendacao/{{ recomendacao.id }}/status/Aplicada" 
+                       class="btn btn-outline-success {% if recomendacao.status == 'Aplicada' %}active{% endif %}">
+                        Aplicada
+                    </a>
+                    <a href="/adubacao/recomendacao/{{ recomendacao.id }}/status/Cancelada" 
+                       class="btn btn-outline-secondary {% if recomendacao.status == 'Cancelada' %}active{% endif %}">
+                        Cancelada
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

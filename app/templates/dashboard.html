@@ -1,0 +1,673 @@
+{% extends "base.html" %}
+
+{% block titulo %}Dashboard{% endblock %}
+
+{% block conteudo %}
+<!-- Cabeçalho com saudação e data -->
+<div class="row mb-4">
+    <div class="col">
+        <div class="d-flex justify-content-between align-items-center bg-white p-4 rounded-4 shadow-sm">
+            <div>
+                <h1 class="display-5 fw-bold">
+                    <i class="bi bi-bar-chart-fill me-2 text-success"></i>
+                    Dashboard <span class="text-success">Sítio do Morro do Paiol</span>
+                </h1>
+                <p class="text-muted lead mb-0">Visão geral e estatísticas da sua produção de café</p>
+            </div>
+            <div class="text-end">
+                <div class="bg-light p-3 rounded-4">
+                    <i class="bi bi-calendar3 me-2"></i>{{ data_atual }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seção do Clima -->
+{% if clima_atual %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #0B3B5C 0%, #1B5A7C 100%);">
+            <div class="card-body text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi {{ get_icone_clima(clima_atual.codigo) }}" style="font-size: 4rem; color: #FFD700;"></i>
+                            <div class="ms-3">
+                                <h2 class="display-4 fw-bold mb-0 text-white">{{ clima_atual.temperatura }}°C</h2>
+                                <p class="mb-0 text-white-50">{{ clima_atual.descricao }}</p>
+                                <small class="text-white-50">Sensação: {{ clima_atual.sensacao }}°C</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-6">
+                                <i class="bi bi-droplet text-info me-1"></i> <span class="text-white">Umidade</span><br>
+                                <strong class="text-white">{{ clima_atual.umidade }}%</strong>
+                            </div>
+                            <div class="col-6">
+                                <i class="bi bi-wind text-info me-1"></i> <span class="text-white">Vento</span><br>
+                                <strong class="text-white">{{ clima_atual.vento_velocidade }} km/h</strong>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <i class="bi bi-sun text-warning me-1"></i> <span class="text-white">Nascer</span><br>
+                                <strong class="text-white">{{ clima_atual.nascer_sol }}</strong>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <i class="bi bi-moon text-secondary me-1"></i> <span class="text-white">Pôr</span><br>
+                                <strong class="text-white">{{ clima_atual.por_sol }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        {% if clima_atual.alertas %}
+                            <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Alertas</h6>
+                            {% for alerta in clima_atual.alertas %}
+                                <div class="alert alert-{% if alerta.severidade == 'alto' %}danger{% else %}warning{% endif %} py-1 px-2 mb-1 small" style="background-color: rgba(255,255,255,0.15); color: white; border: none;">
+                                    <i class="bi bi-{% if alerta.tipo == 'frio' %}thermometer-snow{% elif alerta.tipo == 'calor' %}thermometer-high{% elif alerta.tipo == 'chuva' %}cloud-rain{% elif alerta.tipo == 'vento' %}wind{% else %}exclamation{% endif %} me-1"></i>
+                                    {{ alerta.mensagem }}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                <p class="mb-0 text-white">Sem alertas no momento</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if previsao %}
+                <hr class="my-3" style="border-color: rgba(255,255,255,0.2);">
+                <div class="row text-center">
+                    {% for dia in previsao %}
+                    <div class="col">
+                        <strong class="text-white">{{ dia.dia_semana[:3] }}</strong><br>
+                        <i class="bi {{ get_icone_clima(dia.icone) }}" style="color: #FFD700;"></i><br>
+                        <span class="small text-white-50">{{ dia.temp_max }}° / {{ dia.temp_min }}°</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="text-end mt-2">
+                    <small class="text-white-50">Atualizado: {{ clima_atual.atualizacao }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- LINHA 1: Cards de Resumo Rápido (8 cards em 2 linhas de 4) -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Talhões</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo.total_talhoes }}</h2>
+                        <small>{{ "%.2f"|format(resumo.area_total) }} hectares</small>
+                    </div>
+                    <i class="bi bi-pin-map-fill" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/talhoes" class="text-white text-decoration-none small">
+                        Ver detalhes <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Pulverizações</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo.pulverizacoes_ano }}</h2>
+                        <small>No último ano</small>
+                    </div>
+                    <i class="bi bi-droplet" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/pulverizacao" class="text-white text-decoration-none small">
+                        Ver detalhes <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Pragas</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo.pragas_detectadas }}</h2>
+                        <small>Tipos diferentes</small>
+                    </div>
+                    <i class="bi bi-bug" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/pulverizacao" class="text-white text-decoration-none small">
+                        Ver detalhes <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Alertas</span>
+                        <h2 class="card-text display-6 fw-bold">{{ alertas|length }}</h2>
+                        <small>Retornos pendentes</small>
+                    </div>
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/pulverizacao/aplicacoes" class="text-white text-decoration-none small">
+                        Ver alertas <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 2: Cards de Resumo Secundários (3 cards) -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #614385 0%, #516395 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Estoque</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo_estoque.total_produtos }}</h2>
+                        <small>{{ resumo_estoque.estoque_baixo }} com estoque baixo</small>
+                    </div>
+                    <i class="bi bi-box-seam" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/estoque" class="text-white text-decoration-none small">
+                        Ver estoque <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #e65c00 0%, #F9D423 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">Análises</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo_analises.analises_ano }}</h2>
+                        <small>{{ resumo_analises.pendentes }} pendentes</small>
+                    </div>
+                    <i class="bi bi-clipboard-data" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/analises" class="text-white text-decoration-none small">
+                        Ver análises <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #cb356b 0%, #bd3f32 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-white text-dark mb-2">PDFs</span>
+                        <h2 class="card-text display-6 fw-bold">{{ resumo_pdfs.total_pdfs }}</h2>
+                        <small>{{ resumo_pdfs.pdfs_mes }} neste mês</small>
+                    </div>
+                    <i class="bi bi-file-pdf" style="font-size: 3.5rem; opacity: 0.5;"></i>
+                </div>
+                <div class="mt-3">
+                    <a href="/pdfs" class="text-white text-decoration-none small">
+                        Ver PDFs <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 3: Acesso Rápido -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="bi bi-grid me-2"></i>Acesso Rápido</h5>
+                <div class="row g-2">
+                    <div class="col-md-2 col-6">
+                        <a href="/talhoes" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-pin-map-fill text-primary" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">Talhões</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <a href="/pulverizacao" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-droplet text-success" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">Pulverizações</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <a href="/manejo-mato" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-tree text-warning" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">Manejo do Mato</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <a href="/estoque" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-box-seam text-info" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">Estoque</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <a href="/analises" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-clipboard-data text-secondary" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">Análises</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <a href="/pdfs" class="text-decoration-none">
+                            <div class="card text-center border-0 bg-light hover-scale">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-file-pdf text-danger" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-0">PDFs</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 4: Gráficos (2 linhas de 2) -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0"><i class="bi bi-graph-up text-success me-2"></i>Tendência de Pulverizações</h5>
+                <small class="text-muted">Últimos 6 meses</small>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoTendencia" style="height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0"><i class="bi bi-pie-chart text-warning me-2"></i>Aplicações por Período</h5>
+                <small class="text-muted">Distribuição das pulverizações</small>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoPeriodo" style="height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0"><i class="bi bi-bar-chart text-danger me-2"></i>Pragas por Talhão</h5>
+                <small class="text-muted">Top 10 talhões com mais ocorrências</small>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoPragasTalhao" style="height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0"><i class="bi bi-donut text-info me-2"></i>Tipos de Ocorrências</h5>
+                <small class="text-muted">Pragas vs Doenças</small>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoTiposPragas" style="height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 5: Cards de Informações (2 cards lado a lado) -->
+<div class="row g-4 mb-4">
+    <!-- Alertas de Retorno -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Alertas de Retorno</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if alertas %}
+                <div class="list-group list-group-flush">
+                    {% for alerta in alertas %}
+                    <div class="list-group-item border-0 {% if alerta.status == 'atrasado' %}bg-danger bg-opacity-10{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ alerta.talhao }}</strong>
+                                <div class="small text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i>Aplicação: {{ alerta.data_aplicacao }}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">{{ alerta.data_retorno }}</div>
+                                <span class="badge bg-{{ 'danger' if alerta.status == 'atrasado' else 'warning' }}">
+                                    {{ 'ATRASADO' if alerta.status == 'atrasado' else 'Próximo' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-circle text-success display-4"></i>
+                    <p class="text-muted mt-2">Nenhum alerta no momento</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Atividades Recentes -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Atividades Recentes</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if atividades %}
+                <div class="list-group list-group-flush">
+                    {% for atv in atividades %}
+                    <a href="/pulverizacao/aplicacao/{{ atv.id }}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ atv.talhao }}</strong>
+                                <div class="small text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ atv.data }}
+                                    <span class="mx-1">•</span>
+                                    {{ atv.periodo }}
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-dark">{{ atv.responsavel }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nenhuma atividade recente</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 6: Cards Secundários (3 cards lado a lado) -->
+<div class="row g-4">
+    <!-- Produtos com Estoque Baixo -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Estoque Baixo</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if produtos_baixo %}
+                <div class="list-group list-group-flush">
+                    {% for p in produtos_baixo %}
+                    <a href="/estoque/produto/{{ p.id }}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ p.nome }}</strong>
+                                <div class="small text-muted">Atual: {{ p.quantidade|format_quantidade }} {{ p.unidade }}</div>
+                            </div>
+                            <span class="badge bg-danger">Mín: {{ p.minimo|format_quantidade }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-circle text-success display-4"></i>
+                    <p class="text-muted mt-2">Tudo OK</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimas Análises -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Últimas Análises</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if ultimas_analises %}
+                <div class="list-group list-group-flush">
+                    {% for a in ultimas_analises %}
+                    <a href="/analises/{{ a.id }}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ a.talhao }}</strong>
+                                <div class="small text-muted">{{ a.data }} - {{ a.tipo }}</div>
+                            </div>
+                            <span class="badge {% if a.status == 'Pendente' %}bg-warning{% else %}bg-success{% endif %}">
+                                {{ a.status }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nenhuma análise</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimos Manejos -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-lg h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-tree me-2"></i>Manejos Recentes</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if ultimos_manejos %}
+                <div class="list-group list-group-flush">
+                    {% for m in ultimos_manejos %}
+                    <a href="/manejo-mato/{{ m.id }}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ m.talhao }}</strong>
+                                <div class="small text-muted">{{ m.data }} - {{ m.tipo }}</div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nenhum manejo</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-scale {
+    transition: transform 0.2s;
+}
+.hover-scale:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+.card {
+    transition: all 0.3s;
+    border-radius: 15px;
+    overflow: hidden;
+}
+.card:hover {
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+}
+.list-group-item {
+    padding: 1rem 1.25rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Tendência
+    const ctxTendencia = document.getElementById('graficoTendencia').getContext('2d');
+    new Chart(ctxTendencia, {
+        type: 'line',
+        data: {
+            labels: {{ grafico_tendencia.labels|tojson }},
+            datasets: [{
+                label: 'Número de Aplicações',
+                data: {{ grafico_tendencia.dados|tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: 'rgb(75, 192, 192)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Gráfico de Períodos
+    const ctxPeriodo = document.getElementById('graficoPeriodo').getContext('2d');
+    new Chart(ctxPeriodo, {
+        type: 'doughnut',
+        data: {
+            labels: {{ grafico_aplicacoes_periodo.labels|tojson }},
+            datasets: [{
+                data: {{ grafico_aplicacoes_periodo.dados|tojson }},
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
+            },
+            cutout: '60%'
+        }
+    });
+
+    // Gráfico de Pragas por Talhão
+    const ctxPragas = document.getElementById('graficoPragasTalhao').getContext('2d');
+    new Chart(ctxPragas, {
+        type: 'bar',
+        data: {
+            labels: {{ grafico_pragas_talhao.labels|tojson }},
+            datasets: [{
+                label: 'Ocorrências',
+                data: {{ grafico_pragas_talhao.dados|tojson }},
+                backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: { beginAtZero: true, stepSize: 1, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Gráfico de Tipos de Pragas
+    const ctxTipos = document.getElementById('graficoTiposPragas').getContext('2d');
+    new Chart(ctxTipos, {
+        type: 'doughnut',
+        data: {
+            labels: {{ grafico_tipos_pragas.labels|tojson }},
+            datasets: [{
+                data: {{ grafico_tipos_pragas.dados|tojson }},
+                backgroundColor: ['#FF6384', '#36A2EB'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
+            },
+            cutout: '60%'
+        }
+    });
+});
+</script>
+{% endblock %}
