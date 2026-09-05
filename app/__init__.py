@@ -50,12 +50,16 @@ def create_app(config_class=Config):
     from app.routes.auth_routes import auth_bp
     from app.routes.estoque_routes import estoque_bp
     from app.routes.pulverizacao_routes import pulverizacao_bp
+    from app.routes.adubacao_routes import adubacao_bp
+    from app.routes.manejo_mato_routes import manejo_mato_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(talhoes_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(estoque_bp)
     app.register_blueprint(pulverizacao_bp)
+    app.register_blueprint(adubacao_bp)
+    app.register_blueprint(manejo_mato_bp)
 
     from app.modules.auth import criar_tabela_usuarios
     criar_tabela_usuarios()

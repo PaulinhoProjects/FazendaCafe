@@ -1,87 +1,50 @@
 {% extends "base.html" %}
-
-{% block titulo %}Novo Manejo do Mato{% endblock %}
-
+{% block titulo %}Novo Manejo{% endblock %}
 {% block conteudo %}
-<div class="mb-4">
-    <a href="/manejo-mato" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Voltar
-    </a>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-success text-white py-3">
-        <h3 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Registrar Manejo do Mato</h3>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-plus-circle me-2"></i>Novo Manejo de Mato</h2>
+        <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
     </div>
-    <div class="card-body p-4">
-        <form method="POST">
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label for="talhao_id" class="form-label fw-semibold">
-                        <i class="bi bi-pin-map-fill text-success me-1"></i>Talhão <span class="text-danger">*</span>
-                    </label>
-                    <select class="form-select" id="talhao_id" name="talhao_id" required>
-                        <option value="">Selecione</option>
-                        {% for t in talhoes %}
-                        <option value="{{ t.id }}">{{ t.nome }} ({{ "%.2f"|format(t.area) }} ha)</option>
-                        {% endfor %}
-                    </select>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('manejo_mato.novo') }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Talhão *</label>
+                        <select name="talhao_id" class="form-select" required>
+                            <option value="">Selecione...</option>
+                            {% for t in talhoes %}<option value="{{ t.id }}">{{ t.nome }} ({{ t.area }} ha)</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Data *</label>
+                        <input type="date" name="data_manejo" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Tipo *</label>
+                        <select name="tipo_manejo" class="form-select" required>
+                            <option value="Roçada Mecânica">Roçada Mecânica</option>
+                            <option value="Roçada Manual">Roçada Manual</option>
+                            <option value="Capina Química">Capina Química</option>
+                            <option value="Capina Manual">Capina Manual</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label for="data_manejo" class="form-label fw-semibold">
-                        <i class="bi bi-calendar-check text-success me-1"></i>Data <span class="text-danger">*</span>
-                    </label>
-                    <input type="date" class="form-control" id="data_manejo" name="data_manejo" value="{{ data_atual }}" required>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Produtos</label><input type="text" name="produtos" class="form-control" placeholder="Herbicida, etc."></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Dosagem</label><input type="text" name="dosagem" class="form-control" placeholder="L/ha"></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Responsável</label><input type="text" name="responsavel" class="form-control"></div>
                 </div>
-            </div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label for="tipo_manejo" class="form-label fw-semibold">
-                        <i class="bi bi-tag text-primary me-1"></i>Tipo de Manejo <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" class="form-control" id="tipo_manejo" name="tipo_manejo" 
-                           placeholder="Ex: Capina manual, Herbicida, Roçada" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="responsavel" class="form-label fw-semibold">
-                        <i class="bi bi-person-badge text-info me-1"></i>Responsável
-                    </label>
-                    <input type="text" class="form-control" id="responsavel" name="responsavel" placeholder="Nome do responsável">
-                </div>
-            </div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label for="produtos" class="form-label fw-semibold">
-                        <i class="bi bi-droplet text-warning me-1"></i>Produtos Utilizados
-                    </label>
-                    <input type="text" class="form-control" id="produtos" name="produtos" placeholder="Ex: Herbicida X, Adjuvante Y">
-                </div>
-                <div class="col-md-6">
-                    <label for="dosagem" class="form-label fw-semibold">
-                        <i class="bi bi-rulers text-secondary me-1"></i>Dosagem
-                    </label>
-                    <input type="text" class="form-control" id="dosagem" name="dosagem" placeholder="Ex: 2 L/ha">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label for="observacoes" class="form-label fw-semibold">
-                    <i class="bi bi-chat-text me-1"></i>Observações
-                </label>
-                <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-success px-4">
-                    <i class="bi bi-save me-1"></i>Salvar
-                </button>
-                <a href="/manejo-mato" class="btn btn-outline-secondary px-4">
-                    <i class="bi bi-x-circle me-1"></i>Cancelar
-                </a>
-            </div>
-        </form>
+                <div class="mb-3"><label class="form-label">Observações</label><textarea name="observacoes" class="form-control" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Registrar</button>
+                <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

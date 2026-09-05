@@ -1,73 +1,46 @@
 {% extends "base.html" %}
-
 {% block titulo %}Editar Manejo{% endblock %}
-
 {% block conteudo %}
-<div class="mb-4">
-    <a href="/manejo-mato/{{ manejo.id }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Voltar
-    </a>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-warning text-white py-3">
-        <h3 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Editar Manejo</h3>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-pencil-square me-2"></i>Editar Manejo</h2>
+        <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
     </div>
-    <div class="card-body p-4">
-        <form method="POST">
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Talhão</label>
-                    <select class="form-select" name="talhao_id" required>
-                        {% for t in talhoes %}
-                        <option value="{{ t.id }}" {% if t.id == manejo.talhao_id %}selected{% endif %}>
-                            {{ t.nome }}
-                        </option>
-                        {% endfor %}
-                    </select>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('manejo_mato.editar', id=manejo.id) }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Talhão *</label>
+                        <select name="talhao_id" class="form-select" required>
+                            {% for t in talhoes %}<option value="{{ t.id }}" {% if t.id == manejo.talhao_id %}selected{% endif %}>{{ t.nome }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Data *</label><input type="date" name="data_manejo" class="form-control" value="{{ manejo.data_manejo.strftime('%Y-%m-%d') if manejo.data_manejo else '' }}" required></div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Tipo *</label>
+                        <select name="tipo_manejo" class="form-select" required>
+                            <option value="Roçada Mecânica" {% if manejo.tipo_manejo == 'Roçada Mecânica' %}selected{% endif %}>Roçada Mecânica</option>
+                            <option value="Roçada Manual" {% if manejo.tipo_manejo == 'Roçada Manual' %}selected{% endif %}>Roçada Manual</option>
+                            <option value="Capina Química" {% if manejo.tipo_manejo == 'Capina Química' %}selected{% endif %}>Capina Química</option>
+                            <option value="Capina Manual" {% if manejo.tipo_manejo == 'Capina Manual' %}selected{% endif %}>Capina Manual</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Data</label>
-                    <input type="date" class="form-control" name="data_manejo" value="{{ manejo.data_manejo }}" required>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Produtos</label><input type="text" name="produtos" class="form-control" value="{{ manejo.produtos or '' }}"></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Dosagem</label><input type="text" name="dosagem" class="form-control" value="{{ manejo.dosagem or '' }}"></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Responsável</label><input type="text" name="responsavel" class="form-control" value="{{ manejo.responsavel or '' }}"></div>
                 </div>
-            </div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Tipo de Manejo</label>
-                    <input type="text" class="form-control" name="tipo_manejo" value="{{ manejo.tipo_manejo }}" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Responsável</label>
-                    <input type="text" class="form-control" name="responsavel" value="{{ manejo.responsavel or '' }}">
-                </div>
-            </div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Produtos</label>
-                    <input type="text" class="form-control" name="produtos" value="{{ manejo.produtos or '' }}">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Dosagem</label>
-                    <input type="text" class="form-control" name="dosagem" value="{{ manejo.dosagem or '' }}">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Observações</label>
-                <textarea class="form-control" name="observacoes" rows="3">{{ manejo.observacoes or '' }}</textarea>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-warning px-4">
-                    <i class="bi bi-save me-1"></i>Salvar
-                </button>
-                <a href="/manejo-mato/{{ manejo.id }}" class="btn btn-outline-secondary px-4">
-                    <i class="bi bi-x-circle me-1"></i>Cancelar
-                </a>
-            </div>
-        </form>
+                <div class="mb-3"><label class="form-label">Observações</label><textarea name="observacoes" class="form-control" rows="2">{{ manejo.observacoes or '' }}</textarea></div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar</button>
+                <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

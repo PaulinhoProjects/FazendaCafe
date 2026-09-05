@@ -370,7 +370,7 @@ def listar_produtos_adubacao(adubacao_id):
                 'fornecedor': r[5],
                 'observacoes': r[6]
             })
-        return produits
+        return produtos
     except Exception as e:
         print(f"Erro ao listar produtos: {e}")
         return []
