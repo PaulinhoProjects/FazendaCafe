@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block titulo %}Editar Produto{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.dashboard') }}">Estoque</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.listar_produtos') }}">Produtos</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.detalhe_produto', id=produto.id) }}">{{ produto.nome }}</a>
+</li>
+<li class="breadcrumb-item active">Editar</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Editar Produto</h1>
+            <p class="text-muted">{{ produto.nome }}</p>
+        </div>
+        <a href="{{ url_for('estoque.detalhe_produto', id=produto.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('estoque.editar_produto', id=produto.id) }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nome do Produto <span class="text-danger">*</span></label>
+                        <input type="text" name="nome" class="form-control" required value="{{ produto.nome }}">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Categoria</label>
+                        <select name="categoria" class="form-select">
+                            <option value="">Selecione...</option>
+                            <option value="Fungicida" {% if produto.categoria=='Fungicida' %}selected{% endif %}>
+                                Fungicida</option>
+                            <option value="Inseticida" {% if produto.categoria=='Inseticida' %}selected{% endif %}>
+                                Inseticida</option>
+                            <option value="Herbicida" {% if produto.categoria=='Herbicida' %}selected{% endif %}>
+                                Herbicida</option>
+                            <option value="Fertilizante" {% if produto.categoria=='Fertilizante' %}selected{% endif %}>
+                                Fertilizante</option>
+                            <option value="Adjuvante" {% if produto.categoria=='Adjuvante' %}selected{% endif %}>
+                                Adjuvante</option>
+                            <option value="Outros" {% if produto.categoria=='Outros' %}selected{% endif %}>Outros
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Unidade <span class="text-danger">*</span></label>
+                        <select name="unidade" class="form-select" required>
+                            <option value="">Selecione...</option>
+                            <option value="L" {% if produto.unidade=='L' %}selected{% endif %}>Litro (L)</option>
+                            <option value="kg" {% if produto.unidade=='kg' %}selected{% endif %}>Quilo (kg)</option>
+                            <option value="sc" {% if produto.unidade=='sc' %}selected{% endif %}>Saca (sc)</option>
+                            <option value="un" {% if produto.unidade=='un' %}selected{% endif %}>Unidade (un)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Estoque Mínimo</label>
+                        <input type="number" name="estoque_minimo" class="form-control" step="0.01" min="0"
+                            value="{{ produto.estoque_minimo or 0 }}">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Quantidade Atual</label>
+                        <input type="number" name="quantidade_atual" class="form-control" step="0.01" min="0"
+                            value="{{ produto.quantidade_atual or 0 }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Observações</label>
+                        <textarea name="observacoes" class="form-control"
+                            rows="3">{{ produto.observacoes or '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Salvar Alterações
+                    </button>
+                    <a href="{{ url_for('estoque.detalhe_produto', id=produto.id) }}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -52,9 +52,9 @@ def create_app(config_class=Config):
     from app.routes.dashboard_routes import dashboard_bp
     from app.routes.talhoes_routes import talhoes_bp
     from app.routes.auth_routes import auth_bp
-    
+    from app.routes.estoque_routes import estoque_bp
+
     # Comentado por enquanto até refatorar os outros
-    # from app.routes.estoque_routes import estoque_bp
     # from app.routes.adubacao_routes import adubacao_bp
     # from app.routes.pulverizacao_routes import pulverizacao_bp
     # from app.routes.analises_routes import analises_bp
@@ -66,8 +66,8 @@ def create_app(config_class=Config):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(talhoes_bp)
     app.register_blueprint(auth_bp)
-    
-    # app.register_blueprint(estoque_bp)
+    app.register_blueprint(estoque_bp)
+
     # app.register_blueprint(adubacao_bp)
     # app.register_blueprint(pulverizacao_bp)
     # app.register_blueprint(analises_bp)

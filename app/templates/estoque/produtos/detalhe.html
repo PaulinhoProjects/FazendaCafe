@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ produto.nome }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.dashboard') }}">Estoque</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.listar_produtos') }}">Produtos</a></li>
+<li class="breadcrumb-item active">{{ produto.nome }}</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">{{ produto.nome }}</h1>
+            <p class="text-muted">ID: {{ produto.id }} | {{ produto.categoria or 'Sem categoria' }}</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <a href="{{ url_for('estoque.editar_produto', id=produto.id) }}" class="btn btn-outline-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+        </div>
+    </div>
+
+    <!-- Informações do produto -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Quantidade Atual</div>
+                    <div class="fs-3 fw-bold text-primary">
+                        {{ produto.quantidade_atual | format_quantidade }} {{ produto.unidade }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Estoque Mínimo</div>
+                    <div class="fs-3 fw-bold text-warning">
+                        {{ produto.estooque_minimo | format_quantidade if produto.estoque_minimo else 0 }} {{
+                        produto.unidade }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Status</div>
+                    {% if produto.quantidade_atual <= (produto.estoque_minimo or 0) and produto.estoque_minimo> 0 %}
+                        <div class="fs-4 fw-bold text-danger">Estoque Baixo</div>
+                        {% else %}
+                        <div class="fs-4 fw-bold text-success">Normal</div>
+                        {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Categoria</div>
+                    <div class="fs-4 fw-bold">{{ produto.categoria or '—' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Observações -->
+    {% if produto.observacoes %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header">
+            <i class="bi bi-sticky me-2"></i>Observações
+        </div>
+        <div class="card-body">
+            {{ produto.observacoes }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Histórico de movimentações -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-arrow-left-right me-2"></i>
+                Histórico de Movimentações
+            </div>
+            <span class="badge bg-secondary">{{ movimentacoes|length }} registro(s)</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Quantidade</th>
+                            <th class="text-end">Valor Unit.</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movimentacoes %}
+                        <tr>
+                            <td>{{ m.data_movimento | format_data }}</td>
+                            <td>
+                                {% if m.tipo == 'entrada' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-arrow-down-left"></i> Entrada
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-arrow-up-right"></i> Saída
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ m.quantidade | format_quantidade }} {{ m.unidade or '' }}</td>
+                            <td class="text-end">{{ m.valor_unitario | format_moeda if m.valor_unitario else '—' }}</td>
+                            <td>{{ m.observacoes or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Nenhuma movimentação registrada.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
