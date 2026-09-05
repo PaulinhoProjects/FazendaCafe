@@ -1,10 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.modules import talhoes
 from datetime import datetime
+from app.modules.login_manager import login_required
 
 talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
 
 @talhoes_bp.route('/')
+@login_required
 def listar():
     """Lista todos os talhões cadastrados."""
     try:
@@ -15,6 +17,7 @@ def listar():
         return render_template('talhoes/lista.html', talhoes=[])
 
 @talhoes_bp.route('/novo', methods=['GET', 'POST'])
+@login_required
 def novo():
     """Cadastra um novo talhão."""
     if request.method == 'POST':
@@ -42,6 +45,7 @@ def novo():
     return render_template('talhoes/novo.html')
 
 @talhoes_bp.route('/<int:id>')
+@login_required
 def detalhe(id):
     """Exibe detalhes de um talhão específico."""
     try:
@@ -55,6 +59,7 @@ def detalhe(id):
         return redirect(url_for('talhoes.listar'))
 
 @talhoes_bp.route('/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
 def editar(id):
     """Edita um talhão existente."""
     if request.method == 'POST':
@@ -89,6 +94,7 @@ def editar(id):
         return redirect(url_for('talhoes.listar'))
 
 @talhoes_bp.route('/<int:id>/excluir', methods=['POST'])
+@login_required
 def excluir(id):
     """Exclui um talhão."""
     try:

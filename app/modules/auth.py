@@ -1,10 +1,3 @@
-"""
-Módulo de Autenticação e Controle de Usuários
-Gerencia login, logout, criação de usuários e permissões
-"""
-
-import sys
-import os
 import hashlib
 from config.database import executar_query
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,16 +10,15 @@ class Usuario(UserMixin):
         self.nome = nome
         self.login = login
         self.tipo = tipo
-    
+
     @property
     def is_admin(self):
         return self.tipo == 'admin'
-    
+
     def get_id(self):
         return str(self.id)
 
 def verificar_senha(hash_armazenado, senha):
-    """Verifica se a senha coincide com hash werkzeug ou sha256 legado."""
     if not hash_armazenado or not senha:
         return False
     try:
@@ -57,79 +49,60 @@ def criar_tabela_usuarios():
     """
     try:
         executar_query(query)
-        # Verificar se existe admin padrão
         count_res = executar_query("SELECT COUNT(*) FROM usuarios", fetch_one=True)
         count = count_res[0] if count_res else 0
         if count == 0:
             criar_usuario("Administrador", "admin", "admin123", "admin")
-            print("Usuário admin padrão criado: admin / admin123")
+            print("Usuario admin padrao criado: admin / admin123")
         return True
     except Exception as e:
-        print(f"Erro ao criar tabela de usuários: {e}")
+        print(f"Erro ao criar tabela: {e}")
         return False
 
 def buscar_usuario_por_id(user_id):
-    """Busca usuário pelo ID (usado pelo Flask-Login)"""
     query = "SELECT id, nome, login, tipo FROM usuarios WHERE id = %s AND ativo = TRUE"
     try:
-        resultado = executar_query(query, (user_id,), fetch_one=True)
-        if resultado:
-            return Usuario(resultado['id'], resultado['nome'], resultado['login'], resultado['tipo'])
+        r = executar_query(query, (user_id,), fetch_one=True)
+        if r:
+            return Usuario(r[0], r[1], r[2], r[3])
         return None
     except Exception as e:
-        print(f"Erro ao buscar usuário por ID: {e}")
+        print(f"Erro: {e}")
         return None
 
 def buscar_usuario_por_login(login):
-    """Busca usuário por login/email (para autenticação)"""
     query = "SELECT id, nome, login, tipo, senha_hash FROM usuarios WHERE login = %s AND ativo = TRUE"
     try:
         return executar_query(query, (login,), fetch_one=True)
     except Exception as e:
-        print(f"Erro ao buscar usuário por login: {e}")
+        print(f"Erro: {e}")
         return None
 
 def autenticar_usuario(login, senha):
-    """
-    Verifica credenciais e retorna (dados_usuario, erro)
-    Se sucesso, dados_usuario é um dicionário com id, nome, login, tipo
-    Se falha, dados_usuario = None e erro é uma string
-    """
     usuario_data = buscar_usuario_por_login(login)
     if not usuario_data:
-        return None, "Usuário não encontrado"
-    
-    hash_banco = usuario_data['senha_hash']
+        return None, "Usuario nao encontrado"
+    hash_banco = usuario_data[4]
     if not verificar_senha(hash_banco, senha):
         return None, "Senha incorreta"
-    
-    # Atualizar último acesso se possível
     try:
-        query = "UPDATE usuarios SET ultimo_acesso = %s WHERE id = %s"
-        executar_query(query, (datetime.now(), usuario_data['id']))
+        executar_query("UPDATE usuarios SET ultimo_acesso = %s WHERE id = %s", (datetime.now(), usuario_data[0]))
     except Exception:
         pass
-    
     return {
-        'id': usuario_data['id'],
-        'nome': usuario_data['nome'],
-        'login': usuario_data['login'],
-        'tipo': usuario_data['tipo']
+        'id': usuario_data[0],
+        'nome': usuario_data[1],
+        'login': usuario_data[2],
+        'tipo': usuario_data[3]
     }, None
 
 def validar_usuario(login, senha):
-    """Função utilitária que retorna o usuário se autenticado com sucesso."""
     usuario, erro = autenticar_usuario(login, senha)
     return usuario
 
 def criar_usuario(nome, login, senha, tipo='user'):
-    """
-    Cria um novo usuário.
-    Retorna (sucesso: bool, mensagem ou id)
-    """
     if buscar_usuario_por_login(login):
-        return False, "Login já cadastrado"
-    
+        return False, "Login ja cadastrado"
     senha_hash = generate_password_hash(senha)
     query = """
     INSERT INTO usuarios (nome, login, senha_hash, tipo, ativo)
@@ -138,61 +111,40 @@ def criar_usuario(nome, login, senha, tipo='user'):
     try:
         resultado = executar_query(query, (nome, login, senha_hash, tipo), fetch_one=True)
         if resultado:
-            return True, resultado['id']
-        return False, "Erro ao criar usuário"
+            return True, resultado[0]
+        return False, "Erro ao criar usuario"
     except Exception as e:
         return False, str(e)
 
 def listar_usuarios():
-    """Retorna lista de todos os usuários (para admin)"""
-    query = """
-    SELECT id, nome, login, tipo, ativo, data_cadastro, ultimo_acesso
-    FROM usuarios ORDER BY id
-    """
+    query = "SELECT id, nome, login, tipo, ativo, data_cadastro, ultimo_acesso FROM usuarios ORDER BY id"
     try:
         resultado = executar_query(query, fetch_all=True)
         usuarios = []
         for r in resultado:
             usuarios.append({
-                'id': r['id'],
-                'nome': r['nome'],
-                'login': r['login'],
-                'tipo': r['tipo'],
-                'ativo': r['ativo'],
-                'data_cadastro': r['data_cadastro'],
-                'ultimo_acesso': r['ultimo_acesso']
+                'id': r[0], 'nome': r[1], 'login': r[2], 'tipo': r[3],
+                'ativo': r[4], 'data_cadastro': r[5], 'ultimo_acesso': r[6]
             })
         return usuarios
     except Exception as e:
-        print(f"Erro ao listar usuários: {e}")
+        print(f"Erro: {e}")
         return []
 
 def desativar_usuario(user_id, admin_id):
-    """
-    Desativa um usuário (apenas admin pode).
-    Retorna (sucesso, mensagem)
-    """
     if str(user_id) == str(admin_id):
-        return False, "Não é possível desativar seu próprio usuário"
-    
-    query = "UPDATE usuarios SET ativo = FALSE WHERE id = %s"
+        return False, "Nao pode desativar proprio usuario"
     try:
-        executar_query(query, (user_id,))
-        return True, "Usuário desativado com sucesso"
+        executar_query("UPDATE usuarios SET ativo = FALSE WHERE id = %s", (user_id,))
+        return True, "Usuario desativado"
     except Exception as e:
         return False, str(e)
 
 def alterar_nivel_usuario(user_id, novo_tipo, admin_id):
-    """
-    Altera o nível de acesso de um usuário.
-    Retorna (sucesso, mensagem)
-    """
     if novo_tipo not in ['admin', 'user', 'agronomista', 'produtor']:
-        return False, "Tipo inválido"
-    
-    query = "UPDATE usuarios SET tipo = %s WHERE id = %s"
+        return False, "Tipo invalido"
     try:
-        executar_query(query, (novo_tipo, user_id))
-        return True, "Nível alterado com sucesso"
+        executar_query("UPDATE usuarios SET tipo = %s WHERE id = %s", (novo_tipo, user_id))
+        return True, "Nivel alterado"
     except Exception as e:
         return False, str(e)

@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template
 from app.modules import dashboard
+from app.modules.login_manager import login_required
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/')
+@login_required
 def index():
     """Página inicial com indicadores e métricas."""
     try:
@@ -16,32 +18,32 @@ def index():
         )
         from app.modules.clima import get_clima_atual, get_previsao
         from datetime import datetime
-        
+
         # Resumo geral
         resumo = get_resumo_geral()
         atividades = get_atividades_recentes(8)
         alertas = get_alertas_retorno()
-        
+
         # Gráficos
         grafico_pragas_talhao = get_pragas_por_talhao()
         grafico_aplicacoes_periodo = get_aplicacoes_por_periodo()
         grafico_tendencia = get_aplicacoes_ultimos_6_meses()
         grafico_tipos_pragas = get_tipos_pragas()
-        
+
         # Resumos
         resumo_estoque = get_resumo_estoque()
         resumo_analises = get_resumo_analises()
         resumo_pdfs = get_resumo_pdfs()
-        
+
         # Listas
         produtos_baixo = get_produtos_estoque_baixo(5)
         ultimas_analises = get_ultimas_analises(3)
         ultimos_manejos = get_ultimos_manejos(3)
-        
+
         # Clima
         clima_atual = get_clima_atual()
         previsao = get_previsao()
-        
+
         return render_template('dashboard.html',
                              resumo=resumo,
                              atividades=atividades,

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block titulo %}Movimentações de Estoque{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-arrow-left-right me-2"></i>Movimentações de Estoque</h2>
+        <a href="{{ url_for('estoque.nova_movimentacao') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>Nova Movimentação
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if movimentacoes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Produto</th>
+                            <th>Tipo</th>
+                            <th>Quantidade</th>
+                            <th>Unidade</th>
+                            <th>Valor Unit.</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movimentacoes %}
+                        <tr>
+                            <td>{{ m.data_movimento|format_data if m.data_movimento else '-' }}</td>
+                            <td>{{ m.produto_nome if m.produto_nome else '-' }}</td>
+                            <td>
+                                {% if m.tipo == 'entrada' %}
+                                <span class="badge bg-success">Entrada</span>
+                                {% elif m.tipo == 'saida' %}
+                                <span class="badge bg-danger">Saída</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ m.tipo }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ m.quantidade }}</td>
+                            <td>{{ m.unidade if m.unidade else '-' }}</td>
+                            <td>{{ m.valor_unitario|format_moeda if m.valor_unitario else '-' }}</td>
+                            <td>{{ m.observacoes if m.observacoes else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted py-4">Nenhuma movimentação registrada.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

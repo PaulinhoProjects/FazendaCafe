@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block titulo %}Pulverização{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-spray me-2"></i>Pulverização Foliar</h2>
+        <div class="btn-group">
+            <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-success">
+                <i class="bi bi-plus-circle me-1"></i>Nova Aplicação
+            </a>
+            <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-primary">
+                <i class="bi bi-journal-text me-1"></i>Receitas
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h6 class="card-title">Total de Aplicações</h6>
+                    <h2>{{ total_aplicacoes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h6 class="card-title">Receitas Cadastradas</h6>
+                    <h2>{{ total_receitas }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Últimas Aplicações</h5>
+        </div>
+        <div class="card-body">
+            {% if aplicacoes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Talhão</th>
+                            <th>Período</th>
+                            <th>Tipo</th>
+                            <th>Receita</th>
+                            <th>Retorno</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in aplicacoes %}
+                        <tr onclick="window.location='{{ url_for('pulverizacao.detalhe_aplicacao', id=a.id) }}'" style="cursor:pointer">
+                            <td>{{ a.data_aplicacao|format_data if a.data_aplicacao else '-' }}</td>
+                            <td>{{ a.talhao_nome }}</td>
+                            <td>{{ a.periodo_nome }}</td>
+                            <td>{{ a.tipo_aplicacao or 'Foliar' }}</td>
+                            <td>{{ a.receita_nome }}</td>
+                            <td>
+                                {% if a.status_retorno == 'realizado' %}
+                                <span class="badge bg-success">Realizado</span>
+                                {% elif a.status_retorno == 'pendente' %}
+                                <span class="badge bg-warning">Pendente</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ a.data_prevista_retorno|format_data if a.data_prevista_retorno else '-' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted py-4">Nenhuma aplicação registrada.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

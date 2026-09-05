@@ -30,20 +30,9 @@ def listar_talhoes(ativos=True):
     """Retorna a lista de talhões com aliases e cálculo de pés de café."""
     query = """
     SELECT 
-        id, 
-        nome, 
-        area_hectares, 
-        area_hectares AS area,
-        data_plantio, 
-        variedade_cafe, 
-        variedade_cafe AS variedade,
-        altitude_media, 
-        altitude_media AS altitude,
-        observacoes, 
-        data_cadastro, 
-        ativo, 
-        espacamento, 
-        produtor_id
+        id, nome, area_hectares, data_plantio, variedade_cafe,
+        altitude_media, observacoes, data_cadastro, ativo,
+        espacamento, produtor_id
     FROM talhoes 
     WHERE (%s IS NULL OR ativo = %s)
     ORDER BY id
@@ -51,50 +40,97 @@ def listar_talhoes(ativos=True):
     rows = executar_query(query, (ativos, ativos), fetch_all=True)
     if not rows:
         return []
-    
+
     lista = []
     for r in rows:
-        d = dict(r)
-        d['area'] = float(r['area_hectares']) if r['area_hectares'] is not None else 0.0
-        d['variedade'] = r['variedade_cafe'] or ''
-        d['altitude'] = float(r['altitude_media']) if r['altitude_media'] is not None else None
-        
+        area = float(r[2]) if r[2] is not None else 0.0
+        variedade = r[4] if r[4] else ''
+        altitude = float(r[5]) if r[5] is not None else None
+        espacamento = r[9] if r[9] else None
+
         pes_cafe = 0
-        if r['espacamento']:
+        if espacamento:
             try:
-                esp = str(r['espacamento']).lower().replace(',', '.')
+                esp = str(espacamento).lower().replace(',', '.')
                 partes = [p.strip() for p in esp.split('x')]
                 if len(partes) >= 2:
                     el = float(partes[0])
                     ep = float(partes[1])
                     if el > 0 and ep > 0:
                         plantas_por_ha = 10000.0 / (el * ep)
-                        pes_cafe = int(round(plantas_por_ha * d['area']))
+                        pes_cafe = int(round(plantas_por_ha * area))
             except Exception:
                 pes_cafe = 0
-        d['pes_cafe'] = pes_cafe
-        lista.append(d)
+
+        lista.append({
+            'id': r[0],
+            'nome': r[1],
+            'area': area,
+            'area_hectares': area,
+            'data_plantio': r[3],
+            'variedade': variedade,
+            'variedade_cafe': variedade,
+            'altitude': altitude,
+            'altitude_media': altitude,
+            'observacoes': r[6],
+            'data_cadastro': r[7],
+            'ativo': r[8],
+            'espacamento': espacamento,
+            'produtor_id': r[10],
+            'pes_cafe': pes_cafe
+        })
     return lista
 
 def buscar_talhao_por_id(talhao_id):
-    """Busca um talhão pelo ID."""
+    """Busca um talhão pelo ID, com aliases e cálculo de pés de café."""
     query = """
     SELECT 
-        id, 
-        nome, 
-        area_hectares, 
-        data_plantio, 
-        variedade_cafe, 
-        altitude_media, 
-        observacoes, 
-        data_cadastro, 
-        ativo, 
-        espacamento, 
-        produtor_id
+        id, nome, area_hectares, data_plantio, variedade_cafe,
+        altitude_media, observacoes, data_cadastro, ativo,
+        espacamento, produtor_id
     FROM talhoes 
     WHERE id = %s
     """
-    return executar_query(query, (talhao_id,), fetch_one=True)
+    r = executar_query(query, (talhao_id,), fetch_one=True)
+    if not r:
+        return None
+
+    area = float(r[2]) if r[2] is not None else 0.0
+    variedade = r[4] if r[4] else ''
+    altitude = float(r[5]) if r[5] is not None else None
+    espacamento = r[9] if r[9] else None
+
+    pes_cafe = 0
+    if espacamento:
+        try:
+            esp = str(espacamento).lower().replace(',', '.')
+            partes = [p.strip() for p in esp.split('x')]
+            if len(partes) >= 2:
+                el = float(partes[0])
+                ep = float(partes[1])
+                if el > 0 and ep > 0:
+                    plantas_por_ha = 10000.0 / (el * ep)
+                    pes_cafe = int(round(plantas_por_ha * area))
+        except Exception:
+            pes_cafe = 0
+
+    return {
+        'id': r[0],
+        'nome': r[1],
+        'area': area,
+        'area_hectares': area,
+        'data_plantio': r[3],
+        'variedade': variedade,
+        'variedade_cafe': variedade,
+        'altitude': altitude,
+        'altitude_media': altitude,
+        'observacoes': r[6],
+        'data_cadastro': r[7],
+        'ativo': r[8],
+        'espacamento': espacamento,
+        'produtor_id': r[10],
+        'pes_cafe': pes_cafe
+    }
 
 def inserir_talhao(dados_ou_nome, area=None, numero_pes=None, variedade=None, 
                    espacamento_rua=None, espacamento_planta=None, data_plantio=None, 

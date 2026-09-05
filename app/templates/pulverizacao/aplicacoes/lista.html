@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block titulo %}Aplicações de Pulverização{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-spray me-2"></i>Aplicações</h2>
+        <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>Nova Aplicação
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if aplicacoes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Talhão</th>
+                            <th>Período</th>
+                            <th>Tipo</th>
+                            <th>Receita</th>
+                            <th>Responsável</th>
+                            <th>Retorno</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in aplicacoes %}
+                        <tr>
+                            <td>{{ a.data_aplicacao|format_data if a.data_aplicacao else '-' }}</td>
+                            <td>{{ a.talhao_nome }}</td>
+                            <td>{{ a.periodo_nome }}</td>
+                            <td>{{ a.tipo_aplicacao or 'Foliar' }}</td>
+                            <td>{{ a.receita_nome }}</td>
+                            <td>{{ a.responsavel or '-' }}</td>
+                            <td>
+                                {% if a.status_retorno == 'realizado' %}
+                                <span class="badge bg-success">Realizado</span>
+                                {% elif a.status_retorno == 'pendente' %}
+                                <span class="badge bg-warning">Pendente</span>
+                                {% else %}
+                                {{ a.data_prevista_retorno|format_data if a.data_prevista_retorno else '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('pulverizacao.detalhe_aplicacao', id=a.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('pulverizacao.editar_aplicacao', id=a.id) }}" class="btn btn-sm btn-outline-warning">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted py-4">Nenhuma aplicação registrada.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

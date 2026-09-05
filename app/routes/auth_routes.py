@@ -12,8 +12,9 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['usuario'] = user['nome']
+            session['tipo'] = user.get('tipo', 'user')
             return redirect(url_for('dashboard.index'))
-        flash('Usuário ou senha inválidos.', 'error')
+        flash('Usuario ou senha invalidos.', 'error')
     return render_template('login.html')
 
 @auth_bp.route('/logout')
