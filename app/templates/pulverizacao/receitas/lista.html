@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Receitas{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-journal-text me-2"></i>Receitas de Pulverização</h2>
+        <a href="{{ url_for('pulverizacao.nova_receita') }}" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i>Nova Receita</a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if receitas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead><tr><th>Nome</th><th>Descrição</th><th>Fórmula</th><th>Ações</th></tr></thead>
+                    <tbody>
+                        {% for r in receitas %}
+                        <tr>
+                            <td>{{ r.nome }}</td>
+                            <td>{{ r.descricao or '-' }}</td>
+                            <td>{{ r.formula[:50] + '...' if r.formula and r.formula|length > 50 else r.formula or '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('pulverizacao.editar_receita', id=r.id) }}" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
+                                <form method="POST" action="{{ url_for('pulverizacao.excluir_receita', id=r.id) }}" class="d-inline" onsubmit="return confirm('Excluir esta receita?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}<p class="text-center text-muted py-4">Nenhuma receita cadastrada.</p>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

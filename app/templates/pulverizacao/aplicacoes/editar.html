@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Editar Aplicação{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-pencil-square me-2"></i>Editar Aplicação</h2>
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('pulverizacao.editar_aplicacao', id=aplicacao.id) }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Talhão *</label>
+                        <select name="talhao_id" class="form-select" required>
+                            {% for t in talhoes %}<option value="{{ t.id }}" {% if t.id == aplicacao.talhao_id %}selected{% endif %}>{{ t.nome }} ({{ t.area }} ha)</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Período *</label>
+                        <select name="periodo_id" class="form-select" required>
+                            {% for p in periodos %}<option value="{{ p.id }}" {% if p.id == aplicacao.periodo_id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Receita</label>
+                        <select name="receita_id" class="form-select">
+                            <option value="">Sem receita</option>
+                            {% for r in receitas %}<option value="{{ r.id }}" {% if r.id == aplicacao.receita_id %}selected{% endif %}>{{ r.nome }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3"><label class="form-label">Data *</label><input type="date" name="data_aplicacao" class="form-control" value="{{ aplicacao.data_aplicacao.strftime('%Y-%m-%d') if aplicacao.data_aplicacao else '' }}" required></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Retorno</label><input type="date" name="data_retorno" class="form-control" value="{{ aplicacao.data_prevista_retorno.strftime('%Y-%m-%d') if aplicacao.data_prevista_retorno else '' }}"></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Responsável *</label><input type="text" name="responsavel" class="form-control" value="{{ aplicacao.responsavel or '' }}" required></div>
+                    <div class="col-md-3 mb-3"><label class="form-label">Tipo</label><select name="tipo_aplicacao" class="form-select"><option value="Foliar" {% if aplicacao.tipo_aplicacao == 'Foliar' %}selected{% endif %}>Foliar</option><option value="Solo" {% if aplicacao.tipo_aplicacao == 'Solo' %}selected{% endif %}>Solo</option><option value="Fertirrigação" {% if aplicacao.tipo_aplicacao == 'Fertirrigação' %}selected{% endif %}>Fertirrigação</option></select></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Condições</label><input type="text" name="condicoes" class="form-control" value="{{ aplicacao.condicoes or '' }}"></div>
+                <div class="mb-3"><label class="form-label">Observações</label><textarea name="observacoes" class="form-control" rows="2">{{ aplicacao.observacoes or '' }}</textarea></div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar</button>
+                <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

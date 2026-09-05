@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block titulo %}Detalhe da Aplicação{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-spray me-2"></i>Detalhe da Aplicação</h2>
+        <div class="btn-group">
+            <a href="{{ url_for('pulverizacao.editar_aplicacao', id=aplicacao.id) }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil me-1"></i>Editar</a>
+            <a href="{{ url_for('pulverizacao.retorno_aplicacao', id=aplicacao.id) }}" class="btn btn-outline-info btn-sm"><i class="bi bi-arrow-repeat me-1"></i>Retorno</a>
+            <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header"><h5 class="mb-0">Dados da Aplicação</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr><th style="width:200px">Talhão</th><td>{{ aplicacao.talhao_nome }}</td></tr>
+                        <tr><th>Período</th><td>{{ aplicacao.periodo_nome }}</td></tr>
+                        <tr><th>Tipo</th><td>{{ aplicacao.tipo_aplicacao or 'Foliar' }}</td></tr>
+                        <tr><th>Receita</th><td>{{ aplicacao.receita_nome or 'Sem receita' }}</td></tr>
+                        <tr><th>Data Aplicação</th><td>{{ aplicacao.data_aplicacao|format_data if aplicacao.data_aplicacao else '-' }}</td></tr>
+                        <tr><th>Retorno Previsto</th><td>{{ aplicacao.data_prevista_retorno|format_data if aplicacao.data_prevista_retorno else '-' }}</td></tr>
+                        <tr><th>Responsável</th><td>{{ aplicacao.responsavel or '-' }}</td></tr>
+                        <tr><th>Condições</th><td>{{ aplicacao.condicoes or '-' }}</td></tr>
+                        <tr><th>Observações</th><td>{{ aplicacao.observacoes or '-' }}</td></tr>
+                    </table>
+                    {% if aplicacao.receita_formula %}
+                    <hr>
+                    <h6>Fórmula da Receita</h6>
+                    <pre class="bg-light p-2 rounded">{{ aplicacao.receita_formula }}</pre>
+                    {% endif %}
+                </div>
+            </div>
+            {% if aplicacao.status_retorno %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header"><h5 class="mb-0">Controle de Retorno</h5></div>
+                <div class="card-body">
+                    <span class="badge bg-{{ 'success' if aplicacao.status_retorno == 'realizado' else 'warning' }} mb-2">{{ aplicacao.status_retorno|title }}</span>
+                    <p><strong>Data:</strong> {{ aplicacao.data_retorno_realizado|format_data if aplicacao.data_retorno_realizado else '-' }}</p>
+                    <p><strong>Obs:</strong> {{ aplicacao.observacoes_retorno or '-' }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Pragas Detectadas</h5></div>
+                <div class="card-body">
+                    {% if ocorrencias %}
+                    <ul class="list-group">
+                        {% for o in ocorrencias %}
+                        <li class="list-group-item">
+                            <strong>{{ o.nome }}</strong>
+                            <span class="badge bg-secondary">{{ o.tipo }}</span>
+                            <br><small>Nível: {{ o.nivel }}</small>
+                            {% if o.observacoes %}<br><small>{{ o.observacoes }}</small>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">Nenhuma praga registrada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
