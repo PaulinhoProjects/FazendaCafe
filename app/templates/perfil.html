@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block titulo %}Meu Perfil{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Meu Perfil</li>
+{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-success text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>Meu Perfil</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light mb-3">
+                                <small class="text-muted text-uppercase fw-bold">Nome</small>
+                                <h5 class="mb-0">{{ session.get('usuario') or 'Usuário' }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light mb-3">
+                                <small class="text-muted text-uppercase fw-bold">Login</small>
+                                <h5 class="mb-0">{{ session.get('login') or '-' }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light mb-3">
+                                <small class="text-muted text-uppercase fw-bold">Tipo de Acesso</small>
+                                <h5 class="mb-0">
+                                    <span class="badge bg-{{ 'danger' if session.get('tipo') == 'admin' else 'info' }}">
+                                        {{ session.get('tipo')|title if session.get('tipo') else 'Usuário' }}
+                                    </span>
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-warning text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-key me-2"></i>Alterar Senha</h4>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+                    <form method="POST" action="{{ url_for('auth.alterar_senha') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Senha Atual *</label>
+                            <input type="password" name="senha_atual" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nova Senha *</label>
+                            <input type="password" name="nova_senha" class="form-control" required minlength="6">
+                            <small class="text-muted">Mínimo de 6 caracteres</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar Nova Senha *</label>
+                            <input type="password" name="confirmar_senha" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-circle me-1"></i>Alterar Senha
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
