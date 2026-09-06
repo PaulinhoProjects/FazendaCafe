@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, Response
 from app.modules import talhoes
 from datetime import datetime
 from app.modules.login_manager import login_required
+import io
+import csv
 
 talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
 
@@ -104,4 +106,34 @@ def gerar_pdf():
                         as_attachment=True, download_name='talhoes.pdf')
     except Exception as e:
         flash('Erro ao gerar PDF.', 'error')
+        return redirect(url_for('talhoes.listar'))
+
+@talhoes_bp.route('/exportar-csv')
+@login_required
+def exportar_csv():
+    """Exporta lista de talhões para CSV."""
+    try:
+        talhoes_lista = talhoes.listar_talhoes()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Nome', 'Area (ha)', 'Data Plantio', 'Variedade', 'Altitude (m)', 'Espacamento', 'Pes Cafe'])
+        for t in talhoes_lista:
+            writer.writerow([
+                t.get('id', ''),
+                t.get('nome', ''),
+                t.get('area', 0),
+                t.get('data_plantio', ''),
+                t.get('variedade', ''),
+                t.get('altitude', ''),
+                t.get('espacamento', ''),
+                t.get('pes_cafe', 0)
+            ])
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=talhoes_{datetime.now().strftime("%Y%m%d")}.csv'}
+        )
+    except Exception as e:
+        flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('talhoes.listar'))

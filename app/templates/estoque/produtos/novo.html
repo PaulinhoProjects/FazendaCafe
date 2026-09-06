@@ -11,15 +11,15 @@
 
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">Novo Produto</h1>
-            <p class="text-muted">Cadastre um novo insumo no estoque</p>
-        </div>
-        <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+    <div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Novo Produto</h1>
+        <p class="page-subtitle">Cadastre um novo insumo no estoque</p>
     </div>
+    <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
 
     <div class="card border-0 shadow-sm">
         <div class="card-body">

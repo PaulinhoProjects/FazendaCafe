@@ -27,7 +27,18 @@
 {% else %}
 <div class="card shadow-sm">
     <div class="card-body">
-        <table class="table table-hover">
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-4">
+                <input type="text" id="buscaManejo" class="form-control" placeholder="Buscar manejo...">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="filtroDataManejo" class="form-control" placeholder="Data">
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltrosManejo()">Limpar</button>
+            </div>
+        </div>
+        <table class="table table-hover" id="tabelaManejos">
             <thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Produtos</th><th>Responsável</th><th>Ações</th></tr></thead>
             <tbody>
                 {% for m in manejos %}
@@ -37,7 +48,9 @@
                     <td><span class="badge bg-info">{{ m.tipo_manejo }}</span></td>
                     <td>{{ m.produtos or '-' }}</td>
                     <td>{{ m.responsavel or '-' }}</td>
-                    <td><a href="{{ url_for('manejo_mato.editar', id=m.id) }}" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a></td>
+                    <td>
+                        <a href="{{ url_for('manejo_mato.editar', id=m.id) }}" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -45,4 +58,22 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarManejos() {
+        const busca = document.getElementById('buscaManejo').value.toLowerCase();
+        const linhas = document.querySelectorAll('#tabelaManejos tbody tr');
+        linhas.forEach(linha => {
+            linha.style.display = linha.textContent.toLowerCase().includes(busca) ? '' : 'none';
+        });
+    }
+    function limparFiltrosManejo() {
+        document.getElementById('buscaManejo').value = '';
+        document.getElementById('filtroDataManejo').value = '';
+        filtrarManejos();
+    }
+    document.getElementById('buscaManejo').addEventListener('input', filtrarManejos);
+</script>
 {% endblock %}

@@ -9,95 +9,150 @@
 {% endblock %}
 
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">Produtos do Estoque</h1>
-            <p class="text-muted">Gerencie os {{ produtos|length }} produtos cadastrados</p>
-        </div>
-        <div class="btn-group">
-            <a href="{{ url_for('estoque.dashboard') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
-            <a href="{{ url_for('estoque.novo_produto') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg"></i> Novo Produto
-            </a>
-        </div>
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Produtos do Estoque</h1>
+        <p class="page-subtitle">Gerencie os {{ produtos|length }} produtos cadastrados</p>
     </div>
-
-    <!-- Tabela de produtos -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Produto</th>
-                            <th>Categoria</th>
-                            <th>Unidade</th>
-                            <th class="text-end">Qtd. Atual</th>
-                            <th class="text-end">Estoque Mín.</th>
-                            <th class="text-end">Último Valor</th>
-                            <th class="text-end">Valor Total</th>
-                            <th>Status</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in produtos %}
-                        <tr>
-                            <td>
-                                <strong>{{ p.nome }}</strong>
-                                <br><small class="text-muted">ID: {{ p.id }}</small>
-                            </td>
-                            <td>{{ p.categoria or '—' }}</td>
-                            <td>{{ p.unidade or '—' }}</td>
-                            <td class="text-end">{{ p.quantidade_atual | format_quantidade }}</td>
-                            <td class="text-end">{{ p.estoque_minimo | format_quantidade }}</td>
-                            <td class="text-end">{{ p.ultimo_valor | format_moeda if p.ultimo_valor else '—' }}</td>
-                            <td class="text-end">{{ p.valor_total | format_moeda }}</td>
-                            <td>
-                                {% if p.estoque_baixo %}
-                                <span class="badge bg-warning text-dark">Baixo</span>
-                                {% else %}
-                                <span class="badge bg-success">Normal</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('estoque.detalhe_produto', id=p.id) }}"
-                                        class="btn btn-outline-primary" title="Detalhes">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{{ url_for('estoque.editar_produto', id=p.id) }}"
-                                        class="btn btn-outline-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="POST" action="{{ url_for('estoque.excluir_produto', id=p.id) }}"
-                                        class="d-inline" onsubmit="return confirm('Excluir {{ p.nome }}?')">
-                                        <button type="submit" class="btn btn-outline-danger" title="Excluir">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
-                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                Nenhum produto cadastrado.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="text-muted mt-3">
-        Mostrando {{ produtos|length }} produto(s)
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('estoque.exportar_csv_produtos') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-filetype-csv me-1"></i>CSV
+        </a>
+        <a href="{{ url_for('estoque.novo_produto') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Novo Produto
+        </a>
     </div>
 </div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-4">
+                <input type="text" id="buscaProduto" class="form-control" placeholder="Buscar produto...">
+            </div>
+            <div class="col-md-3">
+                <select id="filtroCategoria" class="form-select">
+                    <option value="">Todas categorias</option>
+                    {% for categoria in produtos|map(attribute='categoria')|select %}{% if categoria %}
+                    <option value="{{ categoria }}">{{ categoria }}</option>
+                    {% endif %}{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroEstoque" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="baixo">Estoque baixo</option>
+                    <option value="ok">Estoque ok</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltrosEstoque()">Limpar</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tabelaProdutos">
+                <thead class="table-light">
+                    <tr>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Unidade</th>
+                        <th class="text-end">Qtd. Atual</th>
+                        <th class="text-end">Estoque Mín.</th>
+                        <th class="text-end">Último Valor</th>
+                        <th class="text-end">Valor Total</th>
+                        <th>Status</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in produtos %}
+                    <tr>
+                        <td>
+                            <strong>{{ p.nome }}</strong>
+                            <br><small class="text-muted">ID: {{ p.id }}</small>
+                        </td>
+                        <td>{{ p.categoria or '—' }}</td>
+                        <td>{{ p.unidade or '—' }}</td>
+                        <td class="text-end">{{ p.quantidade_atual | format_quantidade }}</td>
+                        <td class="text-end">{{ p.estoque_minimo | format_quantidade }}</td>
+                        <td class="text-end">{{ p.ultimo_valor | format_moeda if p.ultimo_valor else '—' }}</td>
+                        <td class="text-end">{{ p.valor_total | format_moeda }}</td>
+                        <td>
+                            {% if p.estoque_baixo %}
+                            <span class="badge bg-warning text-dark">Baixo</span>
+                            {% else %}
+                            <span class="badge bg-success">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('estoque.detalhe_produto', id=p.id) }}"
+                                    class="btn btn-outline-primary" title="Detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('estoque.editar_produto', id=p.id) }}"
+                                    class="btn btn-outline-warning" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="Excluir"
+                                    onclick="confirmarExclusaoGlobal('{{ p.nome }}', '{{ url_for('estoque.excluir_produto', id=p.id) }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Nenhum produto cadastrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="text-muted mt-3">
+            Mostrando {{ produtos|length }} produto(s)
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarProdutos() {
+        const busca = document.getElementById('buscaProduto').value.toLowerCase();
+        const filtroEst = document.getElementById('filtroEstoque').value;
+        const linhas = document.querySelectorAll('#tabelaProdutos tbody tr');
+        linhas.forEach(linha => {
+            const texto = linha.textContent.toLowerCase();
+            let mostrar = texto.includes(busca);
+            if (mostrar && filtroEst === 'baixo') {
+                mostrar = linha.querySelector('.badge.bg-danger') !== null;
+            }
+            linha.style.display = mostrar ? '' : 'none';
+        });
+    }
+    function limparFiltrosEstoque() {
+        document.getElementById('buscaProduto').value = '';
+        document.getElementById('filtroCategoria').value = '';
+        document.getElementById('filtroEstoque').value = '';
+        filtrarProdutos();
+    }
+    document.getElementById('buscaProduto').addEventListener('input', filtrarProdutos);
+    document.getElementById('filtroEstoque').addEventListener('change', filtrarProdutos);
+</script>
 {% endblock %}

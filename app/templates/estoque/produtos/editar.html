@@ -13,15 +13,15 @@
 
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">Editar Produto</h1>
-            <p class="text-muted">{{ produto.nome }}</p>
-        </div>
-        <a href="{{ url_for('estoque.detalhe_produto', id=produto.id) }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+    <div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Editar Produto</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
     </div>
+    <a href="{{ url_for('estoque.detalhe_produto', id=produto.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
 
     <div class="card border-0 shadow-sm">
         <div class="card-body">

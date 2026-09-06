@@ -27,8 +27,21 @@
 {% else %}
 <div class="card shadow-sm">
     <div class="card-body p-0">
+        <div class="card-body">
+            <div class="row g-2 mb-3 align-items-end">
+                <div class="col-md-4">
+                    <input type="text" id="buscaDevolucao" class="form-control" placeholder="Buscar devolução...">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" id="filtroDataDevolucao" class="form-control" placeholder="Data">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltrosDevolucao()">Limpar</button>
+                </div>
+            </div>
+        </div>
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="tabelaDevolucoes">
                 <thead class="table-light">
                     <tr>
                         <th>Data</th>
@@ -49,6 +62,10 @@
                         <td>{{ d.numero_comprovante or '-' }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('devolucao.detalhe', id=d.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
+                                onclick="confirmarExclusaoGlobal('{{ d.numero_comprovante or d.local_devolucao }}', '{{ url_for('devolucao.excluir', id=d.id) }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -58,4 +75,22 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarDevolucoes() {
+        const busca = document.getElementById('buscaDevolucao').value.toLowerCase();
+        const linhas = document.querySelectorAll('#tabelaDevolucoes tbody tr');
+        linhas.forEach(linha => {
+            linha.style.display = linha.textContent.toLowerCase().includes(busca) ? '' : 'none';
+        });
+    }
+    function limparFiltrosDevolucao() {
+        document.getElementById('buscaDevolucao').value = '';
+        document.getElementById('filtroDataDevolucao').value = '';
+        filtrarDevolucoes();
+    }
+    document.getElementById('buscaDevolucao').addEventListener('input', filtrarDevolucoes);
+</script>
 {% endblock %}

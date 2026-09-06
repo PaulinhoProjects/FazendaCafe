@@ -1,6 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
 from app.modules import estoque
 from app.modules.login_manager import login_required
+from datetime import datetime
+import io
+import csv
 
 estoque_bp = Blueprint('estoque', __name__, url_prefix='/estoque')
 
@@ -177,3 +180,32 @@ def editar_movimentacao(id):
     except Exception as e:
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_movimentacoes'))
+
+@estoque_bp.route('/produtos/exportar-csv')
+@login_required
+def exportar_csv_produtos():
+    """Exporta lista de produtos para CSV."""
+    try:
+        produtos = estoque.listar_produtos(ativos=True)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Nome', 'Categoria', 'Unidade', 'Quantidade Atual', 'Estoque Minimo', 'Valor Unitario'])
+        for p in produtos:
+            writer.writerow([
+                p.get('id', ''),
+                p.get('nome', ''),
+                p.get('categoria', ''),
+                p.get('unidade', ''),
+                p.get('quantidade_atual', 0),
+                p.get('estoque_minimo', 0),
+                p.get('valor_unitario', 0)
+            ])
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment;filename=estoque_{datetime.now().strftime("%Y%m%d")}.csv'}
+        )
+    except Exception as e:
+        flash('Erro ao exportar CSV.', 'error')
+        return redirect(url_for('estoque.listar_produtos'))

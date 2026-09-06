@@ -27,7 +27,21 @@
 {% else %}
 <div class="card shadow-sm">
     <div class="card-body">
-        <table class="table table-hover">
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-4">
+                <input type="text" id="buscaAnalise" class="form-control" placeholder="Buscar análise...">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="filtroDataInicio" class="form-control" placeholder="Data inicial">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="filtroDataFim" class="form-control" placeholder="Data final">
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltrosAnalise()">Limpar</button>
+            </div>
+        </div>
+        <table class="table table-hover" id="tabelaAnalises">
             <thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Laboratório</th><th>Protocolo</th><th>Ações</th></tr></thead>
             <tbody>
                 {% for a in analises %}
@@ -39,7 +53,10 @@
                     <td>{{ a.numero_protocolo or '-' }}</td>
                     <td>
                         <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                        <form method="POST" action="{{ url_for('analises.excluir', id=a.id) }}" class="d-inline" onsubmit="return confirm('Excluir?')"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                        <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
+                            onclick="confirmarExclusaoGlobal('{{ a.numero_protocolo or a.talhao_nome }}', '{{ url_for('analises.excluir', id=a.id) }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -48,4 +65,29 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarAnalises() {
+        const busca = document.getElementById('buscaAnalise').value.toLowerCase();
+        const dataInicio = document.getElementById('filtroDataInicio').value;
+        const dataFim = document.getElementById('filtroDataFim').value;
+        const linhas = document.querySelectorAll('#tabelaAnalises tbody tr');
+        linhas.forEach(linha => {
+            const texto = linha.textContent.toLowerCase();
+            let mostrar = texto.includes(busca);
+            linha.style.display = mostrar ? '' : 'none';
+        });
+    }
+    function limparFiltrosAnalise() {
+        document.getElementById('buscaAnalise').value = '';
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
+        filtrarAnalises();
+    }
+    document.getElementById('buscaAnalise').addEventListener('input', filtrarAnalises);
+    document.getElementById('filtroDataInicio').addEventListener('change', filtrarAnalises);
+    document.getElementById('filtroDataFim').addEventListener('change', filtrarAnalises);
+</script>
 {% endblock %}

@@ -27,8 +27,24 @@
 {% else %}
 <div class="card shadow-sm">
     <div class="card-body p-0">
+        <div class="card-body">
+            <div class="row g-2 mb-3 align-items-end">
+                <div class="col-md-4">
+                    <input type="text" id="buscaNota" class="form-control" placeholder="Buscar nota...">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" id="filtroDataInicioNota" class="form-control" placeholder="Data inicial">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" id="filtroDataFimNota" class="form-control" placeholder="Data final">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltrosNota()">Limpar</button>
+                </div>
+            </div>
+        </div>
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="tabelaNotas">
                 <thead class="table-light">
                     <tr>
                         <th>Número</th>
@@ -51,7 +67,10 @@
                         <td>{{ n.total_produtos if n.total_produtos else 0 }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                            <form method="POST" action="{{ url_for('notas_fiscais.excluir', id=n.id) }}" class="d-inline" onsubmit="return confirm('Excluir esta nota?')"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
+                                onclick="confirmarExclusaoGlobal('{{ n.numero_nota }}', '{{ url_for('notas_fiscais.excluir', id=n.id) }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -61,4 +80,23 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarNotas() {
+        const busca = document.getElementById('buscaNota').value.toLowerCase();
+        const linhas = document.querySelectorAll('#tabelaNotas tbody tr');
+        linhas.forEach(linha => {
+            linha.style.display = linha.textContent.toLowerCase().includes(busca) ? '' : 'none';
+        });
+    }
+    function limparFiltrosNota() {
+        document.getElementById('buscaNota').value = '';
+        document.getElementById('filtroDataInicioNota').value = '';
+        document.getElementById('filtroDataFimNota').value = '';
+        filtrarNotas();
+    }
+    document.getElementById('buscaNota').addEventListener('input', filtrarNotas);
+</script>
 {% endblock %}

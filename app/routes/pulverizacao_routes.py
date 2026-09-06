@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from app.modules import pulverizacao
 from app.modules.login_manager import login_required
 from datetime import datetime
+import io
+import csv
 
 pulverizacao_bp = Blueprint('pulverizacao', __name__, url_prefix='/pulverizacao')
 
@@ -304,4 +306,34 @@ def nova_ocorrencia():
                              pragas=pragas, talhoes=talhoes_lista)
     except Exception as e:
         flash('Erro ao carregar formulario.', 'error')
+        return redirect(url_for('pulverizacao.listar_aplicacoes'))
+
+@pulverizacao_bp.route('/aplicacoes/exportar-csv')
+@login_required
+def exportar_csv_aplicacoes():
+    """Exporta lista de aplicações para CSV."""
+    try:
+        aplicacoes = pulverizacao.listar_aplicacoes()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Data', 'Talhao', 'Periodo', 'Responsavel', 'Receita', 'Data Retorno', 'Status'])
+        for a in aplicacoes:
+            writer.writerow([
+                a.get('id', ''),
+                a.get('data_aplicacao', ''),
+                a.get('talhao', ''),
+                a.get('periodo', ''),
+                a.get('responsavel', ''),
+                a.get('receita', ''),
+                a.get('data_prevista_retorno', ''),
+                a.get('status_retorno', '')
+            ])
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment;filename=aplicacoes_{datetime.now().strftime("%Y%m%d")}.csv'}
+        )
+    except Exception as e:
+        flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
