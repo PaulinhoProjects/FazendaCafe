@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Devolução de Embalagens{% endblock %}
+{% block conteudo %}
+    
+        Devolução de Embalagens
+        Nova Devolução
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    {{ message }}
+    {% endfor %}{% endif %}{% endwith %}
+    
+        
+            {% if devolucoes %}
+            
+                    {% for d in devolucoes %}
+                    
+                    {% endfor %}
+                DataLocalQuantidadeResponsávelComprovanteAções{{ d.data_devolucao|format_data if d.data_devolucao else '-' }}{{ d.local_devolucao or '-' }}{{ d.quantidade_embalagens }}{{ d.nome_responsavel or '-' }}{{ d.numero_comprovante or '-' }}
+                            
+                            
+                        
+            {% else %}Nenhuma devolução registrada.{% endif %}
+        
+    
+
+{% endblock %}

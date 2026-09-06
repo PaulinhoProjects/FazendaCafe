@@ -241,18 +241,42 @@
                             </a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-grid me-1"></i>Módulos
+                            <a class="nav-link dropdown-toggle {% if '/pulverizacao' in request.path or '/adubacao' in request.path or '/manejo-mato' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-gear-wide me-1"></i>Operações
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="/pulverizacao"><i class="bi bi-droplet me-2"></i>Pulverizações</a></li>
-                                <li><a class="dropdown-item" href="/manejo-mato"><i class="bi bi-tree me-2"></i>Manejo do Mato</a></li>
-                                <li><a class="dropdown-item" href="/estoque"><i class="bi bi-box-seam me-2"></i>Estoque</a></li>
-                                <li><a class="dropdown-item" href="/analises"><i class="bi bi-clipboard-data me-2"></i>Análises</a></li>
+                                <li><a class="dropdown-item" href="/pulverizacao"><i class="bi bi-spray me-2"></i>Pulverização</a></li>
                                 <li><a class="dropdown-item" href="/adubacao"><i class="bi bi-flower1 me-2"></i>Adubação</a></li>
-                                <li><a class="dropdown-item" href="/pdfs"><i class="bi bi-file-pdf text-danger me-2"></i>Arquivos PDF</a></li>
-                                
+                                <li><a class="dropdown-item" href="/manejo-mato"><i class="bi bi-tree me-2"></i>Manejo do Mato</a></li>
                             </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if '/estoque' in request.path or '/notas-fiscais' in request.path or '/devolucoes' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-box-seam me-1"></i>Insumos
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/estoque"><i class="bi bi-box-seam me-2"></i>Estoque</a></li>
+                                <li><a class="dropdown-item" href="/estoque/movimentacoes"><i class="bi bi-arrow-left-right me-2"></i>Movimentações</a></li>
+                                <li><a class="dropdown-item" href="/notas-fiscais"><i class="bi bi-receipt me-2"></i>Notas Fiscais</a></li>
+                                <li><a class="dropdown-item" href="/devolucoes"><i class="bi bi-recycle me-2"></i>Devolução de Embalagens</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if '/analises' in request.path or '/clima' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-clipboard-data me-1"></i>Análises
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/analises"><i class="bi bi-clipboard-data me-2"></i>Análises de Solo/Foliar</a></li>
+                                <li><a class="dropdown-item" href="/analises/laboratorios"><i class="bi bi-building me-2"></i>Laboratórios</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/clima"><i class="bi bi-cloud-sun me-2"></i>Clima</a></li>
+                                <li><a class="dropdown-item" href="/clima/previsao"><i class="bi bi-calendar-week me-2"></i>Previsão do Tempo</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                                <i class="bi bi-box-arrow-right me-1"></i>Sair
+                            </a>
                         </li>
                     </ul>
                 </div>

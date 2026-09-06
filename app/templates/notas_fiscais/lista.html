@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Notas Fiscais{% endblock %}
+{% block conteudo %}
+    
+        Notas Fiscais
+        Nova Nota
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    {{ message }}
+    {% endfor %}{% endif %}{% endwith %}
+    
+        
+            {% if notas %}
+            
+                    {% for n in notas %}
+                    
+                    {% endfor %}
+                NúmeroFornecedorEmissãoRecebimentoValorProdutosAções{{ n.numero_nota }}{{ n.fornecedor }}{{ n.data_emissao|format_data if n.data_emissao else '-' }}{{ n.data_recebimento|format_data if n.data_recebimento else '-' }}{{ n.valor_total|format_moeda if n.valor_total else '-' }}{{ n.total_produtos if n.total_produtos else 0 }}
+                            
+                            
+                        
+            {% else %}Nenhuma nota cadastrada.{% endif %}
+        
+    
+
+{% endblock %}

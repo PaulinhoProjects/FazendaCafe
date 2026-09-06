@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Detalhe da Nota{% endblock %}
+{% block conteudo %}
+    
+        Nota #{{ nota.numero_nota }}
+         Voltar
+    
+    
+        Dados da Nota
+        
+            Número{{ nota.numero_nota }}Série{{ nota.serie or '-' }}Fornecedor{{ nota.fornecedor }}CNPJ{{ nota.cnpj_fornecedor or '-' }}Data Emissão{{ nota.data_emissao|format_data if nota.data_emissao else '-' }}Data Recebimento{{ nota.data_recebimento|format_data if nota.data_recebimento else '-' }}Valor Total{{ nota.valor_total|format_moeda if nota.valor_total else '-' }}Observações{{ nota.observacoes or '-' }}
+            {% if nota.arquivo_pdf %}
+            Ver PDF
+            {% endif %}
+        
+    
+    
+        Produtos Vinculados
+        
+            {% if movimentacoes %}
+            
+                    {% for m in movimentacoes %}
+                    
+                    {% endfor %}
+                ProdutoQuantidadeUnidadeValor Unit.{{ m.produto_nome }}{{ m.quantidade }}{{ m.unidade or '-' }}{{ m.valor_unitario|format_moeda if m.valor_unitario else '-' }}
+            {% else %}Nenhum produto vinculado.{% endif %}
+        
+    
+
+{% endblock %}

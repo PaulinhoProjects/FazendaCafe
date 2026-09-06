@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Detalhe da Adubação{% endblock %}
+{% block conteudo %}
+    
+        Adubação #{{ adubacao.id }}
+         Voltar
+    
+    
+        
+            
+                Dados da Adubação
+                
+                    Talhão{{ adubacao.talhao_nome }}Tipo{{ adubacao.tipo_nome or '-' }}Recomendação{{ adubacao.recomendacao_data|format_data if adubacao.recomendacao_data else 'Sem recomendação' }}Data Aplicação{{ adubacao.data_aplicacao|format_data if adubacao.data_aplicacao else '-' }}Responsável{{ adubacao.responsavel or '-' }}Observações{{ adubacao.observacoes or '-' }}
+                
+            
+            
+                Produtos Utilizados
+                
+                    {% if produtos %}
+                    
+                            {% for p in produtos %}
+                            
+                            {% endfor %}
+                        ProdutoQuantidadeUnidadeCusto Unit.Fornecedor{{ p.nome }}{{ p.quantidade }}{{ p.unidade or '-' }}{{ p.custo|format_moeda if p.custo else '-' }}{{ p.fornecedor or '-' }}
+                    {% else %}Nenhum produto registrado.{% endif %}
+                
+            
+        
+        
+            
+                Nutrientes Aplicados
+                
+                    {% if nutrientes %}
+                    
+                        {% for n in nutrientes %}
+                        {{ n.nutriente }} — {{ n.quantidade }} {{ n.unidade }}
+                        {% endfor %}
+                    
+                    {% else %}Nenhum nutriente registrado.{% endif %}
+                
+            
+        
+    
+
+{% endblock %}

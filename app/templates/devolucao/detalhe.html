@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Detalhe da Devolução{% endblock %}
+{% block conteudo %}
+    
+        Devolução #{{ devolucao.id }}
+         Voltar
+    
+    
+        Dados da Devolução
+        
+            Data{{ devolucao.data_devolucao|format_data if devolucao.data_devolucao else '-' }}Local{{ devolucao.local_devolucao or '-' }}Quantidade de Embalagens{{ devolucao.quantidade_embalagens }}Responsável{{ devolucao.nome_responsavel or '-' }}Nº Comprovante{{ devolucao.numero_comprovante or '-' }}Observações{{ devolucao.observacoes or '-' }}
+            {% if devolucao.arquivo_pdf %}
+            Ver Comprovante PDF
+            {% endif %}
+        
+    
+
+{% endblock %}
