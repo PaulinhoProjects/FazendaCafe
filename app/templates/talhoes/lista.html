@@ -21,10 +21,10 @@
     </div>
     <div class="col-md-4 text-end">
         <div class="d-flex gap-2 justify-content-end">
-            <a href="/talhoes/pdf" class="btn btn-danger">
+            <a href="{{ url_for('talhoes.gerar_pdf') }}" class="btn btn-danger">
                 <i class="bi bi-file-pdf me-2"></i>PDF
             </a>
-            <a href="/talhao/novo" class="btn btn-success">
+            <a href="{{ url_for('talhoes.novo') }}" class="btn btn-success">
                 <i class="bi bi-plus-circle me-2"></i>Novo Talhão
             </a>
         </div>
@@ -184,10 +184,10 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="/talhao/{{ talhao.id }}" class="btn btn-outline-primary" title="Ver detalhes">
+                                <a href="{{ url_for('talhoes.detalhe', id=talhao.id) }}" class="btn btn-outline-primary" title="Ver detalhes">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="/talhao/{{ talhao.id }}/editar" class="btn btn-outline-warning" title="Editar">
+                                <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-outline-warning" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <button type="button" class="btn btn-outline-danger" title="Excluir"
@@ -250,7 +250,7 @@
 // Função para confirmar exclusão com modal
 function confirmarExclusao(id, nome) {
     document.getElementById('nomeTalhaoExcluir').textContent = nome;
-    document.getElementById('btnConfirmarExclusao').href = '/talhao/' + id + '/excluir';
+    document.getElementById('btnConfirmarExclusao').href = '/talhoes/' + id + '/excluir';
     var modal = new bootstrap.Modal(document.getElementById('modalExcluir'));
     modal.show();
 }

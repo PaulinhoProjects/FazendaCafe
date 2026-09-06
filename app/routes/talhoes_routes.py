@@ -93,6 +93,20 @@ def editar(id):
         flash('Erro ao carregar formulário de edição.', 'error')
         return redirect(url_for('talhoes.listar'))
 
+@talhoes_bp.route('/pdf')
+@login_required
+def gerar_pdf():
+    """Gera PDF com a lista de talhões."""
+    try:
+        from flask import send_file
+        lista_talhoes = talhoes.listar_talhoes()
+        pdf_buffer = talhoes.gerar_pdf_talhoes(lista_talhoes)
+        return send_file(pdf_buffer, mimetype='application/pdf',
+                        as_attachment=True, download_name='talhoes.pdf')
+    except Exception as e:
+        flash('Erro ao gerar PDF.', 'error')
+        return redirect(url_for('talhoes.listar'))
+
 @talhoes_bp.route('/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir(id):

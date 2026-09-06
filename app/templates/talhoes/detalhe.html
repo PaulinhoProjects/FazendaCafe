@@ -4,7 +4,7 @@
 
 {% block breadcrumb %}
 {{ super() }}
-<li class="breadcrumb-item"><a href="/talhoes">Talhões</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('talhoes.listar') }}">Talhões</a></li>
 <li class="breadcrumb-item active">{{ talhao[1] }}</li>
 {% endblock %}
 
@@ -12,15 +12,15 @@
 <!-- Cabeçalho com ações -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="/talhoes" class="btn btn-outline-secondary">
+        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Voltar para Lista
         </a>
     </div>
     <div class="btn-group">
-        <a href="/talhao/{{ talhao[0] }}/editar" class="btn btn-warning">
+        <a href="{{ url_for('talhoes.editar', id=talhao[0]) }}" class="btn btn-warning">
             <i class="bi bi-pencil-square me-1"></i>Editar
         </a>
-        <a href="/talhao/{{ talhao[0] }}/pulverizacoes" class="btn btn-info text-white">
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-info text-white">
             <i class="bi bi-droplet me-1"></i>Pulverizações
         </a>
         <button class="btn btn-danger" onclick="confirmarExclusao({{ talhao[0] }})">
@@ -148,14 +148,14 @@
                 <!-- Botões -->
                 <hr>
                 <div class="d-grid gap-2">
-                    <a href="/talhao/{{ talhao[0] }}/pulverizacoes" class="btn btn-outline-info"><i class="bi bi-droplet me-2"></i>Pulverizações</a>
-                    <a href="/talhao/{{ talhao[0] }}/manejos" class="btn btn-outline-success"><i class="bi bi-tree me-2"></i>Manejos</a>
-                    <a href="/analises?talhao={{ talhao[0] }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-2"></i>Análises</a>
+                    <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-outline-info"><i class="bi bi-droplet me-2"></i>Pulverizações</a>
+                    <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-outline-success"><i class="bi bi-tree me-2"></i>Manejos</a>
+                    <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-2"></i>Análises</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script>function confirmarExclusao(id){if(confirm('⚠️ Excluir este talhão?')){window.location.href='/talhao/'+id+'/excluir';}}</script>
+<script>function confirmarExclusao(id){if(confirm('⚠️ Excluir este talhão?')){window.location.href='/talhoes/'+id+'/excluir';}}</script>
 {% endblock %}
