@@ -197,4 +197,10 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: nao foi possivel corrigir tabela talhoes: {e}")
 
+    try:
+        from config.database import criar_tabela_categorias_estoque
+        criar_tabela_categorias_estoque()
+    except Exception as e:
+        print(f"Aviso: categorias_estoque: {e}")
+
     return app

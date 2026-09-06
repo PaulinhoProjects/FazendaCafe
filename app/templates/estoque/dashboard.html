@@ -57,8 +57,8 @@
         <div class="stat-card">
             <div class="stat-icon bg-info-soft"><i class="bi bi-arrow-left-right"></i></div>
             <div class="stat-info">
-                <div class="stat-label">Movimentações</div>
-                <div class="stat-value">{{ resumo.total_movimentacoes if resumo else 0 }}</div>
+                <div class="stat-label">Movimentações no Mês</div>
+                <div class="stat-value">{{ resumo.movimentacoes_mes if resumo else 0 }}</div>
             </div>
         </div>
     </div>
@@ -106,9 +106,58 @@
         </div>
     </div>
     {% else %}
-    <div class="alert alert-success border-0">
+    <div class="alert alert-success border-0 mb-4">
         <i class="bi bi-check-circle-fill me-2"></i>
         Todos os produtos estão com estoque adequado.
     </div>
     {% endif %}
+
+<!-- Acesso rápido -->
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <a href="{{ url_for('estoque.listar_produtos') }}" class="text-decoration-none">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="stat-icon bg-primary-soft"><i class="bi bi-box-seam"></i></div>
+                        <div>
+                            <div class="fw-semibold text-dark">Produtos</div>
+                            <div class="text-muted small">Cadastrar, editar e gerenciar insumos</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <a href="{{ url_for('estoque.listar_movimentacoes') }}" class="text-decoration-none">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="stat-icon bg-success-soft"><i class="bi bi-arrow-left-right"></i></div>
+                        <div>
+                            <div class="fw-semibold text-dark">Movimentações</div>
+                            <div class="text-muted small">Entradas e saídas</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <a href="{{ url_for('estoque.relatorio') }}" class="text-decoration-none">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="stat-icon bg-info-soft"><i class="bi bi-graph-up"></i></div>
+                        <div>
+                            <div class="fw-semibold text-dark">Relatório</div>
+                            <div class="text-muted small">Gráficos e análises</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

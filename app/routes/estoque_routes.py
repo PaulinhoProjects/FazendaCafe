@@ -210,3 +210,32 @@ def exportar_csv_produtos():
     except Exception as e:
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
+
+@estoque_bp.route('/categorias')
+@login_required
+def listar_categorias():
+    try:
+        categorias = estoque.listar_categorias()
+        return render_template('estoque/categorias/lista.html', categorias=categorias)
+    except Exception as e:
+        flash('Erro ao carregar categorias.', 'error')
+        return render_template('estoque/categorias/lista.html', categorias=[])
+
+@estoque_bp.route('/relatorio')
+@login_required
+def relatorio():
+    try:
+        produtos = estoque.listar_produtos(ativos=True)
+        resumo = estoque.get_resumo_estoque()
+        grafico_categoria = estoque.get_valor_por_categoria()
+        grafico_consumo = estoque.get_consumo_ultimos_6_meses()
+        grafico_top = estoque.get_top_produtos_consumo(10)
+        return render_template('estoque/relatorio.html',
+            produtos=produtos, resumo=resumo,
+            grafico_categoria=grafico_categoria,
+            grafico_consumo=grafico_consumo,
+            grafico_top=grafico_top
+        )
+    except Exception as e:
+        flash('Erro ao gerar relatorio.', 'error')
+        return redirect(url_for('estoque.dashboard'))

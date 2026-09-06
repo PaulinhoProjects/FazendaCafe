@@ -208,6 +208,39 @@ def corrigir_tabela_talhoes():
             print(f"Aviso ao alterar tabela: {e}")
     print("Tabela talhoes verificada/atualizada!")
 
+def criar_tabela_categorias_estoque():
+    """Cria tabela de categorias e insere categorias padrao."""
+    query = """
+    CREATE TABLE IF NOT EXISTS categorias_estoque (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(50) UNIQUE NOT NULL,
+        descricao VARCHAR(255),
+        cor VARCHAR(20) DEFAULT 'secondary',
+        ativo BOOLEAN DEFAULT TRUE
+    )
+    """
+    executar_query(query)
+    
+    categorias = [
+        ('Fungicida', 'Produtos para controle de fungos', 'danger'),
+        ('Inseticida', 'Produtos para controle de insetos', 'warning'),
+        ('Herbicida', 'Produtos para controle de plantas invasoras', 'success'),
+        ('Acaricida', 'Produtos para controle de acaros', 'info'),
+        ('Fertilizante', 'Fertilizantes quimicos e organicos', 'primary'),
+        ('Adubo', 'Adubos compostos e simples', 'success'),
+        ('Bioestimulante', 'Bioestimulantes e promotores de crescimento', 'info'),
+        ('Spreader/Oleo', 'Spreader, oleos adesivos e espalhantes', 'secondary'),
+        ('Outros', 'Produtos diversos', 'secondary'),
+    ]
+    for nome, desc, cor in categorias:
+        existe = executar_query("SELECT id FROM categorias_estoque WHERE nome = %s", (nome,), fetch_one=True)
+        if not existe:
+            executar_query(
+                "INSERT INTO categorias_estoque (nome, descricao, cor) VALUES (%s, %s, %s)",
+                (nome, desc, cor)
+            )
+    print("Tabela categorias_estoque criada/verificada!")
+
 # =====================================================
 # TESTE
 # =====================================================

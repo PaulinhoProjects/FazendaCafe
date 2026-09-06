@@ -612,3 +612,79 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
     doc.build(elements)
     buffer.seek(0)
     return buffer
+
+def listar_categorias():
+    """Lista categorias ativas."""
+    query = "SELECT id, nome, descricao, cor FROM categorias_estoque WHERE ativo = TRUE ORDER BY nome"
+    try:
+        resultado = executar_query(query, fetch_all=True)
+        return [{'id': r[0], 'nome': r[1], 'descricao': r[2], 'cor': r[3]} for r in resultado] if resultado else []
+    except Exception:
+        return []
+
+def get_valor_por_categoria():
+    """Retorna valor total por categoria para grafico."""
+    query = """
+    SELECT 
+        COALESCE(p.categoria, 'Sem categoria') as categoria,
+        COUNT(*) as produtos,
+        COALESCE(SUM(p.quantidade_atual * COALESCE((
+            SELECT valor_unitario FROM movimentacoes_estoque 
+            WHERE produto_id = p.id AND valor_unitario IS NOT NULL 
+            ORDER BY data_movimento DESC LIMIT 1
+        ), 0)), 0) as valor
+    FROM produtos_estoque p
+    WHERE p.ativo = TRUE
+    GROUP BY p.categoria
+    ORDER BY valor DESC
+    """
+    try:
+        resultado = executar_query(query, fetch_all=True)
+        labels = []
+        dados = []
+        for r in resultado:
+            labels.append(r[0])
+            dados.append(float(r[2]) if r[2] else 0)
+        return {'labels': labels, 'dados': dados}
+    except Exception:
+        return {'labels': [], 'dados': []}
+
+def get_consumo_ultimos_6_meses():
+    """Retorna consumo (saidas) dos ultimos 6 meses."""
+    query = """
+    SELECT TO_CHAR(data_movimento, 'YYYY-MM') as mes, SUM(quantidade) as total
+    FROM movimentacoes_estoque
+    WHERE tipo = 'saida' AND data_movimento >= CURRENT_DATE - INTERVAL '6 months'
+    GROUP BY TO_CHAR(data_movimento, 'YYYY-MM')
+    ORDER BY mes ASC
+    """
+    try:
+        resultado = executar_query(query, fetch_all=True)
+        meses = []
+        dados = []
+        for r in resultado:
+            ano, mes = r[0].split('-')
+            meses.append(f"{mes}/{ano}")
+            dados.append(float(r[1]) if r[1] else 0)
+        return {'labels': meses, 'dados': dados}
+    except Exception:
+        return {'labels': [], 'dados': []}
+
+def get_top_produtos_consumo(limite=10):
+    """Retorna produtos mais consumidos (saida)."""
+    query = """
+    SELECT p.nome, SUM(m.quantidade) as total
+    FROM movimentacoes_estoque m
+    JOIN produtos_estoque p ON p.id = m.produto_id
+    WHERE m.tipo = 'saida'
+    GROUP BY p.id, p.nome
+    ORDER BY total DESC
+    LIMIT %s
+    """
+    try:
+        resultado = executar_query(query, (limite,), fetch_all=True)
+        labels = [r[0] for r in resultado]
+        dados = [float(r[1]) if r[1] else 0 for r in resultado]
+        return {'labels': labels, 'dados': dados}
+    except Exception:
+        return {'labels': [], 'dados': []}
