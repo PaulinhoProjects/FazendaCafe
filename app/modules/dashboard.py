@@ -18,7 +18,7 @@ def get_resumo_geral():
     # Total de talhões
     query_talhoes = "SELECT COUNT(*) FROM talhoes WHERE ativo = TRUE"
     resultado = executar_query(query_talhoes, fetch_one=True)
-    resumo['total_talhoes'] = resultado['count'] if resultado else 0
+    resumo['total_talhoes'] = resultado[0] if resultado else 0
     
     # Área total
     query_area = "SELECT SUM(area_hectares) FROM talhoes WHERE ativo = TRUE"

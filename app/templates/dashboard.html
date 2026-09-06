@@ -566,6 +566,7 @@
 {% endblock %}
 
 {% block scripts %}
+{% if resumo %}
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -677,4 +678,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+{% endif %}
 {% endblock %}
