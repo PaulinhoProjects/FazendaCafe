@@ -22,15 +22,15 @@
         <li class="sidebar-item"><a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i>Dashboard</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}"><i class="bi bi-pin-map"></i>Talhões</a></li>
         <li class="sidebar-section-label">Operações</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização{% if alertas_globais and alertas_globais.count_retornos_pendentes > 0 %}<span class="badge bg-warning rounded-pill">{{ alertas_globais.count_retornos_pendentes }}</span>{% endif %}</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}"><i class="bi bi-tree"></i>Manejo do Mato</a></li>
         <li class="sidebar-section-label">Insumos</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque{% if alertas_globais and alertas_globais.count_estoque_baixo > 0 %}<span class="badge bg-danger rounded-pill">{{ alertas_globais.count_estoque_baixo }}</span>{% endif %}</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}"><i class="bi bi-receipt"></i>Notas Fiscais</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}"><i class="bi bi-recycle"></i>Devolução de Embalagens</a></li>
         <li class="sidebar-section-label">Análises</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises{% if alertas_globais and alertas_globais.count_analises_pendentes > 0 %}<span class="badge bg-info rounded-pill">{{ alertas_globais.count_analises_pendentes }}</span>{% endif %}</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}"><i class="bi bi-cloud-sun"></i>Clima</a></li>
         <li class="sidebar-section-label">Relatórios</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/relatorios' in request.path %}active{% endif %}" href="{{ url_for('relatorios.index') }}"><i class="bi bi-file-earmark-pdf"></i>Relatórios PDF</a></li>
@@ -42,6 +42,15 @@
 <div class="main-content">
     <header class="topbar">
         <button class="topbar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        {% if alertas_globais and alertas_globais.count_total_alertas > 0 %}
+        <div class="topbar-alerts">
+            <a href="{{ url_for('estoque.dashboard') }}" class="text-decoration-none">
+                <span class="badge bg-danger rounded-pill">
+                    <i class="bi bi-bell-fill me-1"></i>{{ alertas_globais.count_total_alertas }}
+                </span>
+            </a>
+        </div>
+        {% endif %}
         <div class="topbar-user">
             <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
             <div class="user-info">
@@ -60,10 +69,11 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show m-3" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                showToast('{{ 'error' if category == 'error' else category }}', '{{ category|title }}', '{{ message|replace("'", "\\'") }}');
+            });
+            </script>
             {% endfor %}
         {% endif %}
     {% endwith %}
@@ -117,6 +127,38 @@ function confirmarExclusaoGlobal(nome, url) {
         </div>
     </div>
 </div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+function showToast(tipo, titulo, mensagem) {
+    const icones = {
+        success: 'bi-check-circle-fill',
+        error: 'bi-x-circle-fill',
+        warning: 'bi-exclamation-triangle-fill',
+        info: 'bi-info-circle-fill'
+    };
+    const toast = document.createElement('div');
+    toast.className = `toast-agrocafe ${tipo}`;
+    toast.innerHTML = `
+        <i class="bi ${icones[tipo] || icones.info} toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${titulo}</div>
+            <div class="toast-message">${mensagem}</div>
+        </div>
+        <button class="toast-close" onclick="fecharToast(this.parentElement)">&times;</button>
+    `;
+    document.getElementById('toastContainer').appendChild(toast);
+    setTimeout(() => fecharToast(toast), 5000);
+}
+
+function fecharToast(el) {
+    if (!el || el.classList.contains('removing')) return;
+    el.classList.add('removing');
+    setTimeout(() => { if (el.parentElement) el.parentElement.removeChild(el); }, 300);
+}
+</script>
+
 {% block scripts %}{% endblock %}
 </body>
 </html>

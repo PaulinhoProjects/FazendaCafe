@@ -9,6 +9,30 @@
     Nao foi possivel carregar os dados do dashboard. Verifique a conexao com o banco de dados.
 </div>
 {% else %}
+{% if alertas_globais and alertas_globais.count_total_alertas > 0 %}
+<div class="alert-banner">
+    <div class="alert-banner-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <div class="alert-banner-content">
+        <div class="alert-banner-title">{{ alertas_globais.count_total_alertas }} alerta(s) ativo(s)</div>
+        <div class="alert-banner-text">
+            {% if alertas_globais.count_estoque_baixo > 0 %}{{ alertas_globais.count_estoque_baixo }} produto(s) com estoque baixo{% endif %}
+            {% if alertas_globais.count_estoque_baixo > 0 and alertas_globais.count_retornos_pendentes > 0 %} · {% endif %}
+            {% if alertas_globais.count_retornos_pendentes > 0 %}{{ alertas_globais.count_retornos_pendentes }} retorno(s) pendente(s){% endif %}
+            {% if (alertas_globais.count_estoque_baixo > 0 or alertas_globais.count_retornos_pendentes > 0) and alertas_globais.count_analises_pendentes > 0 %} · {% endif %}
+            {% if alertas_globais.count_analises_pendentes > 0 %}{{ alertas_globais.count_analises_pendentes }} analise(s) pendente(s){% endif %}
+        </div>
+    </div>
+    <div class="alert-banner-action">
+        {% if alertas_globais.count_estoque_baixo > 0 %}
+        <a href="{{ url_for('estoque.dashboard') }}" class="btn btn-danger btn-sm">Ver estoque</a>
+        {% elif alertas_globais.count_retornos_pendentes > 0 %}
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-danger btn-sm">Ver pulverizações</a>
+        {% elif alertas_globais.count_analises_pendentes > 0 %}
+        <a href="{{ url_for('analises.listar') }}" class="btn btn-danger btn-sm">Ver análises</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 <!-- Cabeçalho com saudação e data -->
 <div class="row mb-4">
     <div class="col">

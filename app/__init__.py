@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template
 from config import Config
+from app.context_processors import alertas_context
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -9,6 +10,7 @@ def create_app(config_class=Config):
     upload_dir = os.path.join(app.root_path, 'static', 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
     app.config['UPLOAD_FOLDER'] = upload_dir
+    app.context_processor(alertas_context)
 
     @app.template_filter('format_data')
     def format_data(value):
