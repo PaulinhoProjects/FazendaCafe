@@ -454,7 +454,7 @@
                 {% if ultimos_manejos %}
                 <div class="list-group list-group-flush">
                     {% for m in ultimos_manejos %}
-                    <a href="{{ url_for('manejo_mato.detalhe', id=m.id) }}" class="list-group-item list-group-item-action border-0">
+                    <a href="{{ url_for('manejo_mato.editar', id=m.id) }}" class="list-group-item list-group-item-action border-0">
                         <div class="d-flex justify-content-between">
                             <div>
                                 <strong>{{ m.talhao }}</strong>
