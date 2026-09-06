@@ -55,3 +55,17 @@ def alertas_context():
     )
 
     return {'alertas_globais': alertas}
+
+def config_context():
+    """Disponibiliza configurações do sistema para todos os templates."""
+    configs = {
+        'sis_nome': 'AgroCafé',
+        'sis_slogan': 'Tecnologia que Colhe Resultados',
+    }
+    try:
+        from config.database import get_config
+        configs['sis_nome'] = get_config('nome_sistema', 'AgroCafé') or 'AgroCafé'
+        configs['sis_slogan'] = get_config('slogan', 'Tecnologia que Colhe Resultados') or 'Tecnologia que Colhe Resultados'
+    except Exception:
+        pass
+    return {'sis_config': configs}

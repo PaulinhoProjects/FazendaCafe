@@ -133,6 +133,66 @@ def executar_query(query, parametros=None, fetch_one=False, fetch_all=False):
                 ConexaoBanco.liberar_conexao(conn)
 
 # =====================================================
+# CONFIGURAÇÕES DO SISTEMA
+# =====================================================
+
+def criar_tabela_configuracoes():
+    """Cria tabela de configurações do sistema."""
+    query = """
+    CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+        id SERIAL PRIMARY KEY,
+        chave VARCHAR(100) UNIQUE NOT NULL,
+        valor TEXT,
+        descricao VARCHAR(255),
+        data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+    try:
+        executar_query(query)
+        # Inserir configurações padrão se não existirem
+        configs_padrao = [
+            ('nome_sistema', 'AgroCafé', 'Nome do sistema'),
+            ('slogan', 'Tecnologia que Colhe Resultados', 'Slogan do sistema'),
+            ('cidade', 'Campos Gerais', 'Cidade para clima'),
+            ('estado', 'MG', 'Estado para clima'),
+            ('api_clima_key', '', 'Chave da API OpenWeather'),
+            ('itens_por_pagina', '20', 'Itens por página nas listagens'),
+        ]
+        for chave, valor, desc in configs_padrao:
+            verificar = executar_query("SELECT id FROM configuracoes_sistema WHERE chave = %s", (chave,), fetch_one=True)
+            if not verificar:
+                executar_query(
+                    "INSERT INTO configuracoes_sistema (chave, valor, descricao) VALUES (%s, %s, %s)",
+                    (chave, valor, desc)
+                )
+        print("Tabela 'configuracoes_sistema' verificada/criada com sucesso!")
+        return True
+    except Exception as e:
+        print(f"Erro ao criar tabela de configurações: {e}")
+        return False
+
+def get_config(chave, padrão=None):
+    """Busca uma configuração do banco."""
+    try:
+        resultado = executar_query("SELECT valor FROM configuracoes_sistema WHERE chave = %s", (chave,), fetch_one=True)
+        return resultado[0] if resultado else padrão
+    except Exception:
+        return padrão
+
+def set_config(chave, valor):
+    """Atualiza ou insere uma configuração."""
+    try:
+        existente = executar_query("SELECT id FROM configuracoes_sistema WHERE chave = %s", (chave,), fetch_one=True)
+        if existente:
+            executar_query("UPDATE configuracoes_sistema SET valor = %s, data_atualizacao = CURRENT_TIMESTAMP WHERE chave = %s", (valor, chave))
+        else:
+            executar_query("INSERT INTO configuracoes_sistema (chave, valor) VALUES (%s, %s)", (chave, valor))
+        return True
+    except Exception as e:
+        print(f"Erro ao salvar configuração: {e}")
+        return False
+
+# =====================================================
 # TESTE
 # =====================================================
 if __name__ == "__main__":

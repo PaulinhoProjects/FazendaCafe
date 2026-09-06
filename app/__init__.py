@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template
 from config import Config
-from app.context_processors import alertas_context
+from app.context_processors import alertas_context, config_context
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -11,6 +11,7 @@ def create_app(config_class=Config):
     os.makedirs(upload_dir, exist_ok=True)
     app.config['UPLOAD_FOLDER'] = upload_dir
     app.context_processor(alertas_context)
+    app.context_processor(config_context)
 
     @app.template_filter('format_data')
     def format_data(value):
@@ -59,6 +60,7 @@ def create_app(config_class=Config):
     from app.routes.notas_fiscais_routes import notas_fiscais_bp
     from app.routes.devolucao_embalagens_routes import devolucao_bp
     from app.routes.relatorios_routes import relatorios_bp
+    from app.routes.config_routes import config_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(talhoes_bp)
@@ -72,6 +74,7 @@ def create_app(config_class=Config):
     app.register_blueprint(notas_fiscais_bp)
     app.register_blueprint(devolucao_bp)
     app.register_blueprint(relatorios_bp)
+    app.register_blueprint(config_bp)
 
     from app.modules.auth import criar_tabela_usuarios
     criar_tabela_usuarios()
