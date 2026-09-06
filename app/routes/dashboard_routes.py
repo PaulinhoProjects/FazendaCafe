@@ -64,4 +64,21 @@ def index():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return render_template('dashboard.html', resumo=None)
+        return render_template('dashboard.html',
+            resumo=None,
+            atividades=[],
+            alertas=[],
+            grafico_tendencia={'labels': [], 'dados': []},
+            grafico_aplicacoes_periodo={'labels': [], 'dados': []},
+            grafico_pragas_talhao={'labels': [], 'dados': []},
+            grafico_tipos_pragas={'labels': [], 'dados': []},
+            resumo_estoque={'total_produtos': 0, 'estoque_baixo': 0, 'total_itens': 0},
+            resumo_analises={'analises_ano': 0, 'pendentes': 0},
+            resumo_pdfs={'total_pdfs': 0, 'pdfs_mes': 0},
+            produtos_baixo=[],
+            ultimas_analises=[],
+            ultimos_manejos=[],
+            clima_atual=None,
+            previsao=None,
+            data_atual=datetime.now().strftime('%d/%m/%Y')
+        )
