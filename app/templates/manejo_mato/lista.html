@@ -76,5 +76,7 @@
         filtrarManejos();
     }
     document.getElementById('buscaManejo').addEventListener('input', filtrarManejos);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaManejos', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaManejos'); });
 </script>
 {% endblock %}

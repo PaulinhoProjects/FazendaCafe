@@ -156,5 +156,7 @@
     }
     document.getElementById('buscaProduto').addEventListener('input', filtrarProdutos);
     document.getElementById('filtroEstoque').addEventListener('change', filtrarProdutos);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaProdutos', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaProdutos'); });
 </script>
 {% endblock %}

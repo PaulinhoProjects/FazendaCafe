@@ -94,5 +94,7 @@
         filtrarDevolucoes();
     }
     document.getElementById('buscaDevolucao').addEventListener('input', filtrarDevolucoes);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaDevolucoes', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaDevolucoes'); });
 </script>
 {% endblock %}

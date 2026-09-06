@@ -86,7 +86,7 @@
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="tabelaTalhoes">
                 <thead class="table-light">
                     <tr>
                         <th>Nome</th>
@@ -130,4 +130,10 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaTalhoes', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaTalhoes'); });
+</script>
 {% endblock %}

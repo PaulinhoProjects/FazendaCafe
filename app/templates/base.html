@@ -55,6 +55,10 @@
             </a>
         </div>
         {% endif %}
+        <div class="topbar-search">
+            <input type="text" id="buscaGlobal" class="form-control form-control-sm" placeholder="Buscar no sistema..."
+                onkeydown="if(event.key === 'Enter') buscarGlobal()">
+        </div>
         <div class="topbar-user">
             <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
             <div class="user-info">
@@ -119,6 +123,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 {% endif %}
+function buscarGlobal() {
+    const termo = document.getElementById('buscaGlobal').value.trim();
+    if (termo) {
+        window.location.href = '{{ url_for("dashboard.index") }}?busca=' + encodeURIComponent(termo);
+    }
+}
 </script>
 
 <div class="modal fade" id="modalExcluirGlobal" tabindex="-1" aria-hidden="true">
@@ -172,6 +182,9 @@ function fecharToast(el) {
     setTimeout(() => { if (el.parentElement) el.parentElement.removeChild(el); }, 300);
 }
 </script>
+
+<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ordenacao.js') }}"></script>
 
 {% block scripts %}{% endblock %}
 </body>

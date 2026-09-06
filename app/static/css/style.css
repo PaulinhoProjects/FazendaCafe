@@ -779,6 +779,11 @@ body {
     margin-right: 1rem;
 }
 
+.topbar-search {
+    flex: 0 1 250px;
+    margin-right: 1rem;
+}
+
 /* Toast notifications */
 .toast-container {
     position: fixed;
@@ -917,4 +922,19 @@ body {
 
 .alert-banner .alert-banner-action {
     flex-shrink: 0;
+}
+
+/* Ordenação de tabelas */
+th.sort-asc::after {
+    content: ' \25B2';
+    font-size: 0.7em;
+    color: var(--primary-lighter);
+}
+th.sort-desc::after {
+    content: ' \25BC';
+    font-size: 0.7em;
+    color: var(--primary-lighter);
+}
+th {
+    user-select: none;
 }

@@ -100,5 +100,7 @@
         filtrarNotas();
     }
     document.getElementById('buscaNota').addEventListener('input', filtrarNotas);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaNotas', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaNotas'); });
 </script>
 {% endblock %}

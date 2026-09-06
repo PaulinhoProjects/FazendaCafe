@@ -144,5 +144,7 @@
     document.getElementById('buscaAplicacao').addEventListener('input', filtrarAplicacoes);
     document.getElementById('filtroDataInicio').addEventListener('change', filtrarAplicacoes);
     document.getElementById('filtroDataFim').addEventListener('change', filtrarAplicacoes);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaAplicacoes', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaAplicacoes'); });
 </script>
 {% endblock %}

@@ -92,5 +92,7 @@
     document.getElementById('buscaAnalise').addEventListener('input', filtrarAnalises);
     document.getElementById('filtroDataInicio').addEventListener('change', filtrarAnalises);
     document.getElementById('filtroDataFim').addEventListener('change', filtrarAnalises);
+    document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaAnalises', 20); });
+    document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaAnalises'); });
 </script>
 {% endblock %}
