@@ -155,7 +155,7 @@ def inserir_talhao(dados_ou_nome, area=None, numero_pes=None, variedade=None,
     VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id
     """
     result = executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento), fetch_one=True)
-    return result['id'] if result else None
+    return result[0] if result else None
 
 def atualizar_talhao(talhao_id, dados_ou_nome, area=None, numero_pes=None, variedade=None, 
                       espacamento_rua=None, espacamento_planta=None, data_plantio=None, 
