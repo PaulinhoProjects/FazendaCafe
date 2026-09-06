@@ -1,180 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block titulo %}{% endblock %} | Fazenda Café</title>
-    <!-- Bootstrap e ícones -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- CSS personalizado -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block titulo %}{% endblock %} | Fazenda Café</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a class="logo" href="/">
-                <i class="bi bi-cup-hot-fill"></i>
-                Sítio do Morro do Paiol
-            </a>
-            <div class="subtitle">Gestão Agrícola</div>
-        </div>
-        <ul class="sidebar-nav">
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="/">
-                    <i class="bi bi-house-door"></i>
-                    Dashboard
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}">
-                    <i class="bi bi-pin-map"></i>
-                    Talhões
-                </a>
-            </li>
-
-            <div class="sidebar-section-label">Operações</div>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">
-                    <i class="bi bi-spray"></i>
-                    Pulverização
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.listar_adubacoes') }}">
-                    <i class="bi bi-flower1"></i>
-                    Adubação
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}">
-                    <i class="bi bi-tree"></i>
-                    Manejo do Mato
-                </a>
-            </li>
-
-            <div class="sidebar-section-label">Insumos</div>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}">
-                    <i class="bi bi-box-seam"></i>
-                    Estoque
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}">
-                    <i class="bi bi-receipt"></i>
-                    Notas Fiscais
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}">
-                    <i class="bi bi-recycle"></i>
-                    Devolução de Embalagens
-                </a>
-            </li>
-
-            <div class="sidebar-section-label">Análises</div>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}">
-                    <i class="bi bi-clipboard-data"></i>
-                    Análises
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}">
-                    <i class="bi bi-cloud-sun"></i>
-                    Clima
-                </a>
-            </li>
-
-            <div class="sidebar-section-label">Conta</div>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if '/perfil' in request.path %}active{% endif %}" href="{{ url_for('auth.perfil') }}">
-                    <i class="bi bi-person-circle"></i>
-                    Meu Perfil
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link" href="{{ url_for('auth.logout') }}">
-                    <i class="bi bi-box-arrow-right"></i>
-                    Sair
-                </a>
-            </li>
-        </ul>
-    </aside>
-
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-    <!-- Conteúdo principal -->
-    <div class="main-content">
-        <!-- Topbar -->
-        <div class="topbar">
-            <button class="topbar-toggle" type="button" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>
-            <div class="topbar-user">
-                <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
-                <div class="user-info">
-                    <div class="user-name">{{ session.get('usuario', 'Usuário') }}</div>
-                    <div class="user-role">{{ session.get('tipo', 'Usuário')|title }}</div>
-                </div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ url_for('dashboard.index') }}" class="logo">
+            <i class="bi bi-cup-hot-fill"></i>Sítio do Morro do Paiol
+        </a>
+        <div class="subtitle">Gestão Agrícola</div>
+    </div>
+    <ul class="sidebar-nav">
+        <li class="sidebar-item"><a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i>Dashboard</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}"><i class="bi bi-pin-map"></i>Talhões</a></li>
+        <li class="sidebar-section-label">Operações</li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}"><i class="bi bi-tree"></i>Manejo do Mato</a></li>
+        <li class="sidebar-section-label">Insumos</li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}"><i class="bi bi-receipt"></i>Notas Fiscais</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}"><i class="bi bi-recycle"></i>Devolução de Embalagens</a></li>
+        <li class="sidebar-section-label">Análises</li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}"><i class="bi bi-cloud-sun"></i>Clima</a></li>
+        <li class="sidebar-section-label">Conta</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.perfil') }}"><i class="bi bi-person-circle"></i>Meu Perfil</a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Sair</a></li>
+    </ul>
+</aside>
+<div class="main-content">
+    <header class="topbar">
+        <button class="topbar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        <div class="topbar-user">
+            <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.get('usuario', 'Usuário') }}</div>
+                <div class="user-role">{{ session.get('tipo', 'Usuário')|title }}</div>
             </div>
         </div>
-
-        <!-- Breadcrumbs -->
-        <div class="breadcrumb-bar">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    {% block breadcrumb %}
-                    <li class="breadcrumb-item"><a href="/"><i class="bi bi-house-door"></i></a></li>
-                    {% endblock %}
-                </ol>
-            </nav>
-        </div>
-
-        <!-- Mensagens flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show m-3 mb-0" role="alert">
-                        <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Conteúdo da página -->
-        <div class="page-content">
-            {% block conteudo %}{% endblock %}
-        </div>
-
-        <!-- Rodapé -->
-        <div class="app-footer">
-            <span>Sítio do Morro do Paiol · Sistema de Gestão Agrícola</span>
-            <span>v2.0 · 2026</span>
-        </div>
+    </header>
+    <div class="breadcrumb-bar">
+        <ol class="breadcrumb">
+            {% block breadcrumb %}
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i></a></li>
+            {% endblock %}
+        </ol>
     </div>
-
-    <!-- Scripts do Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('show');
-            document.getElementById('sidebarOverlay').classList.toggle('show');
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show m-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <main class="page-content">
+        {% block conteudo %}{% endblock %}
+    </main>
+    <footer class="app-footer">
+        <span>Sítio do Morro do Paiol &middot; Sistema de Gestão Agrícola</span>
+        <span>v2.0 &middot; 2026</span>
+    </footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('show');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', function() {
+        if (window.innerWidth < 992) {
+            document.getElementById('sidebar').classList.remove('show');
+            document.getElementById('sidebarOverlay').classList.remove('show');
         }
-        // Fechar sidebar ao clicar num link (mobile)
-        document.querySelectorAll('.sidebar-link').forEach(link => {
-            link.addEventListener('click', function() {
-                if (window.innerWidth < 992) {
-                    document.getElementById('sidebar').classList.remove('show');
-                    document.getElementById('sidebarOverlay').classList.remove('show');
-                }
-            });
-        });
-    </script>
-    {% block scripts %}{% endblock %}
+    });
+});
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>
