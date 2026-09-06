@@ -3,6 +3,10 @@
     */
 
 :root {
+    --brand: #1B4332;
+    --brand-light: #2D6A4F;
+    --brand-accent: #D4A373;
+    --brand-slogan: #FAEDCD;
     /* Paleta principal — Café/Verde profissional */
     --primary: #1B4332;
     --primary-light: #2D6A4F;
@@ -77,25 +81,28 @@ body {
 }
 
 .sidebar-header .logo {
-    font-size: 1.15rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: var(--white);
     text-decoration: none;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.5px;
+    text-transform: none;
 }
 
 .sidebar-header .logo i {
-    color: var(--accent);
-    font-size: 1.5rem;
+    color: var(--brand-accent);
+    font-size: 1.6rem;
     margin-right: 0.5rem;
 }
 
 .sidebar-header .subtitle {
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.4);
+    font-size: 0.68rem;
+    color: var(--brand-accent);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 0.25rem;
+    letter-spacing: 0.08em;
+    margin-top: 0.3rem;
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .sidebar-nav {
@@ -729,15 +736,17 @@ body {
 }
 
 .login-header h1 {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     margin: 0;
+    letter-spacing: -0.5px;
 }
 
 .login-header p {
-    font-size: 0.8rem;
-    opacity: 0.7;
+    font-size: 0.78rem;
+    opacity: 0.8;
     margin: 0.3rem 0 0;
+    color: var(--brand-accent);
 }
 
 .login-body {

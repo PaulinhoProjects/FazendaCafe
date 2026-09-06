@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, render_template
 from config import Config
 
 def create_app(config_class=Config):
@@ -74,5 +74,17 @@ def create_app(config_class=Config):
 
     from app.models import register_error_handlers
     register_error_handlers(app)
+
+    @app.errorhandler(404)
+    def pagina_nao_encontrada(e):
+        return render_template('erro.html', codigo=404, titulo='Página não encontrada', mensagem='A página que você procura não existe ou foi movida.'), 404
+
+    @app.errorhandler(500)
+    def erro_interno(e):
+        return render_template('erro.html', codigo=500, titulo='Erro interno', mensagem='Algo deu errado no servidor. Tente novamente em instantes.'), 500
+
+    @app.errorhandler(403)
+    def acesso_negado(e):
+        return render_template('erro.html', codigo=403, titulo='Acesso negado', mensagem='Você não tem permissão para acessar esta página.'), 403
 
     return app
