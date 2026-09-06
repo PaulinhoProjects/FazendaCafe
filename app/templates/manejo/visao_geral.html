@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block titulo %}Manejo do Cafezal{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.visao_geral') }}">Manejo do Cafezal</a></li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tools me-2"></i>Manejo do Cafezal</h1>
+        <p class="page-subtitle">Visão geral de todas as atividades de manejo</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-primary">
+            <i class="bi bi-spray me-1"></i>Pulverização
+        </a>
+        <a href="{{ url_for('adubacao.nova_adubacao') }}" class="btn btn-success">
+            <i class="bi bi-flower1 me-1"></i>Adubação
+        </a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}{% endif %}{% endwith %}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-spray"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Pulverizações no Ano</div>
+                <div class="stat-value">{{ resumo.pulverizacoes_ano|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="bi bi-flower1"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Adubações no Ano</div>
+                <div class="stat-value">{{ resumo.adubacoes_ano|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-soft"><i class="bi bi-tree"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Manejos de Mato</div>
+                <div class="stat-value">{{ resumo.manejos_mato_ano|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-soft"><i class="bi bi-clipboard-data"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Análises Pendentes</div>
+                <div class="stat-value">{{ resumo.analises_pendentes|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-card-danger">
+            <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Retornos Pendentes</div>
+                <div class="stat-value">{{ resumo.retornos_pendentes|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-card-dark">
+            <div class="stat-icon"><i class="bi bi-bug"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Pragas Ativas</div>
+                <div class="stat-value">{{ resumo.pragas_ativas|default(0) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Timeline de Atividades</h6>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-primary active" onclick="filtrarTipo('', this)">Todas</button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarTipo('Pulverizacao', this)">Pulverização</button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarTipo('Adubacao', this)">Adubação</button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarTipo('Mato', this)">Mato</button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarTipo('Analises', this)">Análises</button>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        {% if timeline %}
+        <div class="timeline">
+            {% for t in timeline %}
+            {% set filtro = 'Mato' if t.tipo == 'Manejo de Mato' else ('Analises' if t.tipo == 'Analise' else t.tipo) %}
+            <div class="timeline-item" data-tipo="{{ filtro }}">
+                <div class="timeline-icon bg-{{ t.cor }} text-white"><i class="bi {{ t.icone }}"></i></div>
+                <div class="timeline-content">
+                    <div class="timeline-date">{{ t.data.strftime('%d/%m/%Y') if t.data else 'Não informado' }}</div>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="timeline-title">{{ t.tipo }}</span>
+                            <small class="text-muted ms-2">{{ t.talhao }}</small>
+                        </div>
+                        <a href="{{ t.url }}" class="btn btn-outline-primary btn-sm">Ver detalhe</a>
+                    </div>
+                    <div class="timeline-text">{{ t.detalhe }} · Resp: {{ t.responsavel }}</div>
+                    {% if t.data_retorno or t.status_retorno %}
+                    <div class="mt-2">
+                        {% if t.status_retorno in ['Pendente', 'pendente', 'atrasado'] %}
+                        <span class="badge bg-danger">Retorno: {{ t.status_retorno }}</span>
+                        {% elif t.status_retorno in ['Concluida', 'Concluída', 'concluido', 'Concluído'] %}
+                        <span class="badge bg-success">Retorno concluído</span>
+                        {% elif t.data_retorno %}
+                        <span class="badge bg-warning text-dark">Retorno previsto: {{ t.data_retorno.strftime('%d/%m/%Y') if t.data_retorno else 'Não informado' }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-tools"></i>
+            <h5 class="mt-3">Nenhuma atividade de manejo registrada</h5>
+            <p class="text-muted">Comece registrando pulverizações, adubações ou manejos.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    function filtrarTipo(tipo, btn) {
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            if (tipo === '' || item.dataset.tipo === tipo) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+</script>
+{% endblock %}

@@ -985,3 +985,10 @@ th {
     font-size: 0.8rem;
     color: var(--gray-600, #6c757d);
 }
+
+/* Stat cards coloridos */
+.stat-card-danger .stat-icon { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.stat-card-dark .stat-icon { background: rgba(33, 37, 41, 0.1); color: #212529; }
+
+/* Cores soft para timeline */
+.bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
