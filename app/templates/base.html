@@ -32,6 +32,8 @@
         <li class="sidebar-section-label">Análises</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}"><i class="bi bi-cloud-sun"></i>Clima</a></li>
+        <li class="sidebar-section-label">Relatórios</li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/relatorios' in request.path %}active{% endif %}" href="{{ url_for('relatorios.index') }}"><i class="bi bi-file-earmark-pdf"></i>Relatórios PDF</a></li>
         <li class="sidebar-section-label">Conta</li>
         <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.perfil') }}"><i class="bi bi-person-circle"></i>Meu Perfil</a></li>
         <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Sair</a></li>

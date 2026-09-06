@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Relatórios</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-file-earmark-pdf me-2"></i>Relatórios</h1>
+        <p class="page-subtitle">Gere relatórios em PDF de qualquer módulo do sistema</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="stat-icon bg-accent-soft"><i class="bi bi-spray"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Pulverizações</h5>
+                        <p class="card-text text-muted">Todas as aplicações registradas</p>
+                        <a href="{{ url_for('relatorios.rel_pulverizacoes') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Gerar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="stat-icon bg-info-soft"><i class="bi bi-box-seam"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Estoque</h5>
+                        <p class="card-text text-muted">Inventário completo atual</p>
+                        <a href="{{ url_for('relatorios.rel_estoque') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Gerar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="stat-icon bg-warning-soft"><i class="bi bi-clipboard-data"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Análises</h5>
+                        <p class="card-text text-muted">Análises de solo e foliar</p>
+                        <a href="{{ url_for('relatorios.rel_analises') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Gerar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="stat-icon bg-primary-soft"><i class="bi bi-tree"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Manejos do Mato</h5>
+                        <p class="card-text text-muted">Todos os manejos registrados</p>
+                        <a href="{{ url_for('relatorios.rel_manejos') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Gerar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
