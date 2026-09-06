@@ -1,161 +1,101 @@
 {% extends "base.html" %}
-
-{% block titulo %}Talhão {{ talhao[1] }}{% endblock %}
-
+{% block titulo %}Talhão {{ talhao.nome }}{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('talhoes.listar') }}">Talhões</a></li>
-<li class="breadcrumb-item active">{{ talhao[1] }}</li>
+<li class="breadcrumb-item active">{{ talhao.nome }}</li>
 {% endblock %}
-
 {% block conteudo %}
-<!-- Cabeçalho com ações -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Voltar para Lista
-        </a>
-    </div>
+    <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
     <div class="btn-group">
-        <a href="{{ url_for('talhoes.editar', id=talhao[0]) }}" class="btn btn-warning">
+        <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-warning btn-sm">
             <i class="bi bi-pencil-square me-1"></i>Editar
         </a>
-        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-info text-white">
-            <i class="bi bi-droplet me-1"></i>Pulverizações
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-info btn-sm text-white">
+            <i class="bi bi-spray me-1"></i>Pulverizações
         </a>
-        <button class="btn btn-danger" onclick="confirmarExclusao({{ talhao[0] }})">
-            <i class="bi bi-trash me-1"></i>Excluir
-        </button>
+        <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-tree me-1"></i>Manejos
+        </a>
+        <a href="{{ url_for('analises.listar') }}" class="btn btn-secondary btn-sm">
+            <i class="bi bi-clipboard-data me-1"></i>Análises
+        </a>
     </div>
 </div>
 
-<!-- Cards de Informação -->
 <div class="row g-4">
-    <!-- Card Principal -->
     <div class="col-md-8">
-        <div class="card shadow-sm border-0 h-100">
+        <div class="card shadow-sm border-0">
             <div class="card-header bg-success text-white py-3">
-                <h4 class="mb-0"><i class="bi bi-pin-map-fill me-2"></i>{{ talhao[1] }}</h4>
+                <h4 class="mb-0"><i class="bi bi-pin-map-fill me-2"></i>{{ talhao.nome }}</h4>
             </div>
             <div class="card-body p-4">
                 <div class="row g-4">
-                    <!-- Características -->
                     <div class="col-md-6">
-                        <div class="bg-light p-3 rounded-3">
-                            <h6 class="text-success mb-3"><i class="bi bi-info-circle-fill me-2"></i>Características</h6>
-                            <table class="table table-sm table-borderless">
-                                <tr><td class="ps-0 text-muted">Área:</td><td class="fw-bold"><span class="badge bg-primary bg-opacity-10 text-primary p-2"><i class="bi bi-arrows-angle-expand me-1"></i>{{ "%.2f"|format(talhao[2]) }} ha</span></td></tr>
-                                <tr><td class="ps-0 text-muted">Altitude:</td><td class="fw-bold">{% if talhao[5] %}<span class="badge bg-info bg-opacity-10 text-info p-2"><i class="bi bi-bar-chart-steps me-1"></i>{{ "%.0f"|format(talhao[5]) }} m</span>{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>
-                                <tr><td class="ps-0 text-muted">Plantio:</td><td>{% if talhao[3] %}<span class="badge bg-warning bg-opacity-10 text-warning p-2"><i class="bi bi-calendar3 me-1"></i>{{ talhao[3] }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>
-                            </table>
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Área</small>
+                            <h4 class="mb-0">{{ talhao.area or '-' }} ha</h4>
                         </div>
                     </div>
-                    <!-- Cultivo -->
                     <div class="col-md-6">
-                        <div class="bg-light p-3 rounded-3">
-                            <h6 class="text-success mb-3"><i class="bi bi-droplet-fill me-2"></i>Cultivo</h6>
-                            <table class="table table-sm table-borderless">
-                                <tr><td class="ps-0 text-muted">Variedade:</td><td>{% if talhao[4] %}<span class="badge bg-secondary bg-opacity-10 text-secondary p-2"><i class="bi bi-droplet me-1"></i>{{ talhao[4] }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>
-                                <tr><td class="ps-0 text-muted">Espaçamento:</td><td>{% if talhao[9] %}<span class="badge bg-secondary bg-opacity-10 text-secondary p-2"><i class="bi bi-grid-3x3-gap-fill me-1"></i>{{ talhao[9] }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>
-                            </table>
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Data de Plantio</small>
+                            <h4 class="mb-0">{{ talhao.data_plantio|format_data if talhao.data_plantio else '-' }}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Variedade</small>
+                            <h5 class="mb-0">{{ talhao.variedade or '-' }}</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Altitude</small>
+                            <h5 class="mb-0">{{ talhao.altitude or '-' }} m</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Espaçamento</small>
+                            <h5 class="mb-0">{{ talhao.espacamento or '-' }}</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light">
+                            <small class="text-muted text-uppercase fw-bold">Cadastrado em</small>
+                            <h5 class="mb-0">{{ talhao.data_cadastro|format_data if talhao.data_cadastro else '-' }}</h5>
                         </div>
                     </div>
                 </div>
-                <!-- Observações -->
-                {% if talhao[6] %}
-                <div class="row mt-4"><div class="col-12"><div class="bg-light p-3 rounded-3"><h6 class="text-secondary mb-2"><i class="bi bi-chat-text me-2"></i>Observações</h6><p class="mb-0">{{ talhao[6] }}</p></div></div></div>
+                {% if talhao.observacoes %}
+                <hr>
+                <h6>Observações</h6>
+                <p class="text-muted">{{ talhao.observacoes }}</p>
                 {% endif %}
             </div>
         </div>
     </div>
-
-    <!-- Card Lateral -->
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-primary text-white py-3"><h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Resumo</h5></div>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-box-arrow-down me-2"></i>Ações Rápidas</h6>
+            </div>
             <div class="card-body">
-                <div class="text-center mb-4"><div class="display-1 text-primary opacity-25"><i class="bi bi-pin-map-fill"></i></div><h2 class="mt-2">#{{ talhao[0] }}</h2><p class="text-muted">ID do Talhão</p></div>
-
-                <!-- Mini Estatísticas -->
                 <div class="d-grid gap-2">
-                    <!-- Idade -->
-                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
-                        <span><i class="bi bi-calendar-check text-success me-2"></i>Idade:</span>
-                        <strong>{% if talhao[3] %}{% set dias = (datetime.now().date() - talhao[3]).days %}{{ (dias / 365)|round(0) }} anos{% else %}—{% endif %}</strong>
-                    </div>
-                    
-                    <!-- Densidade -->
-                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
-                        <span><i class="bi bi-droplet text-primary me-2"></i>Densidade:</span>
-                        <strong>
-                            {% if talhao[2] and talhao[9] %}
-                                {% set esp = talhao[9]|string %}
-                                {% if 'x' in esp %}
-                                    {% set partes = esp.split('x') %}
-                                    {% if partes|length >= 2 %}
-                                        {% set el = partes[0]|trim|replace(',','.')|float %}
-                                        {% set ep = partes[1]|trim|replace(',','.')|float %}
-                                        {% if el > 0 and ep > 0 %}
-                                            {% set plantas_por_ha = (10000 / (el * ep))|round(0)|int %}
-                                            <span class="badge bg-success">{{ plantas_por_ha }} plantas/ha</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Erro</span>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="badge bg-secondary">Formato</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="badge bg-secondary">Sem espaçamento</span>
-                                {% endif %}
-                            {% else %}
-                                <span class="text-muted">—</span>
-                            {% endif %}
-                        </strong>
-                    </div>
-
-                    <!-- Pés de Café -->
-                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
-                        <span><i class="bi bi-tree-fill text-success me-2"></i>Pés de Café:</span>
-                        <strong>
-                            {% if talhao[2] and talhao[9] %}
-                                {% set area = talhao[2]|float %}  <!-- CONVERTE Decimal PARA FLOAT -->
-                                {% set esp = talhao[9]|string %}
-                                {% if 'x' in esp %}
-                                    {% set partes = esp.split('x') %}
-                                    {% if partes|length >= 2 %}
-                                        {% set el = partes[0]|trim|replace(',','.')|float %}
-                                        {% set ep = partes[1]|trim|replace(',','.')|float %}
-                                        {% if el > 0 and ep > 0 and area > 0 %}
-                                            {% set plantas_por_ha = 10000 / (el * ep) %}
-                                            {% set total = (plantas_por_ha * area)|round(0)|int %}
-                                            <span class="badge bg-success">{{ "{:,.0f}".format(total).replace(',', '.') }} plantas</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Erro</span>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="badge bg-secondary">Formato</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="badge bg-secondary">Sem espaçamento</span>
-                                {% endif %}
-                            {% else %}
-                                <span class="text-muted">—</span>
-                            {% endif %}
-                        </strong>
-                    </div>
-                </div>
-
-                <!-- Botões -->
-                <hr>
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-outline-info"><i class="bi bi-droplet me-2"></i>Pulverizações</a>
-                    <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-outline-success"><i class="bi bi-tree me-2"></i>Manejos</a>
-                    <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-2"></i>Análises</a>
+                    <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-outline-info"><i class="bi bi-spray me-2"></i>Nova Pulverização</a>
+                    <a href="{{ url_for('manejo_mato.novo') }}" class="btn btn-outline-success"><i class="bi bi-tree me-2"></i>Novo Manejo</a>
+                    <a href="{{ url_for('analises.nova') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-2"></i>Nova Análise</a>
+                    <hr>
+                    <form method="POST" action="{{ url_for('talhoes.excluir', id=talhao.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este talhão?')">
+                        <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-trash me-2"></i>Excluir Talhão</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>function confirmarExclusao(id){if(confirm('⚠️ Excluir este talhão?')){window.location.href='/talhoes/'+id+'/excluir';}}</script>
 {% endblock %}
