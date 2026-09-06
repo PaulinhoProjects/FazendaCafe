@@ -152,4 +152,36 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: tabela de usuarios nao verificada: {e}")
 
+    # Criar tabela de configuracoes se nao existir
+    try:
+        from config.database import executar_query
+        executar_query("""
+            CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+                id SERIAL PRIMARY KEY,
+                chave VARCHAR(100) UNIQUE NOT NULL,
+                valor TEXT,
+                descricao VARCHAR(255),
+                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Inserir configs padrao
+        configs_padrao = [
+            ('nome_sistema', 'AgroCafe', 'Nome do sistema'),
+            ('slogan', 'Tecnologia que Colhe Resultados', 'Slogan do sistema'),
+            ('cidade', 'Campos Gerais', 'Cidade para clima'),
+            ('estado', 'MG', 'Estado para clima'),
+            ('api_clima_key', '', 'Chave da API OpenWeather'),
+            ('itens_por_pagina', '20', 'Itens por pagina nas listagens'),
+        ]
+        for chave, valor, desc in configs_padrao:
+            existe = executar_query("SELECT id FROM configuracoes_sistema WHERE chave = %s", (chave,), fetch_one=True)
+            if not existe:
+                executar_query(
+                    "INSERT INTO configuracoes_sistema (chave, valor, descricao) VALUES (%s, %s, %s)",
+                    (chave, valor, desc)
+                )
+        print("Tabela configuracoes_sistema criada/verificada!")
+    except Exception as e:
+        print(f"Aviso: nao foi possivel criar tabela de configuracoes: {e}")
+
     return app
