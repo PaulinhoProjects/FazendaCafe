@@ -3,6 +3,12 @@
 {% block titulo %}Dashboard{% endblock %}
 
 {% block conteudo %}
+{% if not resumo %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Nao foi possivel carregar os dados do dashboard. Verifique a conexao com o banco de dados.
+</div>
+{% else %}
 <!-- Cabeçalho com saudação e data -->
 <div class="row mb-4">
     <div class="col">
@@ -556,6 +562,7 @@
     padding: 1rem 1.25rem;
 }
 </style>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
