@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block titulo %}Adicionar Item — NF {{ nota.numero_nota }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('notas_fiscais.listar') }}">Notas Fiscais</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('notas_fiscais.detalhe', id=nota.id) }}">NF {{ nota.numero_nota }}</a></li>
+<li class="breadcrumb-item active">Adicionar Item</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-plus-square me-2"></i>Adicionar Item</h1>
+        <p class="page-subtitle">NF {{ nota.numero_nota }} — {{ nota.fornecedor }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('notas_fiscais.detalhe', id=nota.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="alert alert-info border-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Ao adicionar um item, o sistema cria o produto no estoque (se não existir) e registra a entrada automaticamente.
+        </div>
+        <form method="POST" action="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nome do Produto *</label>
+                    <input type="text" name="nome_produto" class="form-control" required
+                        placeholder="Ex: Tiametoxam 250 SC">
+                    <div class="form-text">Se o produto não existir, será criado automaticamente.</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Quantidade *</label>
+                    <input type="number" name="quantidade" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Unidade</label>
+                    <select name="unidade" class="form-select">
+                        <option value="L">Litros (L)</option>
+                        <option value="kg">Quilos (kg)</option>
+                        <option value="un">Unidades (un)</option>
+                        <option value="mL">Mililitros (mL)</option>
+                        <option value="g">Gramas (g)</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Valor Unitário (R$)</label>
+                    <input type="number" name="valor_unitario" class="form-control" step="0.01" min="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Categoria</label>
+                    <select name="categoria" class="form-select">
+                        {% if categorias %}
+                        {% for c in categorias %}
+                        <option value="{{ c.nome }}">{{ c.nome }}</option>
+                        {% endfor %}
+                        {% else %}
+                        <option value="Outros">Outros</option>
+                        <option value="Fungicida">Fungicida</option>
+                        <option value="Inseticida">Inseticida</option>
+                        <option value="Herbicida">Herbicida</option>
+                        <option value="Fertilizante">Fertilizante</option>
+                        <option value="Adubo">Adubo</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Observações</label>
+                    <textarea name="observacoes" class="form-control" rows="2"
+                        placeholder="Opcional"></textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>Adicionar e Registrar Entrada
+                </button>
+                <a href="{{ url_for('notas_fiscais.detalhe', id=nota.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

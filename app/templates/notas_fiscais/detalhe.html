@@ -1,30 +1,192 @@
 {% extends "base.html" %}
-{% block titulo %}Detalhe da Nota{% endblock %}
-{% block conteudo %}
-    
-        Nota #{{ nota.numero_nota }}
-         Voltar
-    
-    
-        Dados da Nota
-        
-            Número{{ nota.numero_nota }}Série{{ nota.serie or '-' }}Fornecedor{{ nota.fornecedor }}CNPJ{{ nota.cnpj_fornecedor or '-' }}Data Emissão{{ nota.data_emissao|format_data if nota.data_emissao else '-' }}Data Recebimento{{ nota.data_recebimento|format_data if nota.data_recebimento else '-' }}Valor Total{{ nota.valor_total|format_moeda if nota.valor_total else '-' }}Observações{{ nota.observacoes or '-' }}
-            {% if nota.arquivo_pdf %}
-            Ver PDF
-            {% endif %}
-        
-    
-    
-        Produtos Vinculados
-        
-            {% if movimentacoes %}
-            
-                    {% for m in movimentacoes %}
-                    
-                    {% endfor %}
-                ProdutoQuantidadeUnidadeValor Unit.{{ m.produto_nome }}{{ m.quantidade }}{{ m.unidade or '-' }}{{ m.valor_unitario|format_moeda if m.valor_unitario else '-' }}
-            {% else %}Nenhum produto vinculado.{% endif %}
-        
-    
 
+{% block titulo %}NF {{ nota.numero_nota }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('notas_fiscais.listar') }}">Notas Fiscais</a></li>
+<li class="breadcrumb-item active">NF {{ nota.numero_nota }}</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-receipt me-2"></i>NF {{ nota.numero_nota }}</h1>
+        <p class="page-subtitle">{{ nota.fornecedor }} — {{ nota.data_emissao|format_data if nota.data_emissao else '—' }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Adicionar Item
+        </a>
+        <a href="{{ url_for('notas_fiscais.relatorio_pdf', id=nota.id) }}" class="btn btn-outline-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        {% if nota.arquivo_pdf %}
+        <a href="{{ url_for('static', filename='uploads/' ~ nota.arquivo_pdf) }}" class="btn btn-outline-secondary" target="_blank">
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF Original
+        </a>
+        {% endif %}
+        <a href="{{ url_for('notas_fiscais.listar') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Número da NF</div>
+                <div class="stat-value">{{ nota.numero_nota }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Valor Total</div>
+                <div class="stat-value">R$ {{ "%.2f"|format(nota.valor_total or 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-soft"><i class="bi bi-box-seam"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Itens</div>
+                <div class="stat-value">{{ movimentacoes|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-soft"><i class="bi bi-calendar"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Data Emissão</div>
+                <div class="stat-value">{{ nota.data_emissao|format_data if nota.data_emissao else '—' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Dados da Nota Fiscal</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">Fornecedor</small>
+                    <span class="fw-semibold">{{ nota.fornecedor or '—' }}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">CNPJ</small>
+                    <span class="fw-semibold">{{ nota.cnpj_fornecedor or '—' }}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">Série</small>
+                    <span class="fw-semibold">{{ nota.serie or '—' }}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">Data Emissão</small>
+                    <span class="fw-semibold">{{ nota.data_emissao|format_data if nota.data_emissao else '—' }}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">Data Recebimento</small>
+                    <span class="fw-semibold">{{ nota.data_recebimento|format_data if nota.data_recebimento else '—' }}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex flex-column">
+                    <small class="text-muted text-uppercase">Observações</small>
+                    <span class="fw-semibold">{{ nota.observacoes or '—' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Itens da Nota Fiscal</h6>
+        <a href="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Adicionar Item
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if movimentacoes %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Unidade</th>
+                        <th>Valor Unit.</th>
+                        <th>Valor Total</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimentacoes %}
+                    <tr>
+                        <td>{{ m.produto_nome }}</td>
+                        <td>{{ m.quantidade }}</td>
+                        <td>{{ m.unidade or '—' }}</td>
+                        <td>{{ "R$ %.2f"|format(m.valor_unitario) if m.valor_unitario else '—' }}</td>
+                        <td>{{ "R$ %.2f"|format((m.quantidade or 0) * (m.valor_unitario or 0)) }}</td>
+                        <td class="text-end">
+                            {% if session.get('tipo') == 'admin' %}
+                            <form method="POST" action="{{ url_for('notas_fiscais.remover_item', id=nota.id, item_id=m.id) }}"
+                                class="d-inline" onsubmit="return confirm('Remover este item e estornar a entrada no estoque?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover item">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-light">
+                        <td colspan="4" class="text-end fw-semibold">Total:</td>
+                        <td class="fw-semibold">R$ {{ "%.2f"|format(nota.valor_total or 0) }}</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-box-seam"></i>
+            <h5 class="mt-3">Nenhum item adicionado</h5>
+            <p class="text-muted">Clique em "Adicionar Item" para registrar produtos e dar entrada automática no estoque.</p>
+            <a href="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle me-1"></i>Adicionar Primeiro Item
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
