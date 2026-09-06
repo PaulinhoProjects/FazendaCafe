@@ -36,6 +36,7 @@
                             <th>Unidade</th>
                             <th>Valor Unit.</th>
                             <th>Observações</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -56,6 +57,11 @@
                             <td>{{ m.unidade if m.unidade else '-' }}</td>
                             <td>{{ m.valor_unitario|format_moeda if m.valor_unitario else '-' }}</td>
                             <td>{{ m.observacoes if m.observacoes else '-' }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('estoque.detalhe_movimentacao', id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

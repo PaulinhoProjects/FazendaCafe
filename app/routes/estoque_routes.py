@@ -182,6 +182,33 @@ def editar_movimentacao(id):
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_movimentacoes'))
 
+@estoque_bp.route('/movimentacoes/<int:id>')
+@login_required
+def detalhe_movimentacao(id):
+    try:
+        mov = estoque.buscar_movimentacao_por_id(id)
+        if not mov:
+            flash('Movimentacao nao encontrada.', 'warning')
+            return redirect(url_for('estoque.listar_movimentacoes'))
+        return render_template('estoque/movimentacoes/detalhe.html', movimentacao=mov)
+    except Exception as e:
+        flash('Erro ao carregar detalhes.', 'error')
+        return redirect(url_for('estoque.listar_movimentacoes'))
+
+@estoque_bp.route('/movimentacoes/<int:id>/excluir', methods=['POST'])
+@admin_required
+@login_required
+def excluir_movimentacao(id):
+    try:
+        sucesso, mensagem = estoque.excluir_movimentacao(id)
+        if sucesso:
+            flash(mensagem, 'success')
+        else:
+            flash(mensagem, 'warning')
+    except Exception as e:
+        flash('Erro ao excluir.', 'error')
+    return redirect(url_for('estoque.listar_movimentacoes'))
+
 @estoque_bp.route('/produtos/exportar-csv')
 @login_required
 def exportar_csv_produtos():

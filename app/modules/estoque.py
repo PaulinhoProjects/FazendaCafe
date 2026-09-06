@@ -240,7 +240,7 @@ def buscar_movimentacao_por_id(id):
            COALESCE(p.nome, '🚫 Produto removido') as produto_nome,
            m.tipo, m.quantidade,
            m.unidade, m.data_movimento, m.valor_unitario, m.observacoes,
-           p.ativo
+           p.ativo, m.nota_fiscal_id
     FROM movimentacoes_estoque m
     LEFT JOIN produtos_estoque p ON p.id = m.produto_id
     WHERE m.id = %s
@@ -258,7 +258,8 @@ def buscar_movimentacao_por_id(id):
                 'data_movimento': r[6],
                 'valor_unitario': float(r[7]) if r[7] else None,
                 'observacoes': r[8],
-                'produto_ativo': r[9]
+                'produto_ativo': r[9],
+                'nota_fiscal_id': r[10]
             }
         return None
     except Exception as e:

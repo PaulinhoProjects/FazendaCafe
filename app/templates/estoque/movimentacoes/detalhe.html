@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block titulo %}Movimentação #{{ movimentacao.id }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.dashboard') }}">Estoque</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.listar_movimentacoes') }}">Movimentações</a></li>
+<li class="breadcrumb-item active">#{{ movimentacao.id }}</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Movimentação #{{ movimentacao.id }}</h1>
+            <p class="text-muted">Registrada em {{ movimentacao.data_movimento | format_data if movimentacao.data_movimento else '-' }}</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('estoque.listar_movimentacoes') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <a href="{{ url_for('estoque.editar_movimentacao', id=movimentacao.id) }}" class="btn btn-outline-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir">
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+        </div>
+    </div>
+
+    <!-- Indicadores -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Tipo</div>
+                    {% if movimentacao.tipo == 'entrada' %}
+                    <span class="badge bg-success fs-6"><i class="bi bi-arrow-down-left"></i> Entrada</span>
+                    {% else %}
+                    <span class="badge bg-danger fs-6"><i class="bi bi-arrow-up-right"></i> Saída</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Quantidade</div>
+                    <div class="fs-3 fw-bold text-primary">
+                        {{ movimentacao.quantidade | format_quantidade }} {{ movimentacao.unidade or '' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Valor Unitário</div>
+                    <div class="fs-3 fw-bold text-success">
+                        {{ movimentacao.valor_unitario | format_moeda if movimentacao.valor_unitario else '—' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-muted small mb-1">Valor Total</div>
+                    <div class="fs-3 fw-bold text-success">
+                        {{ (movimentacao.quantidade * movimentacao.valor_unitario) | format_moeda if movimentacao.valor_unitario else '—' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalhes -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header">
+            <i class="bi bi-info-circle me-2"></i>Detalhes
+        </div>
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <tbody>
+                    <tr>
+                        <th class="w-25 text-muted">Produto</th>
+                        <td>
+                            {% if movimentacao.produto_id %}
+                            <a href="{{ url_for('estoque.detalhe_produto', id=movimentacao.produto_id) }}">
+                                {{ movimentacao.produto_nome }}
+                            </a>
+                            {% else %}
+                            {{ movimentacao.produto_nome }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Unidade</th>
+                        <td>{{ movimentacao.unidade or '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Nota Fiscal</th>
+                        <td>
+                            {% if movimentacao.nota_fiscal_id %}
+                            <a href="{{ url_for('notas_fiscais.detalhe', id=movimentacao.nota_fiscal_id) }}">
+                                Nota #{{ movimentacao.nota_fiscal_id }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Observações -->
+    {% if movimentacao.observacoes %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header">
+            <i class="bi bi-sticky me-2"></i>Observações
+        </div>
+        <div class="card-body">
+            {{ movimentacao.observacoes }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de exclusão -->
+<div class="modal fade" id="modalExcluir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excluir movimentação #{{ movimentacao.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Esta ação reverterá o efeito no saldo do produto. Deseja continuar?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('estoque.excluir_movimentacao', id=movimentacao.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
