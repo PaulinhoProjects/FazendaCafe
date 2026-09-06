@@ -1,27 +1,64 @@
 {% extends "base.html" %}
 {% block titulo %}Notas Fiscais{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Notas Fiscais</li>
+{% endblock %}
 {% block conteudo %}
-    
-        Notas Fiscais
-        Nova Nota
-    
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}
-    {{ message }}
-    {% endfor %}{% endif %}{% endwith %}
-    
-        
-            {% if notas %}
-            
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-receipt me-2"></i>Notas Fiscais</h1>
+        <p class="page-subtitle">{{ notas|length if notas else 0 }} notas cadastradas</p>
+    </div>
+    <div>
+        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova Nota</a>
+    </div>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}{% endif %}{% endwith %}
+{% if not notas %}
+<div class="empty-state">
+    <i class="bi bi-receipt"></i>
+    <h5 class="mt-3">Nenhuma nota fiscal cadastrada ainda.</h5>
+    <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-primary mt-3">Cadastrar primeira nota</a>
+</div>
+{% else %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Fornecedor</th>
+                        <th>Emissão</th>
+                        <th>Recebimento</th>
+                        <th>Valor</th>
+                        <th>Produtos</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {% for n in notas %}
-                    
+                    <tr>
+                        <td>{{ n.numero_nota }}</td>
+                        <td>{{ n.fornecedor }}</td>
+                        <td>{{ n.data_emissao|format_data if n.data_emissao else '-' }}</td>
+                        <td>{{ n.data_recebimento|format_data if n.data_recebimento else '-' }}</td>
+                        <td>{{ n.valor_total|format_moeda if n.valor_total else '-' }}</td>
+                        <td>{{ n.total_produtos if n.total_produtos else 0 }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            <form method="POST" action="{{ url_for('notas_fiscais.excluir', id=n.id) }}" class="d-inline" onsubmit="return confirm('Excluir esta nota?')"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                        </td>
+                    </tr>
                     {% endfor %}
-                NúmeroFornecedorEmissãoRecebimentoValorProdutosAções{{ n.numero_nota }}{{ n.fornecedor }}{{ n.data_emissao|format_data if n.data_emissao else '-' }}{{ n.data_recebimento|format_data if n.data_recebimento else '-' }}{{ n.valor_total|format_moeda if n.valor_total else '-' }}{{ n.total_produtos if n.total_produtos else 0 }}
-                            
-                            
-                        
-            {% else %}Nenhuma nota cadastrada.{% endif %}
-        
-    
-
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
