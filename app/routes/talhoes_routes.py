@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from app.modules import talhoes
 from datetime import datetime
 from app.modules.login_manager import login_required
@@ -6,7 +6,6 @@ from app.modules.login_manager import login_required
 talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
 
 def limpar_vazio(valor):
-    """Converte string vazia em None para campos numericos."""
     if valor is None or valor == '':
         return None
     return valor
@@ -32,9 +31,7 @@ def novo():
                 'variedade': request.form.get('variedade') or '',
                 'data_plantio': limpar_vazio(request.form.get('data_plantio')),
                 'altitude': limpar_vazio(request.form.get('altitude')),
-                'espacamento': limpar_vazio(request.form.get('espacamento')) or 
-                    f"{request.form.get('espacamento_rua') or ''} x {request.form.get('espacamento_planta') or ''}".strip()
-                    if request.form.get('espacamento_rua') or request.form.get('espacamento_planta') else None,
+                'espacamento': limpar_vazio(request.form.get('espacamento')),
                 'observacoes': request.form.get('observacoes') or ''
             }
             talhoes.inserir_talhao(dados)
@@ -69,9 +66,7 @@ def editar(id):
                 'variedade': request.form.get('variedade') or '',
                 'data_plantio': limpar_vazio(request.form.get('data_plantio')),
                 'altitude': limpar_vazio(request.form.get('altitude')),
-                'espacamento': limpar_vazio(request.form.get('espacamento')) or 
-                    f"{request.form.get('espacamento_rua') or ''} x {request.form.get('espacamento_planta') or ''}".strip()
-                    if request.form.get('espacamento_rua') or request.form.get('espacamento_planta') else None,
+                'espacamento': limpar_vazio(request.form.get('espacamento')),
                 'observacoes': request.form.get('observacoes') or ''
             }
             talhoes.atualizar_talhao(id, dados)
