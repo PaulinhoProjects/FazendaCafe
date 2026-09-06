@@ -67,3 +67,15 @@ def admin_required(f):
             return redirect(url_for('dashboard.index'))
         return f(*args, **kwargs)
     return decorated_function
+
+def operador_required(f):
+    """Decorator que exige privilégios de operador ou admin."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from flask import session, redirect, url_for, flash
+        tipo = session.get('tipo')
+        if tipo not in ('admin', 'operador'):
+            flash('Você precisa ter permissão de operador.', 'error')
+            return redirect(url_for('dashboard.index'))
+        return f(*args, **kwargs)
+    return decorated_function

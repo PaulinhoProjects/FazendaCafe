@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.modules import analises
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 
 analises_bp = Blueprint('analises', __name__, url_prefix='/analises')
 
@@ -101,6 +101,7 @@ def adicionar_resultado(id):
     return redirect(url_for('analises.detalhe', id=id))
 
 @analises_bp.route('/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir(id):
     try:

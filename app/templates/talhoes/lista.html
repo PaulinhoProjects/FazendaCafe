@@ -114,11 +114,13 @@
                             <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-outline-warning btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            {% if session.get('tipo') == 'admin' %}
                             <form method="POST" action="{{ url_for('talhoes.excluir', id=talhao.id) }}" class="d-inline" onsubmit="return confirm('Excluir este talhão?')">
                                 <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

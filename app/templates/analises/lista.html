@@ -54,10 +54,12 @@
                     <td>{{ a.numero_protocolo or '-' }}</td>
                     <td>
                         <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                        {% if session.get('tipo') == 'admin' %}
                         <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
                             onclick="confirmarExclusaoGlobal('{{ a.numero_protocolo or a.talhao_nome }}', '{{ url_for('analises.excluir', id=a.id) }}')">
                             <i class="bi bi-trash"></i>
                         </button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

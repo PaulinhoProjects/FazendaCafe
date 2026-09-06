@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
 from app.modules import estoque
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
 import csv
@@ -97,6 +97,7 @@ def editar_produto(id):
         return redirect(url_for('estoque.listar_produtos'))
 
 @estoque_bp.route('/produtos/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir_produto(id):
     try:

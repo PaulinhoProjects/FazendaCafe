@@ -25,10 +25,12 @@
                         <td><span class="badge bg-{{ 'success' if r.status == 'Aplicada' else 'warning' if r.status == 'Pendente' else 'secondary' }}">{{ r.status }}</span></td>
                         <td>
                             <a href="{{ url_for('adubacao.detalhe_recomendacao', id=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            {% if session.get('tipo') == 'admin' %}
                             <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
                                 onclick="confirmarExclusaoGlobal('{{ r.talhao_nome }}', '{{ url_for('adubacao.excluir_recomendacao', id=r.id) }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

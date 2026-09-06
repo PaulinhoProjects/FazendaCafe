@@ -59,7 +59,7 @@
             <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
             <div class="user-info">
                 <div class="user-name">{{ session.get('usuario', 'Usuário') }}</div>
-                <div class="user-role">{{ session.get('tipo', 'Usuário')|title }}</div>
+                <div class="user-role"><span class="badge bg-{% if session.get('tipo') == 'admin' %}primary{% elif session.get('tipo') == 'operador' %}info{% else %}secondary{% endif %} rounded-pill">{{ session.get('tipo', 'visitante')|title }}</span></div>
             </div>
         </div>
     </header>
@@ -109,6 +109,16 @@ function confirmarExclusaoGlobal(nome, url) {
     var modal = new bootstrap.Modal(document.getElementById('modalExcluirGlobal'));
     modal.show();
 }
+// Esconder botões de excluir para usuários não-admin
+{% if session.get('tipo') != 'admin' %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-outline-danger, .btn-danger').forEach(btn => {
+        if (btn.closest('[onclick*="confirmarExclusao"]') || btn.type === 'submit' && btn.closest('form[action*="excluir"]')) {
+            btn.style.display = 'none';
+        }
+    });
+});
+{% endif %}
 </script>
 
 <div class="modal fade" id="modalExcluirGlobal" tabindex="-1" aria-hidden="true">

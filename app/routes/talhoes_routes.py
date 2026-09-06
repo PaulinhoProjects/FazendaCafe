@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, Response
 from app.modules import talhoes
 from datetime import datetime
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 import io
 import csv
 
@@ -87,6 +87,7 @@ def editar(id):
         return redirect(url_for('talhoes.listar'))
 
 @talhoes_bp.route('/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir(id):
     try:

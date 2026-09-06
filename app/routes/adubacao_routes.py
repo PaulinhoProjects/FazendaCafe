@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.modules import adubacao
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 
 adubacao_bp = Blueprint('adubacao', __name__, url_prefix='/adubacao')
@@ -93,6 +93,7 @@ def atualizar_status(id):
     return redirect(url_for('adubacao.detalhe_recomendacao', id=id))
 
 @adubacao_bp.route('/recomendacoes/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir_recomendacao(id):
     try:
@@ -162,6 +163,7 @@ def detalhe_adubacao(id):
         return redirect(url_for('adubacao.listar_adubacoes'))
 
 @adubacao_bp.route('/adubacoes/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir_adubacao(id):
     try:

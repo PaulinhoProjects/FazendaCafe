@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from app.modules import devolucao_embalagens
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 import os
 
 devolucao_bp = Blueprint('devolucao', __name__, url_prefix='/devolucoes')
@@ -72,6 +72,7 @@ def detalhe(id):
         return redirect(url_for('devolucao.listar'))
 
 @devolucao_bp.route('/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir(id):
     try:

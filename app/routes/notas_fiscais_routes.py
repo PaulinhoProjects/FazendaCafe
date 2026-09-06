@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from app.modules import notas_fiscais
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 import os
 
 notas_fiscais_bp = Blueprint('notas_fiscais', __name__, url_prefix='/notas-fiscais')
@@ -75,6 +75,7 @@ def detalhe(id):
         return redirect(url_for('notas_fiscais.listar'))
 
 @notas_fiscais_bp.route('/<int:id>/excluir', methods=['POST'])
+@admin_required
 @login_required
 def excluir(id):
     try:

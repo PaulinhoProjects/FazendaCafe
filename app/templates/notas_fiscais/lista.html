@@ -67,10 +67,12 @@
                         <td>{{ n.total_produtos if n.total_produtos else 0 }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            {% if session.get('tipo') == 'admin' %}
                             <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
                                 onclick="confirmarExclusaoGlobal('{{ n.numero_nota }}', '{{ url_for('notas_fiscais.excluir', id=n.id) }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

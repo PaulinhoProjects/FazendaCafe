@@ -62,10 +62,12 @@
                         <td>{{ d.numero_comprovante or '-' }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('devolucao.detalhe', id=d.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            {% if session.get('tipo') == 'admin' %}
                             <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
                                 onclick="confirmarExclusaoGlobal('{{ d.numero_comprovante or d.local_devolucao }}', '{{ url_for('devolucao.excluir', id=d.id) }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
