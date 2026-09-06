@@ -1,6 +1,6 @@
 """
-Módulo de Dashboard e Estatísticas
-Funções para gerar dados dos gráficos e resumos
+M├│dulo de Dashboard e Estat├¡sticas
+Fun├º├Áes para gerar dados dos gr├íficos e resumos
 """
 
 import sys
@@ -15,33 +15,29 @@ def get_resumo_geral():
     """Retorna resumo geral da fazenda"""
     resumo = {}
     
-    # Total de talhões
+    # Total de talh├Áes
     query_talhoes = "SELECT COUNT(*) FROM talhoes WHERE ativo = TRUE"
-    resultado = executar_query(query_talhoes, fetch_one=True)
-    resumo['total_talhoes'] = resultado[0] if resultado else 0
+    resumo['total_talhoes'] = executar_query(query_talhoes, fetch_one=True)[0] or 0
     
-    # Área total
+    # ├ürea total
     query_area = "SELECT SUM(area_hectares) FROM talhoes WHERE ativo = TRUE"
-    resultado = executar_query(query_area, fetch_one=True)
-    resumo['area_total'] = float(resultado['sum'] if resultado else 0)
+    resumo['area_total'] = float(executar_query(query_area, fetch_one=True)[0] or 0)
     
-    # Total de pulverizações no ano
+    # Total de pulveriza├º├Áes no ano
     query_pulv = """
     SELECT COUNT(*) FROM aplicacoes_pulverizacao 
     WHERE EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
     """
-    resultado = executar_query(query_pulv, fetch_one=True)
-    resumo['pulverizacoes_ano'] = resultado['count'] if resultado else 0
+    resumo['pulverizacoes_ano'] = executar_query(query_pulv, fetch_one=True)[0] or 0
     
     # Total de pragas registradas
     query_pragas = "SELECT COUNT(DISTINCT praga_doenca_id) FROM ocorrencias_pragas"
-    resultado = executar_query(query_pragas, fetch_one=True)
-    resumo['pragas_detectadas'] = resultado['count'] if resultado else 0
+    resumo['pragas_detectadas'] = executar_query(query_pragas, fetch_one=True)[0] or 0
     
     return resumo
 
 def get_atividades_recentes(limite=10):
-    """Retorna as últimas atividades (pulverizações)"""
+    """Retorna as ├║ltimas atividades (pulveriza├º├Áes)"""
     query = """
     SELECT 
         ap.data_aplicacao,
@@ -62,12 +58,12 @@ def get_atividades_recentes(limite=10):
         atividades = []
         for r in resultado:
             atividades.append({
-                'data': r['data_aplicacao'],
-                'talhao': r['talhao'],
-                'periodo': r['periodo'],
-                'receita': r['receita'] or 'Não informada',
-                'responsavel': r['responsavel'] or 'Não informado',
-                'id': r['id']
+                'data': r[0],
+                'talhao': r[1],
+                'periodo': r[2],
+                'receita': r[3] or 'N├úo informada',
+                'responsavel': r[4] or 'N├úo informado',
+                'id': r[5]
             })
         return atividades
     except Exception as e:
@@ -75,9 +71,9 @@ def get_atividades_recentes(limite=10):
         return []
 
 def get_alertas_retorno():
-    """Retorna pulverizações com data de retorno próxima ou atrasada (não resolvidas)"""
+    """Retorna pulveriza├º├Áes com data de retorno pr├│xima ou atrasada (n├úo resolvidas)"""
     hoje = datetime.now().date()
-    limite = hoje + timedelta(days=7)  # Próximos 7 dias
+    limite = hoje + timedelta(days=7)  # Pr├│ximos 7 dias
     
     query = """
     SELECT 
@@ -104,12 +100,12 @@ def get_alertas_retorno():
         alertas = []
         for r in resultado:
             alertas.append({
-                'id': r['id'],
-                'talhao': r['talhao'],
-                'data_aplicacao': r['data_aplicacao'],
-                'data_retorno': r['data_prevista_retorno'],
-                'periodo': r['periodo'],
-                'status': r['status']
+                'id': r[0],
+                'talhao': r[1],
+                'data_aplicacao': r[2],
+                'data_retorno': r[3],
+                'periodo': r[4],
+                'status': r[5]
             })
         return alertas
     except Exception as e:
@@ -117,7 +113,7 @@ def get_alertas_retorno():
         return []
 
 def get_pragas_por_talhao():
-    """Retorna contagem de pragas por talhão para gráfico"""
+    """Retorna contagem de pragas por talh├úo para gr├ífico"""
     query = """
     SELECT 
         t.nome,
@@ -131,15 +127,15 @@ def get_pragas_por_talhao():
     """
     try:
         resultado = executar_query(query, fetch_all=True)
-        labels = [r['nome'] for r in resultado]
-        dados = [r['total_ocorrencias'] for r in resultado]
+        labels = [r[0] for r in resultado]
+        dados = [r[1] for r in resultado]
         return {'labels': labels, 'dados': dados}
     except Exception as e:
-        print(f"Erro ao buscar pragas por talhão: {e}")
+        print(f"Erro ao buscar pragas por talh├úo: {e}")
         return {'labels': [], 'dados': []}
 
 def get_aplicacoes_por_periodo():
-    """Retorna distribuição de aplicações por período da lavoura"""
+    """Retorna distribui├º├úo de aplica├º├Áes por per├¡odo da lavoura"""
     query = """
     SELECT 
         p.nome,
@@ -151,15 +147,15 @@ def get_aplicacoes_por_periodo():
     """
     try:
         resultado = executar_query(query, fetch_all=True)
-        labels = [r['nome'] for r in resultado]
-        dados = [r['total'] for r in resultado]
+        labels = [r[0] for r in resultado]
+        dados = [r[1] for r in resultado]
         return {'labels': labels, 'dados': dados}
     except Exception as e:
-        print(f"Erro ao buscar aplicações por período: {e}")
+        print(f"Erro ao buscar aplica├º├Áes por per├¡odo: {e}")
         return {'labels': [], 'dados': []}
 
 def get_aplicacoes_ultimos_6_meses():
-    """Retorna número de aplicações nos últimos 6 meses"""
+    """Retorna n├║mero de aplica├º├Áes nos ├║ltimos 6 meses"""
     query = """
     SELECT 
         TO_CHAR(data_aplicacao, 'YYYY-MM') as mes,
@@ -174,17 +170,17 @@ def get_aplicacoes_ultimos_6_meses():
         meses = []
         dados = []
         for r in resultado:
-            # Converter YYYY-MM para nome do mês
-            ano, mes = r['mes'].split('-')
+            # Converter YYYY-MM para nome do m├¬s
+            ano, mes = r[0].split('-')
             meses.append(f"{mes}/{ano}")
-            dados.append(r['total'])
+            dados.append(r[1])
         return {'labels': meses, 'dados': dados}
     except Exception as e:
-        print(f"Erro ao buscar aplicações mensais: {e}")
+        print(f"Erro ao buscar aplica├º├Áes mensais: {e}")
         return {'labels': [], 'dados': []}
 
 def get_tipos_pragas():
-    """Retorna distribuição de pragas vs doenças"""
+    """Retorna distribui├º├úo de pragas vs doen├ºas"""
     query = """
     SELECT 
         pd.tipo,
@@ -198,8 +194,8 @@ def get_tipos_pragas():
         tipos = []
         dados = []
         for r in resultado:
-            tipos.append(r['tipo'].capitalize() + 's')
-            dados.append(r['total'])
+            tipos.append(r[0].capitalize() + 's')
+            dados.append(r[1])
         return {'labels': tipos, 'dados': dados}
     except Exception as e:
         print(f"Erro ao buscar tipos de pragas: {e}")
@@ -209,19 +205,16 @@ def get_resumo_estoque():
     """Retorna resumo do estoque para o dashboard"""
     try:
         # Total de produtos
-        resultado = executar_query("SELECT COUNT(*) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)
-        total_produtos = resultado['count'] if resultado else 0
+        total_produtos = executar_query("SELECT COUNT(*) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)[0]
         
         # Produtos com estoque baixo
-        resultado = executar_query("""
+        estoque_baixo = executar_query("""
             SELECT COUNT(*) FROM produtos_estoque 
             WHERE ativo = TRUE AND quantidade_atual <= COALESCE(estoque_minimo, 0)
-        """, fetch_one=True)
-        estoque_baixo = resultado['count'] if resultado else 0
+        """, fetch_one=True)[0]
         
         # Total de itens em estoque
-        resultado = executar_query("SELECT SUM(quantidade_atual) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)
-        total_itens = resultado['sum'] if resultado else 0
+        total_itens = executar_query("SELECT SUM(quantidade_atual) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)[0]
         
         return {
             'total_produtos': total_produtos or 0,
@@ -233,25 +226,23 @@ def get_resumo_estoque():
         return {'total_produtos': 0, 'estoque_baixo': 0, 'total_itens': 0}
 
 def get_resumo_analises():
-    """Retorna resumo das análises para o dashboard (apenas ativas)"""
+    """Retorna resumo das an├ílises para o dashboard (apenas ativas)"""
     try:
-        # Total de análises no ano (ativas)
-        resultado = executar_query("""
+        # Total de an├ílises no ano (ativas)
+        analises_ano = executar_query("""
             SELECT COUNT(*) FROM analises 
             WHERE EXTRACT(YEAR FROM data_coleta) = EXTRACT(YEAR FROM CURRENT_DATE)
             AND ativo = TRUE
-        """, fetch_one=True)
-        analises_ano = resultado['count'] if resultado else 0
+        """, fetch_one=True)[0]
         
-        # Análises pendentes (sem resultado) e ativas
-        resultado = executar_query("""
+        # An├ílises pendentes (sem resultado) e ativas
+        pendentes = executar_query("""
             SELECT COUNT(*) FROM analises 
             WHERE data_resultado IS NULL
             AND ativo = TRUE
-        """, fetch_one=True)
-        pendentes = resultado['count'] if resultado else 0
+        """, fetch_one=True)[0]
         
-        # Última análise ativa
+        # ├Ültima an├ílise ativa
         ultima = executar_query("""
             SELECT data_coleta, talhao_id FROM analises 
             WHERE ativo = TRUE
@@ -261,11 +252,11 @@ def get_resumo_analises():
         return {
             'analises_ano': analises_ano or 0,
             'pendentes': pendentes or 0,
-            'ultima_data': ultima['data_coleta'] if ultima else None,
-            'ultima_talhao': ultima['talhao_id'] if ultima else None
+            'ultima_data': ultima[0] if ultima else None,
+            'ultima_talhao': ultima[1] if ultima else None
         }
     except Exception as e:
-        print(f"Erro ao buscar resumo análises: {e}")
+        print(f"Erro ao buscar resumo an├ílises: {e}")
         return {'analises_ano': 0, 'pendentes': 0}
 
 def get_resumo_pdfs():
@@ -315,11 +306,11 @@ def get_produtos_estoque_baixo(limite=5):
         produtos = []
         for r in resultado:
             produtos.append({
-                'id': r['id'],
-                'nome': r['nome'],
-                'quantidade': float(r['quantidade_atual']) if r['quantidade_atual'] else 0,
-                'minimo': float(r['estoque_minimo']) if r['estoque_minimo'] else 0,
-                'unidade': r['unidade']
+                'id': r[0],
+                'nome': r[1],
+                'quantidade': float(r[2]) if r[2] else 0,
+                'minimo': float(r[3]) if r[3] else 0,
+                'unidade': r[4]
             })
         return produtos
     except Exception as e:
@@ -327,11 +318,11 @@ def get_produtos_estoque_baixo(limite=5):
         return []
 
 def get_ultimas_analises(limite=3):
-    """Retorna as últimas análises registradas (apenas ativas)"""
+    """Retorna as ├║ltimas an├ílises registradas (apenas ativas)"""
     try:
         query = """
         SELECT a.id, a.data_coleta, t.nome as talhao, tp.nome as tipo,
-               CASE WHEN a.data_resultado IS NULL THEN 'Pendente' ELSE 'Concluída' END as status
+               CASE WHEN a.data_resultado IS NULL THEN 'Pendente' ELSE 'Conclu├¡da' END as status
         FROM analises a
         JOIN talhoes t ON t.id = a.talhao_id
         JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
@@ -344,19 +335,19 @@ def get_ultimas_analises(limite=3):
         analises = []
         for r in resultado:
             analises.append({
-                'id': r['id'],
-                'data': r['data_coleta'],
-                'talhao': r['talhao'],
-                'tipo': r['tipo'],
-                'status': r['status']
+                'id': r[0],
+                'data': r[1],
+                'talhao': r[2],
+                'tipo': r[3],
+                'status': r[4]
             })
         return analises
     except Exception as e:
-        print(f"Erro ao buscar últimas análises: {e}")
+        print(f"Erro ao buscar ├║ltimas an├ílises: {e}")
         return []
 
 def get_ultimos_manejos(limite=3):
-    """Retorna os últimos manejos do mato registrados"""
+    """Retorna os ├║ltimos manejos do mato registrados"""
     try:
         query = """
         SELECT m.id, m.data_manejo, t.nome as talhao, m.tipo_manejo
@@ -370,13 +361,13 @@ def get_ultimos_manejos(limite=3):
         manejos = []
         for r in resultado:
             manejos.append({
-                'id': r['id'],
-                'data': r['data_manejo'],
-                'talhao': r['talhao'],
-                'tipo': r['tipo_manejo']
+                'id': r[0],
+                'data': r[1],
+                'talhao': r[2],
+                'tipo': r[3]
             })
         return manejos
     except Exception as e:
-        print(f"Erro ao buscar últimos manejos: {e}")
+        print(f"Erro ao buscar ├║ltimos manejos: {e}")
         return []
     
