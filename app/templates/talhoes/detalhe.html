@@ -1,101 +1,157 @@
 {% extends "base.html" %}
-{% block titulo %}Talhão {{ talhao.nome }}{% endblock %}
+{% block titulo %}{{ talhao.nome }}{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('talhoes.listar') }}">Talhões</a></li>
 <li class="breadcrumb-item active">{{ talhao.nome }}</li>
 {% endblock %}
 {% block conteudo %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Voltar
-    </a>
-    <div class="btn-group">
-        <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-warning btn-sm">
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-pin-map-fill me-2"></i>{{ talhao.nome }}</h1>
+        <p class="page-subtitle">Detalhes do talhão e histórico de atividades</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if session.get('tipo') == 'admin' %}
+        <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-warning">
             <i class="bi bi-pencil-square me-1"></i>Editar
         </a>
-        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-info btn-sm text-white">
-            <i class="bi bi-spray me-1"></i>Pulverizações
-        </a>
-        <a href="{{ url_for('manejo_mato.listar') }}" class="btn btn-success btn-sm">
-            <i class="bi bi-tree me-1"></i>Manejos
-        </a>
-        <a href="{{ url_for('analises.listar') }}" class="btn btn-secondary btn-sm">
-            <i class="bi bi-clipboard-data me-1"></i>Análises
+        {% endif %}
+        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
         </a>
     </div>
 </div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}{% endif %}{% endwith %}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-accent-soft"><i class="bi bi-bounding-box"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Hectares</div>
+                <div class="stat-value">{{ "%.2f"|format(talhao.area) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-soft"><i class="bi bi-tree"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Pés de Café</div>
+                <div class="stat-value">{{ "{:,.0f}".format(talhao.pes_cafe).replace(',', '.') if talhao.pes_cafe else '—' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-soft"><i class="bi bi-mountain"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Altitude (m)</div>
+                <div class="stat-value">{{ "%.0f"|format(talhao.altitude) if talhao.altitude else '—' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-calendar-event"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Data Plantio</div>
+                <div class="stat-value">{{ talhao.data_plantio.strftime('%d/%m/%Y') if talhao.data_plantio else '—' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-success text-white py-3">
-                <h4 class="mb-0"><i class="bi bi-pin-map-fill me-2"></i>{{ talhao.nome }}</h4>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações</h6>
             </div>
             <div class="card-body p-4">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Área</small>
-                            <h4 class="mb-0">{{ talhao.area or '-' }} ha</h4>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Data de Plantio</small>
-                            <h4 class="mb-0">{{ talhao.data_plantio|format_data if talhao.data_plantio else '-' }}</h4>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Variedade</small>
-                            <h5 class="mb-0">{{ talhao.variedade or '-' }}</h5>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Altitude</small>
-                            <h5 class="mb-0">{{ talhao.altitude or '-' }} m</h5>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Espaçamento</small>
-                            <h5 class="mb-0">{{ talhao.espacamento or '-' }}</h5>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 bg-light">
-                            <small class="text-muted text-uppercase fw-bold">Cadastrado em</small>
-                            <h5 class="mb-0">{{ talhao.data_cadastro|format_data if talhao.data_cadastro else '-' }}</h5>
-                        </div>
-                    </div>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Variedade:</dt>
+                    <dd class="col-sm-7">{{ talhao.variedade }}</dd>
+                    <dt class="col-sm-5 text-muted">Espaçamento:</dt>
+                    <dd class="col-sm-7">{{ talhao.espacamento or '—' }}</dd>
+                    <dt class="col-sm-5 text-muted">Altitude:</dt>
+                    <dd class="col-sm-7">{{ "%.0f"|format(talhao.altitude) ~ ' m' if talhao.altitude else '—' }}</dd>
+                    <dt class="col-sm-5 text-muted">Pés de café:</dt>
+                    <dd class="col-sm-7">{{ "{:,.0f}".format(talhao.pes_cafe).replace(',', '.') if talhao.pes_cafe else '—' }}</dd>
+                    <dt class="col-sm-5 text-muted">Fórmula:</dt>
+                    <dd class="col-sm-7">{{ talhao.formula_pes or '—' }}</dd>
+                    <dt class="col-sm-5 text-muted">Observações:</dt>
+                    <dd class="col-sm-7">{{ talhao.observacoes or '—' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Localização (GPS)</h6>
+            </div>
+            <div class="card-body p-4">
+                {% if talhao.latitude and talhao.longitude %}
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Latitude:</dt>
+                    <dd class="col-sm-7">{{ "%.7f"|format(talhao.latitude) }}</dd>
+                    <dt class="col-sm-5 text-muted">Longitude:</dt>
+                    <dd class="col-sm-7">{{ "%.7f"|format(talhao.longitude) }}</dd>
+                </dl>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="https://www.google.com/maps?q={{ talhao.latitude }},{{ talhao.longitude }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-geo-alt me-1"></i>Ver no Google Maps
+                    </a>
+                    <a href="https://earth.google.com/web/@{{ talhao.latitude }},{{ talhao.longitude }},0a,822.5d,35y,0h,0t,0r" target="_blank" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-globe me-1"></i>Ver no Google Earth
+                    </a>
                 </div>
-                {% if talhao.observacoes %}
-                <hr>
-                <h6>Observações</h6>
-                <p class="text-muted">{{ talhao.observacoes }}</p>
+                {% else %}
+                <p class="text-muted">Coordenadas GPS não cadastradas. Edite o talhão para adicionar.</p>
+                {% if session.get('tipo') == 'admin' %}
+                <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Adicionar GPS
+                </a>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bi bi-box-arrow-down me-2"></i>Ações Rápidas</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-outline-info"><i class="bi bi-spray me-2"></i>Nova Pulverização</a>
-                    <a href="{{ url_for('manejo_mato.novo') }}" class="btn btn-outline-success"><i class="bi bi-tree me-2"></i>Novo Manejo</a>
-                    <a href="{{ url_for('analises.nova') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-2"></i>Nova Análise</a>
-                    <hr>
-                    <form method="POST" action="{{ url_for('talhoes.excluir', id=talhao.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este talhão?')">
-                        <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-trash me-2"></i>Excluir Talhão</button>
-                    </form>
+</div>
+
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Atividades</h6>
+    </div>
+    <div class="card-body p-4">
+        {% if historico %}
+        <div class="timeline">
+            {% for h in historico %}
+            <div class="timeline-item">
+                <div class="timeline-icon {% if h.tipo == 'Pulverização' %}bg-info{% elif h.tipo == 'Análise' %}bg-primary{% else %}bg-success{% endif %} text-white">
+                    {% if h.tipo == 'Pulverização' %}<i class="bi bi-spray"></i>
+                    {% elif h.tipo == 'Análise' %}<i class="bi bi-clipboard-data"></i>
+                    {% else %}<i class="bi bi-tree"></i>{% endif %}
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-date">{{ h.data.strftime('%d/%m/%Y') if h.data else '—' }}</div>
+                    <div class="timeline-title">{{ h.tipo }}</div>
+                    <div class="timeline-text">{{ h.detalhe }} · Resp: {{ h.responsavel }}</div>
                 </div>
             </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhuma atividade registrada para este talhão.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

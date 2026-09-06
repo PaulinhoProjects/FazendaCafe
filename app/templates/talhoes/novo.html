@@ -3,16 +3,16 @@
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('talhoes.listar') }}">Talhões</a></li>
-<li class="breadcrumb-item active">Novo Talhão</li>
+<li class="breadcrumb-item active">Novo</li>
 {% endblock %}
 {% block conteudo %}
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-pin-map me-2"></i>Novo Talhão</h1>
-        <p class="page-subtitle">Cadastro de novo talhão na fazenda</p>
+        <h1 class="page-title"><i class="bi bi-pin-map-fill me-2"></i>Novo Talhão</h1>
+        <p class="page-subtitle">Cadastre um novo talhão da fazenda</p>
     </div>
     <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Voltar para Lista
+        <i class="bi bi-arrow-left me-1"></i>Voltar
     </a>
 </div>
 
@@ -30,28 +30,37 @@
                     <label class="form-label">Nome do Talhão *</label>
                     <input type="text" name="nome" class="form-control form-control-lg" placeholder="Ex: Talhão 01 - Sede" required>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label">Área (hectares) *</label>
                     <input type="number" step="0.01" name="area" class="form-control form-control-lg" placeholder="Ex: 12.5" required>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Data de Plantio</label>
+                <div class="col-md-3">
+                    <label class="form-label">Data do Plantio</label>
                     <input type="date" name="data_plantio" class="form-control">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Variedade</label>
+                    <label class="form-label">Variedade de Café</label>
                     <input type="text" name="variedade" class="form-control" placeholder="Catuaí, Mundo Novo...">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Altitude (m)</label>
+                    <label class="form-label">Espaçamento</label>
+                    <input type="text" name="espacamento" class="form-control" placeholder="Ex: 3.5 x 0.8">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Altitude Média (m)</label>
                     <input type="number" step="0.01" name="altitude" class="form-control" placeholder="Ex: 950">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Espaçamento</label>
-                    <input type="text" name="espacamento" class="form-control" placeholder="Ex: 3.5 x 0.8">
-                    <small class="text-muted">Formato: Linha x Planta (ex: 3.5 x 0.8)</small>
+                    <label class="form-label">Latitude (GPS)</label>
+                    <input type="number" step="any" name="latitude" class="form-control" placeholder="Ex: -23.1234567">
+                    <small class="text-muted">Coordenada GPS do talhão</small>
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label">Longitude (GPS)</label>
+                    <input type="number" step="any" name="longitude" class="form-control" placeholder="Ex: -50.1234567">
+                    <small class="text-muted">Coordenada GPS do talhão</small>
+                </div>
+                <div class="col-12">
                     <label class="form-label">Observações</label>
                     <input type="text" name="observacoes" class="form-control" placeholder="Informações adicionais">
                 </div>
@@ -63,7 +72,7 @@
                             <i class="bi bi-x-circle me-1"></i>Cancelar
                         </a>
                         <button type="submit" class="btn btn-success btn-lg px-5">
-                            <i class="bi bi-save me-1"></i>Salvar Talhão
+                            <i class="bi bi-plus-circle me-1"></i>Cadastrar
                         </button>
                     </div>
                 </div>

@@ -192,6 +192,22 @@ def set_config(chave, valor):
         print(f"Erro ao salvar configuração: {e}")
         return False
 
+def corrigir_tabela_talhoes():
+    """Adiciona colunas que possam estar faltando na tabela talhoes."""
+    alteracoes = [
+        "ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS produtor_id INTEGER",
+        "ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS latitude NUMERIC(10,7)",
+        "ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS longitude NUMERIC(10,7)",
+        "ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS foto_url TEXT",
+        "ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS area_hectares NUMERIC(10,2)",
+    ]
+    for sql in alteracoes:
+        try:
+            executar_query(sql)
+        except Exception as e:
+            print(f"Aviso ao alterar tabela: {e}")
+    print("Tabela talhoes verificada/atualizada!")
+
 # =====================================================
 # TESTE
 # =====================================================

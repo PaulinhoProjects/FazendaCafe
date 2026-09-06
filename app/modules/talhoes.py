@@ -1,14 +1,15 @@
-import io
-from config.database import executar_query
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from datetime import datetime
+"""
+Módulo de Talhões — AgroCafé
+Gerencia CRUD de talhões com GPS, fotos e cálculo de pés de café.
+"""
+import sys
+import os
+import re
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
+from database import executar_query
 
 def criar_tabela_talhoes():
+    """Cria a tabela de talhões se não existir."""
     query = """
     CREATE TABLE IF NOT EXISTS talhoes (
         id SERIAL PRIMARY KEY,
@@ -21,229 +22,245 @@ def criar_tabela_talhoes():
         data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ativo BOOLEAN DEFAULT TRUE,
         espacamento VARCHAR(50),
-        produtor_id INTEGER
+        produtor_id INTEGER,
+        latitude NUMERIC(10,7),
+        longitude NUMERIC(10,7),
+        foto_url TEXT
     )
     """
     executar_query(query)
 
+def calcular_pes_cafe(area, espacamento):
+    """Calcula pés de café baseado na área e espaçamento."""
+    if not area or area <= 0:
+        return 0, ""
+    if not espacamento:
+        return 0, ""
+    try:
+        numeros = re.findall(r'(\d+[.,]?\d*)', str(espacamento))
+        if len(numeros) < 2:
+            return 0, ""
+        entre_linhas = float(numeros[0].replace(',', '.'))
+        entre_plantas = float(numeros[1].replace(',', '.'))
+        if entre_linhas <= 0 or entre_plantas <= 0:
+            return 0, ""
+        plantas_por_ha = 10000.0 / (entre_linhas * entre_plantas)
+        total_plantas = int(round(plantas_por_ha * float(area)))
+        formula = f"{plantas_por_ha:.0f} pl/ha x {area:.2f} ha = {total_plantas} pés"
+        return total_plantas, formula
+    except Exception:
+        return 0, ""
+
 def listar_talhoes(ativos=True):
-    """Retorna a lista de talhões com aliases e cálculo de pés de café."""
+    """Retorna lista de talhões com cálculo de pés de café."""
     query = """
-    SELECT 
+    SELECT
         id, nome, area_hectares, data_plantio, variedade_cafe,
         altitude_media, observacoes, data_cadastro, ativo,
-        espacamento, produtor_id
-    FROM talhoes 
-    WHERE (%s IS NULL OR ativo = %s)
+        espacamento, produtor_id, latitude, longitude, foto_url
+    FROM talhoes
+    WHERE ativo = TRUE
     ORDER BY id
     """
-    rows = executar_query(query, (ativos, ativos), fetch_all=True)
-    if not rows:
+    try:
+        resultado = executar_query(query, fetch_all=True)
+        if not resultado:
+            return []
+        lista = []
+        for r in resultado:
+            area = float(r[2]) if r[2] else 0.0
+            espacamento = r[9] if r[9] else None
+            pes_cafe, formula = calcular_pes_cafe(area, espacamento)
+            lista.append({
+                'id': r[0],
+                'nome': r[1],
+                'area': area,
+                'area_hectares': area,
+                'data_plantio': r[3],
+                'variedade': r[4] if r[4] else 'Não informada',
+                'variedade_cafe': r[4] if r[4] else 'Não informada',
+                'altitude': float(r[5]) if r[5] else None,
+                'altitude_media': float(r[5]) if r[5] else None,
+                'observacoes': r[6],
+                'data_cadastro': r[7],
+                'ativo': r[8],
+                'espacamento': espacamento,
+                'produtor_id': r[10],
+                'latitude': float(r[11]) if r[11] else None,
+                'longitude': float(r[12]) if r[12] else None,
+                'foto_url': r[13] if r[13] else None,
+                'pes_cafe': pes_cafe,
+                'formula_pes': formula
+            })
+        return lista
+    except Exception as e:
+        print(f"Erro ao listar talhões: {e}")
         return []
 
-    lista = []
-    for r in rows:
-        area = float(r[2]) if r[2] is not None else 0.0
-        variedade = r[4] if r[4] else ''
-        altitude = float(r[5]) if r[5] is not None else None
+def buscar_talhao_por_id(talhao_id):
+    """Busca um talhão pelo ID."""
+    query = """
+    SELECT
+        id, nome, area_hectares, data_plantio, variedade_cafe,
+        altitude_media, observacoes, data_cadastro, ativo,
+        espacamento, produtor_id, latitude, longitude, foto_url
+    FROM talhoes
+    WHERE id = %s
+    """
+    try:
+        r = executar_query(query, (talhao_id,), fetch_one=True)
+        if not r:
+            return None
+        area = float(r[2]) if r[2] else 0.0
         espacamento = r[9] if r[9] else None
-
-        pes_cafe = 0
-        if espacamento:
-            try:
-                esp = str(espacamento).lower().replace(',', '.')
-                partes = [p.strip() for p in esp.split('x')]
-                if len(partes) >= 2:
-                    el = float(partes[0])
-                    ep = float(partes[1])
-                    if el > 0 and ep > 0:
-                        plantas_por_ha = 10000.0 / (el * ep)
-                        pes_cafe = int(round(plantas_por_ha * area))
-            except Exception:
-                pes_cafe = 0
-
-        lista.append({
+        pes_cafe, formula = calcular_pes_cafe(area, espacamento)
+        return {
             'id': r[0],
             'nome': r[1],
             'area': area,
             'area_hectares': area,
             'data_plantio': r[3],
-            'variedade': variedade,
-            'variedade_cafe': variedade,
-            'altitude': altitude,
-            'altitude_media': altitude,
+            'variedade': r[4] if r[4] else 'Não informada',
+            'variedade_cafe': r[4] if r[4] else 'Não informada',
+            'altitude': float(r[5]) if r[5] else None,
+            'altitude_media': float(r[5]) if r[5] else None,
             'observacoes': r[6],
             'data_cadastro': r[7],
             'ativo': r[8],
             'espacamento': espacamento,
             'produtor_id': r[10],
-            'pes_cafe': pes_cafe
-        })
-    return lista
-
-def buscar_talhao_por_id(talhao_id):
-    """Busca um talhão pelo ID, com aliases e cálculo de pés de café."""
-    query = """
-    SELECT 
-        id, nome, area_hectares, data_plantio, variedade_cafe,
-        altitude_media, observacoes, data_cadastro, ativo,
-        espacamento, produtor_id
-    FROM talhoes 
-    WHERE id = %s
-    """
-    r = executar_query(query, (talhao_id,), fetch_one=True)
-    if not r:
+            'latitude': float(r[11]) if r[11] else None,
+            'longitude': float(r[12]) if r[12] else None,
+            'foto_url': r[13] if r[13] else None,
+            'pes_cafe': pes_cafe,
+            'formula_pes': formula
+        }
+    except Exception as e:
+        print(f"Erro ao buscar talhão: {e}")
         return None
 
-    area = float(r[2]) if r[2] is not None else 0.0
-    variedade = r[4] if r[4] else ''
-    altitude = float(r[5]) if r[5] is not None else None
-    espacamento = r[9] if r[9] else None
-
-    pes_cafe = 0
-    if espacamento:
-        try:
-            esp = str(espacamento).lower().replace(',', '.')
-            partes = [p.strip() for p in esp.split('x')]
-            if len(partes) >= 2:
-                el = float(partes[0])
-                ep = float(partes[1])
-                if el > 0 and ep > 0:
-                    plantas_por_ha = 10000.0 / (el * ep)
-                    pes_cafe = int(round(plantas_por_ha * area))
-        except Exception:
-            pes_cafe = 0
-
-    return {
-        'id': r[0],
-        'nome': r[1],
-        'area': area,
-        'area_hectares': area,
-        'data_plantio': r[3],
-        'variedade': variedade,
-        'variedade_cafe': variedade,
-        'altitude': altitude,
-        'altitude_media': altitude,
-        'observacoes': r[6],
-        'data_cadastro': r[7],
-        'ativo': r[8],
-        'espacamento': espacamento,
-        'produtor_id': r[10],
-        'pes_cafe': pes_cafe
-    }
-
-def inserir_talhao(dados_ou_nome, area=None, numero_pes=None, variedade=None, 
-                   espacamento_rua=None, espacamento_planta=None, data_plantio=None, 
-                   altitude=None, observacoes=None, espacamento=None):
-    """Insere um novo talhão no banco."""
-    if isinstance(dados_ou_nome, dict):
-        d = dados_ou_nome
-        nome = d.get('nome')
-        area = d.get('area') or d.get('area_hectares')
-        data_plantio = d.get('data_plantio') or None
-        variedade = d.get('variedade') or d.get('variedade_cafe') or ''
-        altitude = d.get('altitude') or d.get('altitude_media') or None
-        observacoes = d.get('observacoes') or ''
-        espacamento = d.get('espacamento') or None
+def inserir_talhao(dados):
+    """Insere um novo talhão."""
+    if isinstance(dados, dict):
+        nome = dados.get('nome')
+        area = dados.get('area') or dados.get('area_hectares')
+        data_plantio = dados.get('data_plantio') or None
+        variedade = dados.get('variedade') or dados.get('variedade_cafe') or ''
+        altitude = dados.get('altitude') or dados.get('altitude_media') or None
+        observacoes = dados.get('observacoes') or ''
+        espacamento = dados.get('espacamento') or None
+        latitude = dados.get('latitude') or None
+        longitude = dados.get('longitude') or None
+        foto_url = dados.get('foto_url') or None
     else:
-        nome = dados_ou_nome
-        if espacamento is None and espacamento_rua and espacamento_planta:
-            espacamento = f"{espacamento_rua} x {espacamento_planta}"
+        return None
 
     query = """
-    INSERT INTO talhoes (nome, area_hectares, data_plantio, variedade_cafe, altitude_media, observacoes, espacamento, ativo)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id
+    INSERT INTO talhoes (nome, area_hectares, data_plantio, variedade_cafe, altitude_media, observacoes, espacamento, latitude, longitude, foto_url)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    RETURNING id
     """
-    result = executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento), fetch_one=True)
-    return result[0] if result else None
+    try:
+        resultado = executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento, latitude, longitude, foto_url), fetch_one=True)
+        return resultado[0] if resultado else None
+    except Exception as e:
+        print(f"Erro ao inserir talhão: {e}")
+        return None
 
-def atualizar_talhao(talhao_id, dados_ou_nome, area=None, numero_pes=None, variedade=None, 
-                      espacamento_rua=None, espacamento_planta=None, data_plantio=None, 
-                      altitude=None, observacoes=None, espacamento=None):
+def atualizar_talhao(talhao_id, dados):
     """Atualiza um talhão existente."""
-    if isinstance(dados_ou_nome, dict):
-        d = dados_ou_nome
-        nome = d.get('nome')
-        area = d.get('area') or d.get('area_hectares')
-        data_plantio = d.get('data_plantio') or None
-        variedade = d.get('variedade') or d.get('variedade_cafe') or ''
-        altitude = d.get('altitude') or d.get('altitude_media') or None
-        observacoes = d.get('observacoes') or ''
-        espacamento = d.get('espacamento') or None
+    if isinstance(dados, dict):
+        nome = dados.get('nome')
+        area = dados.get('area') or dados.get('area_hectares')
+        data_plantio = dados.get('data_plantio') or None
+        variedade = dados.get('variedade') or dados.get('variedade_cafe') or ''
+        altitude = dados.get('altitude') or dados.get('altitude_media') or None
+        observacoes = dados.get('observacoes') or ''
+        espacamento = dados.get('espacamento') or None
+        latitude = dados.get('latitude') or None
+        longitude = dados.get('longitude') or None
+        foto_url = dados.get('foto_url') or None
     else:
-        nome = dados_ou_nome
-        if espacamento is None and espacamento_rua and espacamento_planta:
-            espacamento = f"{espacamento_rua} x {espacamento_planta}"
+        return False
 
     query = """
-    UPDATE talhoes SET 
-        nome = %s, area_hectares = %s, data_plantio = %s, 
-        variedade_cafe = %s, altitude_media = %s, observacoes = %s, 
-        espacamento = %s
+    UPDATE talhoes SET
+        nome = %s, area_hectares = %s, data_plantio = %s,
+        variedade_cafe = %s, altitude_media = %s, observacoes = %s,
+        espacamento = %s, latitude = %s, longitude = %s, foto_url = %s
     WHERE id = %s
     """
-    executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento, talhao_id))
-    return True
+    try:
+        executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento, latitude, longitude, foto_url, talhao_id))
+        return True
+    except Exception as e:
+        print(f"Erro ao atualizar talhão: {e}")
+        return False
 
 def excluir_talhao(talhao_id):
-    """Desativa ou exclui o talhão."""
+    """Desativa um talhão (exclusão lógica)."""
     query = "UPDATE talhoes SET ativo = FALSE WHERE id = %s"
-    executar_query(query, (talhao_id,))
-    return True
+    try:
+        executar_query(query, (talhao_id,))
+        return True
+    except Exception as e:
+        print(f"Erro ao excluir talhão: {e}")
+        return False
 
-def gerar_pdf_talhoes(talhoes):
-    """Gera um PDF com a lista de talhões."""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=landscape(A4),
-        rightMargin=1.5*cm,
-        leftMargin=1.5*cm,
-        topMargin=1.5*cm,
-        bottomMargin=1.5*cm
-    )
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'Title',
-        parent=styles['Heading1'],
-        fontSize=16,
-        leading=20,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor('#2C5F2D')
-    )
-    
-    elements = []
-    elements.append(Paragraph("<b>Fazenda Café - Relatório de Talhões</b>", title_style))
-    elements.append(Spacer(1, 0.5*cm))
-    
-    data = [["ID", "Nome", "Área (ha)", "Variedade", "Espaçamento", "Pés Est.", "Altitude (m)", "Data Plantio"]]
-    for t in talhoes:
-        dt_str = t['data_plantio'].strftime('%d/%m/%Y') if t.get('data_plantio') and hasattr(t['data_plantio'], 'strftime') else (str(t.get('data_plantio') or '—'))
-        data.append([
-            str(t.get('id', '')),
-            str(t.get('nome', '')),
-            f"{t.get('area', 0):.2f}",
-            str(t.get('variedade', '') or '—'),
-            str(t.get('espacamento', '') or '—'),
-            f"{t.get('pes_cafe', 0):,}".replace(',', '.') if t.get('pes_cafe') else '—',
-            f"{t.get('altitude', 0):.0f}" if t.get('altitude') else '—',
-            dt_str
-        ])
-    
-    t = Table(data, repeatRows=1)
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C5F2D')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')])
-    ]))
-    elements.append(t)
-    
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
+def get_historico_talhao(talhao_id):
+    """Retorna histórico de atividades de um talhão."""
+    historico = []
+
+    # Pulverizações
+    try:
+        query = """
+        SELECT data_aplicacao, 'Pulverização' as tipo, r.nome as detalhe, ap.responsavel
+        FROM aplicacoes_pulverizacao ap
+        LEFT JOIN receitas r ON r.id = ap.receita_id
+        WHERE ap.talhao_id = %s
+        ORDER BY data_aplicacao DESC LIMIT 20
+        """
+        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        for r in resultado:
+            historico.append({
+                'data': r[0], 'tipo': r[1], 'detalhe': r[2] or 'Sem receita', 'responsavel': r[3] or '—'
+            })
+    except Exception:
+        pass
+
+    # Análises
+    try:
+        query = """
+        SELECT data_coleta, 'Análise' as tipo, tp.nome as detalhe, '—' as responsavel
+        FROM analises a
+        JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
+        WHERE a.talhao_id = %s AND a.ativo = TRUE
+        ORDER BY data_coleta DESC LIMIT 20
+        """
+        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        for r in resultado:
+            historico.append({
+                'data': r[0], 'tipo': r[1], 'detalhe': r[2], 'responsavel': r[3]
+            })
+    except Exception:
+        pass
+
+    # Manejos do mato
+    try:
+        query = """
+        SELECT data_manejo, 'Manejo de Mato' as tipo, tipo_manejo as detalhe, responsavel
+        FROM manejos_mato
+        WHERE talhao_id = %s
+        ORDER BY data_manejo DESC LIMIT 20
+        """
+        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        for r in resultado:
+            historico.append({
+                'data': r[0], 'tipo': r[1], 'detalhe': r[2], 'responsavel': r[3] or '—'
+            })
+    except Exception:
+        pass
+
+    # Ordenar por data
+    historico.sort(key=lambda x: x['data'] if x['data'] else None, reverse=True)
+    return historico[:30]

@@ -1,40 +1,44 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from app.modules import talhoes
 from datetime import datetime
-from app.modules.login_manager import login_required, admin_required
 import io
 import csv
 
-talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
+try:
+    from app.modules.login_manager import login_required, admin_required
+except Exception:
+    from app.modules.login_manager import login_required
+    admin_required = login_required
 
-def limpar_vazio(valor):
-    if valor is None or valor == '':
-        return None
-    return valor
+talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
 
 @talhoes_bp.route('/')
 @login_required
 def listar():
+    """Lista todos os talhões."""
     try:
         lista_talhoes = talhoes.listar_talhoes()
         return render_template('talhoes/lista.html', talhoes=lista_talhoes)
     except Exception as e:
-        flash('Erro ao carregar a lista de talhões.', 'error')
+        print(f"Erro ao listar talhões: {e}")
         return render_template('talhoes/lista.html', talhoes=[])
 
 @talhoes_bp.route('/novo', methods=['GET', 'POST'])
 @login_required
 def novo():
+    """Cadastra um novo talhão."""
     if request.method == 'POST':
         try:
             dados = {
                 'nome': request.form.get('nome'),
-                'area': limpar_vazio(request.form.get('area')),
-                'variedade': request.form.get('variedade') or '',
-                'data_plantio': limpar_vazio(request.form.get('data_plantio')),
-                'altitude': limpar_vazio(request.form.get('altitude')),
-                'espacamento': limpar_vazio(request.form.get('espacamento')),
-                'observacoes': request.form.get('observacoes') or ''
+                'area': request.form.get('area'),
+                'data_plantio': request.form.get('data_plantio'),
+                'variedade': request.form.get('variedade'),
+                'altitude': request.form.get('altitude'),
+                'observacoes': request.form.get('observacoes'),
+                'espacamento': request.form.get('espacamento'),
+                'latitude': request.form.get('latitude'),
+                'longitude': request.form.get('longitude'),
             }
             talhoes.inserir_talhao(dados)
             flash('Talhão cadastrado com sucesso!', 'success')
@@ -47,12 +51,14 @@ def novo():
 @talhoes_bp.route('/<int:id>')
 @login_required
 def detalhe(id):
+    """Exibe detalhes de um talhão."""
     try:
         talhao = talhoes.buscar_talhao_por_id(id)
         if not talhao:
             flash('Talhão não encontrado.', 'warning')
             return redirect(url_for('talhoes.listar'))
-        return render_template('talhoes/detalhe.html', talhao=talhao, datetime=datetime)
+        historico = talhoes.get_historico_talhao(id)
+        return render_template('talhoes/detalhe.html', talhao=talhao, historico=historico, datetime=datetime)
     except Exception as e:
         flash('Erro ao carregar detalhes do talhão.', 'error')
         return redirect(url_for('talhoes.listar'))
@@ -60,22 +66,25 @@ def detalhe(id):
 @talhoes_bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(id):
+    """Edita um talhão existente."""
     if request.method == 'POST':
         try:
             dados = {
                 'nome': request.form.get('nome'),
-                'area': limpar_vazio(request.form.get('area')),
-                'variedade': request.form.get('variedade') or '',
-                'data_plantio': limpar_vazio(request.form.get('data_plantio')),
-                'altitude': limpar_vazio(request.form.get('altitude')),
-                'espacamento': limpar_vazio(request.form.get('espacamento')),
-                'observacoes': request.form.get('observacoes') or ''
+                'area': request.form.get('area'),
+                'data_plantio': request.form.get('data_plantio'),
+                'variedade': request.form.get('variedade'),
+                'altitude': request.form.get('altitude'),
+                'observacoes': request.form.get('observacoes'),
+                'espacamento': request.form.get('espacamento'),
+                'latitude': request.form.get('latitude'),
+                'longitude': request.form.get('longitude'),
             }
             talhoes.atualizar_talhao(id, dados)
             flash('Talhão atualizado com sucesso!', 'success')
             return redirect(url_for('talhoes.detalhe', id=id))
         except Exception as e:
-            flash(f'Erro ao atualizar talhão: {e}', 'error')
+            flash(f'Erro ao atualizar: {e}', 'error')
     try:
         talhao = talhoes.buscar_talhao_por_id(id)
         if not talhao:
@@ -87,9 +96,10 @@ def editar(id):
         return redirect(url_for('talhoes.listar'))
 
 @talhoes_bp.route('/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir(id):
+    """Exclui um talhão (exclusão lógica)."""
     try:
         talhoes.excluir_talhao(id)
         flash('Talhão excluído com sucesso!', 'success')
@@ -97,39 +107,24 @@ def excluir(id):
         flash('Erro ao excluir talhão.', 'error')
     return redirect(url_for('talhoes.listar'))
 
-@talhoes_bp.route('/pdf')
-@login_required
-def gerar_pdf():
-    try:
-        lista_talhoes = talhoes.listar_talhoes()
-        pdf_buffer = talhoes.gerar_pdf_talhoes(lista_talhoes)
-        return send_file(pdf_buffer, mimetype='application/pdf',
-                        as_attachment=True, download_name='talhoes.pdf')
-    except Exception as e:
-        flash('Erro ao gerar PDF.', 'error')
-        return redirect(url_for('talhoes.listar'))
-
 @talhoes_bp.route('/exportar-csv')
 @login_required
 def exportar_csv():
-    """Exporta lista de talhões para CSV."""
+    """Exporta talhões para CSV."""
     try:
-        talhoes_lista = talhoes.listar_talhoes()
+        lista = talhoes.listar_talhoes()
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(['ID', 'Nome', 'Area (ha)', 'Data Plantio', 'Variedade', 'Altitude (m)', 'Espacamento', 'Pes Cafe'])
-        for t in talhoes_lista:
+        writer.writerow(['ID', 'Nome', 'Area (ha)', 'Plantio', 'Variedade', 'Altitude', 'Espacamento', 'Pes Cafe', 'Latitude', 'Longitude'])
+        for t in lista:
             writer.writerow([
-                t.get('id', ''),
-                t.get('nome', ''),
-                t.get('area', 0),
-                t.get('data_plantio', ''),
-                t.get('variedade', ''),
-                t.get('altitude', ''),
-                t.get('espacamento', ''),
-                t.get('pes_cafe', 0)
+                t.get('id', ''), t.get('nome', ''), t.get('area', 0),
+                t.get('data_plantio', ''), t.get('variedade', ''),
+                t.get('altitude', ''), t.get('espacamento', ''),
+                t.get('pes_cafe', 0), t.get('latitude', ''), t.get('longitude', '')
             ])
         output.seek(0)
+        from flask import Response
         return Response(
             output.getvalue(),
             mimetype='text/csv',
