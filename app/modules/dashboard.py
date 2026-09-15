@@ -57,16 +57,16 @@ def get_atividades_recentes(limite=10):
     LIMIT %s
     """
     try:
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         atividades = []
         for r in resultado:
             atividades.append({
-                'data': r[0],
-                'talhao': r[1],
-                'periodo': r[2],
-                'receita': r[3] or 'Não informada',
-                'responsavel': r[4] or 'Não informado',
-                'id': r[5]
+                'data': r['data_aplicacao'],
+                'talhao': r['talhao'],
+                'periodo': r['periodo'],
+                'receita': r['receita'] or 'Não informada',
+                'responsavel': r['responsavel'] or 'Não informado',
+                'id': r['id']
             })
         return atividades
     except Exception as e:
@@ -98,16 +98,16 @@ def get_alertas_retorno():
     ORDER BY ap.data_prevista_retorno ASC
     """
     try:
-        resultado = executar_query(query, (limite, limite), fetch_all=True)
+        resultado = executar_query(query, (limite, limite), fetch_all=True, dict_cursor=True)
         alertas = []
         for r in resultado:
             alertas.append({
-                'id': r[0],
-                'talhao': r[1],
-                'data_aplicacao': r[2],
-                'data_retorno': r[3],
-                'periodo': r[4],
-                'status': r[5]
+                'id': r['id'],
+                'talhao': r['talhao'],
+                'data_aplicacao': r['data_aplicacao'],
+                'data_retorno': r['data_prevista_retorno'],
+                'periodo': r['periodo'],
+                'status': r['status']
             })
         return alertas
     except Exception as e:
@@ -180,12 +180,12 @@ def get_tipos_pragas():
     GROUP BY pd.tipo
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         tipos = []
         dados = []
         for r in resultado:
-            tipos.append(r[0].capitalize() + 's')
-            dados.append(r[1])
+            tipos.append(r['tipo'].capitalize() + 's')
+            dados.append(r['total'])
         return {'labels': tipos, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
@@ -256,14 +256,14 @@ def get_produtos_estoque_baixo(limite=5):
         ORDER BY quantidade_atual ASC
         LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         produtos = []
         for r in resultado:
             produtos.append({
-                'id': r[0], 'nome': r[1],
-                'quantidade': float(r[2]) if r[2] else 0,
-                'minimo': float(r[3]) if r[3] else 0,
-                'unidade': r[4]
+                'id': r['id'], 'nome': r['nome'],
+                'quantidade': float(r['quantidade_atual']) if r['quantidade_atual'] else 0,
+                'minimo': float(r['estoque_minimo']) if r['estoque_minimo'] else 0,
+                'unidade': r['unidade']
             })
         return produtos
     except Exception:
@@ -282,11 +282,12 @@ def get_ultimas_analises(limite=3):
         ORDER BY a.data_coleta DESC
         LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         analises = []
         for r in resultado:
             analises.append({
-                'id': r[0], 'data': r[1], 'talhao': r[2], 'tipo': r[3], 'status': r[4]
+                'id': r['id'], 'data': r['data_coleta'], 'talhao': r['talhao'],
+                'tipo': r['tipo'], 'status': r['status']
             })
         return analises
     except Exception:
