@@ -242,20 +242,20 @@ def gerar_relatorio_pulverizacoes(data_inicio=None, data_fim=None):
         params = [data_inicio, data_fim]
 
     try:
-        resultado = executar_query(query, tuple(params) if params else None, fetch_all=True)
+        resultado = executar_query(query, tuple(params) if params else None, fetch_all=True, dict_cursor=True)
     except Exception:
         resultado = []
 
     dados = []
     for r in resultado:
         dados.append([
-            r[0].strftime('%d/%m/%Y') if r[0] else '—',
-            r[1] or '—',
-            r[2] or '—',
-            r[3] or '—',
-            r[4] or 'Não informada',
-            r[5].strftime('%d/%m/%Y') if r[5] else '—',
-            r[6] or '—'
+            r['data_aplicacao'].strftime('%d/%m/%Y') if r['data_aplicacao'] else '—',
+            r['talhao'] or '—',
+            r['periodo'] or '—',
+            r['responsavel'] or '—',
+            r['receita'] or 'Não informada',
+            r['data_prevista_retorno'].strftime('%d/%m/%Y') if r['data_prevista_retorno'] else '—',
+            r['status_retorno'] or '—'
         ])
 
     colunas = ['Data', 'Talhão', 'Período', 'Responsável', 'Receita', 'Data Retorno', 'Status']
