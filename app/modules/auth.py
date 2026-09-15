@@ -141,7 +141,7 @@ def desativar_usuario(user_id, admin_id):
         return False, str(e)
 
 def alterar_nivel_usuario(user_id, novo_tipo, admin_id):
-    if novo_tipo not in ['admin', 'user', 'agronomista', 'produtor']:
+    if novo_tipo not in ['admin', 'operador', 'agronomista', 'produtor', 'user']:
         return False, "Tipo invalido"
     try:
         executar_query("UPDATE usuarios SET tipo = %s WHERE id = %s", (novo_tipo, user_id))
