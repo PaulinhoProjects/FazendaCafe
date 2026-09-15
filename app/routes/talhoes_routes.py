@@ -4,11 +4,10 @@ from datetime import datetime
 import io
 import csv
 
-try:
-    from app.modules.login_manager import login_required, admin_required
-except Exception:
-    from app.modules.login_manager import login_required
-    admin_required = login_required
+from app.modules.login_manager import login_required, admin_required
+from app.models import get_logger
+
+logger = get_logger(__name__)
 
 talhoes_bp = Blueprint('talhoes', __name__, url_prefix='/talhoes')
 
