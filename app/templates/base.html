@@ -24,8 +24,7 @@
         <li class="sidebar-section-label">Manejo do Cafezal</li>
         <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}"><i class="bi bi-tools"></i>Visão Geral</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}"><i class="bi bi-tree"></i>Manejo do Mato</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li> 
         <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
         <li class="sidebar-section-label">Insumos</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque</a></li>

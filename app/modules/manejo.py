@@ -56,26 +56,6 @@ def get_timeline_manejo(limite=30):
     except Exception as e:
         print(f"Erro ao buscar adubacoes no manejo: {e}")
 
-    # Manejos de Mato
-    try:
-        query = """
-        SELECT m.id, m.talhao_id, m.data_manejo, 'Manejo de Mato' as tipo, t.nome as talhao,
-        m.tipo_manejo as detalhe, m.responsavel, NULL as data_retorno, NULL as status_retorno
-        FROM manejos_mato m
-        JOIN talhoes t ON t.id = m.talhao_id
-        ORDER BY m.data_manejo DESC LIMIT %s
-        """
-        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
-        for r in resultado:
-            timeline.append({
-                'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_manejo'], 'tipo': r['tipo'], 'talhao': r['talhao'],
-                'detalhe': r['detalhe'] or 'Nao informado', 'responsavel': r['responsavel'] or 'Nao informado',
-                'data_retorno': r['data_retorno'], 'status_retorno': r['status_retorno'],
-                'icone': 'bi-tree', 'cor': 'info',
-                'url': '/manejo-mato/' + str(r['id'])
-            })
-    except Exception as e:
-        print(f"Erro ao buscar manejos mato no manejo: {e}")
 
     # Analises
     try:
@@ -128,16 +108,6 @@ def get_resumo_manejo():
         resumo['adubacoes_ano'] = resultado[0] if resultado and resultado[0] else 0
     except Exception:
         resumo['adubacoes_ano'] = 0
-
-    # Manejos de mato no ano
-    try:
-        resultado = executar_query("""
-            SELECT COUNT(*) FROM manejos_mato
-            WHERE EXTRACT(YEAR FROM data_manejo) = EXTRACT(YEAR FROM CURRENT_DATE)
-        """, fetch_one=True)
-        resumo['manejos_mato_ano'] = resultado[0] if resultado and resultado[0] else 0
-    except Exception:
-        resumo['manejos_mato_ano'] = 0
 
     # Analises pendentes
     try:

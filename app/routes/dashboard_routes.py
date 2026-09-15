@@ -27,7 +27,7 @@ def index():
             get_pragas_por_talhao, get_aplicacoes_por_periodo,
             get_aplicacoes_ultimos_6_meses, get_tipos_pragas,
             get_resumo_estoque, get_resumo_analises, get_resumo_pdfs,
-            get_produtos_estoque_baixo, get_ultimas_analises, get_ultimos_manejos
+            get_produtos_estoque_baixo, get_ultimas_analises
         )
 
         resumo = get_resumo_geral()
@@ -42,7 +42,6 @@ def index():
         resumo_pdfs = get_resumo_pdfs()
         produtos_baixo = get_produtos_estoque_baixo(5)
         ultimas_analises = get_ultimas_analises(3)
-        ultimos_manejos = get_ultimos_manejos(3)
 
         clima_atual = None
         try:
@@ -59,7 +58,7 @@ def index():
             grafico_tipos_pragas=grafico_tipos_pragas,
             resumo_estoque=resumo_estoque, resumo_analises=resumo_analises,
             resumo_pdfs=resumo_pdfs, produtos_baixo=produtos_baixo,
-            ultimas_analises=ultimas_analises, ultimos_manejos=ultimos_manejos,
+            ultimas_analises=ultimas_analises,
             clima_atual=clima_atual,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima
@@ -77,7 +76,7 @@ def index():
             resumo_estoque={'total_produtos': 0, 'estoque_baixo': 0, 'total_itens': 0},
             resumo_analises={'analises_ano': 0, 'pendentes': 0},
             resumo_pdfs={'total_pdfs': 0, 'pdfs_mes': 0},
-            produtos_baixo=[], ultimas_analises=[], ultimos_manejos=[],
+            produtos_baixo=[], ultimas_analises=[],
             clima_atual=None,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima

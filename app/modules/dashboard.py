@@ -293,23 +293,3 @@ def get_ultimas_analises(limite=3):
     except Exception:
         return []
 
-def get_ultimos_manejos(limite=3):
-    """Retorna os últimos manejos do mato"""
-    try:
-        query = """
-        SELECT m.id, m.data_manejo, t.nome as talhao, m.tipo_manejo
-        FROM manejos_mato m
-        JOIN talhoes t ON t.id = m.talhao_id
-        ORDER BY m.data_manejo DESC
-        LIMIT %s
-        """
-        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
-        manejos = []
-        for r in resultado:
-            manejos.append({
-                'id': r['id'], 'data': r['data_manejo'],
-                'talhao': r['talhao'], 'tipo': r['tipo_manejo']
-            })
-        return manejos
-    except Exception:
-        return []

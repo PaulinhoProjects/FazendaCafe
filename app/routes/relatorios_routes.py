@@ -54,17 +54,3 @@ def rel_analises():
         flash('Erro ao gerar relatório de análises.', 'error')
         return redirect(url_for('dashboard.index'))
 
-@relatorios_bp.route('/manejos')
-@login_required
-def rel_manejos():
-    try:
-        pdf = relatorios.gerar_relatorio_manejos()
-        return send_file(
-            pdf,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='relatorio_manejos.pdf'
-        )
-    except Exception as e:
-        flash('Erro ao gerar relatório de manejos.', 'error')
-        return redirect(url_for('dashboard.index'))

@@ -87,12 +87,6 @@ def create_app(config_class=Config):
         print(f"Aviso: blueprint analises nao carregado: {e}")
 
     try:
-        from app.routes.manejo_mato_routes import manejo_mato_bp
-        app.register_blueprint(manejo_mato_bp)
-    except Exception as e:
-        print(f"Aviso: blueprint manejo_mato nao carregado: {e}")
-
-    try:
         from app.routes.manejo_routes import manejo_bp
         app.register_blueprint(manejo_bp)
     except Exception as e:

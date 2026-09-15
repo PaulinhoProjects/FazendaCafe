@@ -270,22 +270,5 @@ def get_historico_talhao(talhao_id):
     except Exception:
         pass
 
-    # Manejos do mato
-    try:
-        query = """
-        SELECT data_manejo, 'Manejo de Mato' as tipo, tipo_manejo as detalhe, responsavel
-        FROM manejos_mato
-        WHERE talhao_id = %s
-        ORDER BY data_manejo DESC LIMIT 20
-        """
-        resultado = executar_query(query, (talhao_id,), fetch_all=True, dict_cursor=True)
-        for r in resultado:
-            historico.append({
-                'data': r['data_manejo'], 'tipo': r['tipo'],
-                'detalhe': r['detalhe'], 'responsavel': r['responsavel'] or '—'
-            })
-    except Exception:
-        pass
-
     historico.sort(key=lambda x: x['data'] if x['data'] else None, reverse=True)
     return historico[:30]
