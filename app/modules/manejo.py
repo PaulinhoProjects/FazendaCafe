@@ -15,21 +15,21 @@ def get_timeline_manejo(limite=30):
     # Pulverizacoes
     try:
         query = """
-        SELECT ap.id, ap.data_aplicacao, 'Pulverizacao' as tipo, t.nome as talhao,
+        SELECT ap.id, ap.talhao_id, ap.data_aplicacao, 'Pulverizacao' as tipo, t.nome as talhao,
         r.nome as detalhe, ap.responsavel, ap.data_prevista_retorno, ap.status_retorno
         FROM aplicacoes_pulverizacao ap
         JOIN talhoes t ON t.id = ap.talhao_id
         LEFT JOIN receitas r ON r.id = ap.receita_id
         ORDER BY ap.data_aplicacao DESC LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             timeline.append({
-                'id': r[0], 'data': r[1], 'tipo': r[2], 'talhao': r[3],
-                'detalhe': r[4] or 'Sem receita', 'responsavel': r[5] or 'Nao informado',
-                'data_retorno': r[6], 'status_retorno': r[7],
+                'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_aplicacao'], 'tipo': r['tipo'], 'talhao': r['talhao'],
+                'detalhe': r['detalhe'] or 'Sem receita', 'responsavel': r['responsavel'] or 'Nao informado',
+                'data_retorno': r['data_prevista_retorno'], 'status_retorno': r['status_retorno'],
                 'icone': 'bi-spray', 'cor': 'primary',
-                'url': '/pulverizacao/aplicacoes/' + str(r[0])
+                'url': '/pulverizacao/aplicacoes/' + str(r['id'])
             })
     except Exception as e:
         print(f"Erro ao buscar pulverizacoes no manejo: {e}")
@@ -37,21 +37,21 @@ def get_timeline_manejo(limite=30):
     # Adubacoes
     try:
         query = """
-        SELECT a.id, a.data_aplicacao, 'Adubacao' as tipo, t.nome as talhao,
-        ta.nome as detalhe, a.responsavel, NULL, NULL
+        SELECT a.id, a.talhao_id, a.data_aplicacao, 'Adubacao' as tipo, t.nome as talhao,
+        ta.nome as detalhe, a.responsavel, NULL as data_retorno, NULL as status_retorno
         FROM adubacoes a
         JOIN talhoes t ON t.id = a.talhao_id
         LEFT JOIN tipos_adubacao ta ON ta.id = a.tipo_adubacao_id
         ORDER BY a.data_aplicacao DESC LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             timeline.append({
-                'id': r[0], 'data': r[1], 'tipo': r[2], 'talhao': r[3],
-                'detalhe': r[4] or 'Sem tipo', 'responsavel': r[5] or 'Nao informado',
-                'data_retorno': r[6], 'status_retorno': r[7],
+                'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_aplicacao'], 'tipo': r['tipo'], 'talhao': r['talhao'],
+                'detalhe': r['detalhe'] or 'Sem tipo', 'responsavel': r['responsavel'] or 'Nao informado',
+                'data_retorno': r['data_retorno'], 'status_retorno': r['status_retorno'],
                 'icone': 'bi-droplet-half', 'cor': 'success',
-                'url': '/adubacao/adubacoes/' + str(r[0])
+                'url': '/adubacao/adubacoes/' + str(r['id'])
             })
     except Exception as e:
         print(f"Erro ao buscar adubacoes no manejo: {e}")
@@ -59,20 +59,20 @@ def get_timeline_manejo(limite=30):
     # Manejos de Mato
     try:
         query = """
-        SELECT m.id, m.data_manejo, 'Manejo de Mato' as tipo, t.nome as talhao,
-        m.tipo_manejo as detalhe, m.responsavel, NULL, NULL
+        SELECT m.id, m.talhao_id, m.data_manejo, 'Manejo de Mato' as tipo, t.nome as talhao,
+        m.tipo_manejo as detalhe, m.responsavel, NULL as data_retorno, NULL as status_retorno
         FROM manejos_mato m
         JOIN talhoes t ON t.id = m.talhao_id
         ORDER BY m.data_manejo DESC LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             timeline.append({
-                'id': r[0], 'data': r[1], 'tipo': r[2], 'talhao': r[3],
-                'detalhe': r[4] or 'Nao informado', 'responsavel': r[5] or 'Nao informado',
-                'data_retorno': r[6], 'status_retorno': r[7],
+                'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_manejo'], 'tipo': r['tipo'], 'talhao': r['talhao'],
+                'detalhe': r['detalhe'] or 'Nao informado', 'responsavel': r['responsavel'] or 'Nao informado',
+                'data_retorno': r['data_retorno'], 'status_retorno': r['status_retorno'],
                 'icone': 'bi-tree', 'cor': 'info',
-                'url': '/manejo-mato/' + str(r[0])
+                'url': '/manejo-mato/' + str(r['id'])
             })
     except Exception as e:
         print(f"Erro ao buscar manejos mato no manejo: {e}")
@@ -80,23 +80,23 @@ def get_timeline_manejo(limite=30):
     # Analises
     try:
         query = """
-        SELECT a.id, a.data_coleta, 'Analise' as tipo, t.nome as talhao,
-        tp.nome as detalhe, 'Nao informado', NULL,
-        CASE WHEN a.data_resultado IS NULL THEN 'Pendente' ELSE 'Concluida' END
+        SELECT a.id, a.talhao_id, a.data_coleta, 'Analise' as tipo, t.nome as talhao,
+        tp.nome as detalhe, 'Nao informado' as responsavel, NULL as data_retorno,
+        CASE WHEN a.data_resultado IS NULL THEN 'Pendente' ELSE 'Concluida' END as status_retorno
         FROM analises a
         JOIN talhoes t ON t.id = a.talhao_id
         JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
         WHERE a.ativo = TRUE
         ORDER BY a.data_coleta DESC LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             timeline.append({
-                'id': r[0], 'data': r[1], 'tipo': r[2], 'talhao': r[3],
-                'detalhe': r[4], 'responsavel': r[5],
-                'data_retorno': r[6], 'status_retorno': r[7],
+                'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_coleta'], 'tipo': r['tipo'], 'talhao': r['talhao'],
+                'detalhe': r['detalhe'], 'responsavel': r['responsavel'],
+                'data_retorno': r['data_retorno'], 'status_retorno': r['status_retorno'],
                 'icone': 'bi-clipboard-data', 'cor': 'warning',
-                'url': '/analises/' + str(r[0])
+                'url': '/analises/' + str(r['id'])
             })
     except Exception as e:
         print(f"Erro ao buscar analises no manejo: {e}")
@@ -173,4 +173,4 @@ def get_resumo_manejo():
 def get_manejo_por_talhao(talhao_id):
     """Retorna timeline de manejo de um talhao especifico."""
     timeline = get_timeline_manejo(50)
-    return [t for t in timeline if t.get('talhao') == talhao_id or t.get('talhao_id') == talhao_id]
+    return [t for t in timeline if t.get('talhao_id') == talhao_id]
