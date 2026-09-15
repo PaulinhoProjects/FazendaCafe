@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 import time
 from dotenv import load_dotenv
+from contextlib import contextmanager
 
 load_dotenv()
 
@@ -90,33 +91,36 @@ class ConexaoBanco:
 # FUNÇÕES AUXILIARES DE QUERY
 # =====================================================
 
-def executar_query(query, parametros=None, fetch_one=False, fetch_all=False):
+def executar_query(query, parametros=None, fetch_one=False, fetch_all=False, dict_cursor=False):
     """
-    Função genérica para executar queries SQL
+    Função genérica para executar queries SQL.
+    dict_cursor=True  -> retorna dicts (linha['campo']) em vez de tuplas (r[0], r[1]...)
+    dict_cursor=False -> comportamento idêntico ao original (nada quebra)
     """
     conn = None
     cursor = None
     resultado = None
     tentativas = 0
     max_tentativas = 3
-    
+
     while tentativas < max_tentativas:
         try:
             conn = ConexaoBanco.get_conexao()
             if not conn:
                 raise Exception("Não foi possível obter conexão com o banco")
-            
-            cursor = conn.cursor()
+
+            from psycopg2.extras import RealDictCursor
+            cursor = conn.cursor(cursor_factory=RealDictCursor if dict_cursor else None)
             cursor.execute(query, parametros or ())
-            
+
             if fetch_one:
                 resultado = cursor.fetchone()
             elif fetch_all:
                 resultado = cursor.fetchall()
-            
+
             conn.commit()
             return resultado
-            
+
         except Exception as e:
             print(f"Erro na query (tentativa {tentativas + 1}): {e}")
             if conn:
@@ -129,7 +133,7 @@ def executar_query(query, parametros=None, fetch_one=False, fetch_all=False):
                 time.sleep(1)
             else:
                 raise e
-                
+
         finally:
             if cursor:
                 cursor.close()
@@ -256,3 +260,43 @@ if __name__ == "__main__":
         ConexaoBanco.fechar_pool()
     else:
         print("Falha ao inicializar pool de conexões")
+
+
+# =====================================================
+# TRANSAÇÕES ATÔMICAS
+# =====================================================
+
+@contextmanager
+def transacao():
+    """
+    Executa várias queries em UMA única transação atômica.
+    Só comita no final; se qualquer passo falhar, desfaz TUDO.
+
+    Uso:
+        with transacao() as cur:
+            cur.execute("INSERT ... RETURNING id", (...,))
+            mov_id = cur.fetchone()[0]
+            cur.execute("UPDATE ...", (...,))
+    """
+    conn = ConexaoBanco.get_conexao()
+    if not conn:
+        raise Exception("Não foi possível obter conexão com o banco")
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        yield cursor
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except:
+            pass
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        ConexaoBanco.liberar_conexao(conn)
+
+def executar_query_dict(query, parametros=None, fetch_one=False, fetch_all=False):
+    """Atalho: executar_query com dict_cursor=True (nomes de campo em vez de índices)."""
+    return executar_query(query, parametros, fetch_one=fetch_one, fetch_all=fetch_all, dict_cursor=True)
