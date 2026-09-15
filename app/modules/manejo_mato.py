@@ -34,19 +34,19 @@ def listar_manejos(talhao_id=None):
         params = None
 
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         manejos = []
         for r in resultado:
             manejos.append({
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'data_manejo': r[3],
-                'tipo_manejo': r[4],
-                'produtos': r[5],
-                'dosagem': r[6],
-                'responsavel': r[7],
-                'observacoes': r[8]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'data_manejo': r['data_manejo'],
+                'tipo_manejo': r['tipo_manejo'],
+                'produtos': r['produtos'],
+                'dosagem': r['dosagem'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes']
             })
         return manejos
     except Exception as e:
@@ -64,18 +64,18 @@ def buscar_manejo_por_id(id):
     WHERE m.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'data_manejo': r[3],
-                'tipo_manejo': r[4],
-                'produtos': r[5],
-                'dosagem': r[6],
-                'responsavel': r[7],
-                'observacoes': r[8]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'data_manejo': r['data_manejo'],
+                'tipo_manejo': r['tipo_manejo'],
+                'produtos': r['produtos'],
+                'dosagem': r['dosagem'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes']
             }
         return None
     except Exception as e:
