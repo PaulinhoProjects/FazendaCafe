@@ -52,5 +52,4 @@ Acesse no navegador: `http://localhost:5000`
 
 ---
 
-## 📄 Documentação Completa
-Para detalhes aprofundados sobre a arquitetura, modelo de dados, tabelas e guia para IA, consulte o arquivo [DOCUMENTACAO_SISTEMA_CLAUDE.md](DOCUMENTACAO_SISTEMA_CLAUDE.md).
+.
