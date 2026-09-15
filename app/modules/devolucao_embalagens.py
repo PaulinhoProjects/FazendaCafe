@@ -27,27 +27,27 @@ def listar_devolucoes(data_inicio=None, data_fim=None):
     WHERE ativo = TRUE
     """
     params = []
-    
+
     if data_inicio and data_fim:
         query += " AND data_devolucao BETWEEN %s AND %s"
         params.extend([data_inicio, data_fim])
-    
+
     query += " ORDER BY data_devolucao DESC, id DESC"
-    
+
     try:
-        resultado = executar_query(query, params if params else None, fetch_all=True)
+        resultado = executar_query(query, params if params else None, fetch_all=True, dict_cursor=True)
         devolucoes = []
         for r in resultado:
             devolucoes.append({
-                'id': r[0],
-                'data_devolucao': r[1],
-                'local_devolucao': r[2],
-                'quantidade_embalagens': r[3],
-                'nome_responsavel': r[4],
-                'numero_comprovante': r[5],
-                'arquivo_pdf': r[6],
-                'observacoes': r[7],
-                'data_cadastro': r[8]
+                'id': r['id'],
+                'data_devolucao': r['data_devolucao'],
+                'local_devolucao': r['local_devolucao'],
+                'quantidade_embalagens': r['quantidade_embalagens'],
+                'nome_responsavel': r['nome_responsavel'],
+                'numero_comprovante': r['numero_comprovante'],
+                'arquivo_pdf': r['arquivo_pdf'],
+                'observacoes': r['observacoes'],
+                'data_cadastro': r['data_cadastro']
             })
         return devolucoes
     except Exception as e:
@@ -64,18 +64,18 @@ def buscar_devolucao_por_id(id):
     WHERE id = %s AND ativo = TRUE
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'data_devolucao': r[1],
-                'local_devolucao': r[2],
-                'quantidade_embalagens': r[3],
-                'nome_responsavel': r[4],
-                'numero_comprovante': r[5],
-                'arquivo_pdf': r[6],
-                'observacoes': r[7],
-                'data_cadastro': r[8]
+                'id': r['id'],
+                'data_devolucao': r['data_devolucao'],
+                'local_devolucao': r['local_devolucao'],
+                'quantidade_embalagens': r['quantidade_embalagens'],
+                'nome_responsavel': r['nome_responsavel'],
+                'numero_comprovante': r['numero_comprovante'],
+                'arquivo_pdf': r['arquivo_pdf'],
+                'observacoes': r['observacoes'],
+                'data_cadastro': r['data_cadastro']
             }
         return None
     except Exception as e:
