@@ -40,68 +40,79 @@ def get_coordenadas(cidade, uf, pais):
         print(f"Erro ao obter coordenadas: {e}")
         return None
 
-def get_clima_atual():
-    """Obtém clima atual com cache de 30 minutos."""
-    if _cache_valido() and _CACHE['clima'] is not None:
-        return _CACHE['clima']
+def _vento_cardinal(graus):
+    """Converte graus (0-360) em direção cardinal (N, NE, L, SE...)."""
+    direcoes = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO']
+    if graus is None:
+        return '-'
+    try:
+        idx = int(((graus % 360) + 22.5) // 45) % 8
+        return direcoes[idx]
+    except (TypeError, ValueError):
+        return '-'
 
+def get_clima_atual():
+    """Obtém clima atual com dados completos para o dashboard."""
     try:
         coords = get_coordenadas(CIDADE, UF, PAIS)
         if not coords:
             return None
 
         url = f"https://api.openweathermap.org/data/2.5/weather?lat={coords['lat']}&lon={coords['lon']}&appid={API_KEY}&units=metric&lang=pt_br"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         data = response.json()
 
         if response.status_code == 200:
+            vento_deg = data['wind'].get('deg')
             clima = {
                 'cidade': coords['nome'],
                 'temperatura': round(data['main']['temp'], 1),
                 'sensacao': round(data['main']['feels_like'], 1),
+                'temp_min': round(data['main'].get('temp_min', data['main']['temp']), 1),
+                'temp_max': round(data['main'].get('temp_max', data['main']['temp']), 1),
                 'umidade': data['main']['humidity'],
                 'pressao': data['main']['pressure'],
+                'nebulosidade': data.get('clouds', {}).get('all', 0),
                 'vento_velocidade': round(data['wind']['speed'] * 3.6, 1),
-                'vento_direcao': data['wind']['deg'] if 'deg' in data['wind'] else 0,
+                'vento_direcao': vento_deg if vento_deg is not None else 0,
+                'vento_cardinal': _vento_cardinal(vento_deg),
                 'descricao': data['weather'][0]['description'].capitalize(),
-                'icone': data['weather'][0]['icon'],
-                'codigo': data['weather'][0]['main'],
+                'condition': data['weather'][0]['main'],
                 'nascer_sol': datetime.fromtimestamp(data['sys']['sunrise']).strftime('%H:%M'),
                 'por_sol': datetime.fromtimestamp(data['sys']['sunset']).strftime('%H:%M'),
                 'atualizacao': datetime.now().strftime('%H:%M')
             }
+
             clima['alertas'] = gerar_alertas(clima)
-            _CACHE['clima'] = clima
-            _CACHE['timestamp'] = datetime.now()
             return clima
-        return None
+        else:
+            print(f"Erro na API de clima. Código: {response.status_code}")
+            return None
+
     except Exception as e:
-        print(f"Erro ao buscar clima: {e}")
+        print(f"Exceção ao buscar clima: {e}")
         return None
 
 def get_previsao():
-    """Obtém previsão para os próximos dias"""
+    """Obtém previsão para os próximos dias."""
     try:
         coords = get_coordenadas(CIDADE, UF, PAIS)
         if not coords:
             return None
-        
+
         url = f"https://api.openweathermap.org/data/2.5/forecast?lat={coords['lat']}&lon={coords['lon']}&appid={API_KEY}&units=metric&lang=pt_br"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         data = response.json()
-        
+
         if response.status_code == 200:
             previsoes = []
             dias_vistos = set()
-            
+
             for item in data['list']:
                 data_hora = datetime.fromtimestamp(item['dt'])
                 dia = data_hora.strftime('%Y-%m-%d')
-                
-                # Pegar apenas uma previsão por dia (por volta do meio-dia)
-                if dia not in dias_vistos and data_hora.hour >= 11 and data_hora.hour <= 14:
+                if dia not in dias_vistos and 11 <= data_hora.hour <= 14:
                     dias_vistos.add(dia)
-                    
                     previsoes.append({
                         'data': data_hora.strftime('%d/%m'),
                         'dia_semana': data_hora.strftime('%A').capitalize(),
@@ -109,14 +120,13 @@ def get_previsao():
                         'temp_max': round(item['main']['temp_max'], 1),
                         'umidade': item['main']['humidity'],
                         'descricao': item['weather'][0]['description'].capitalize(),
-                        'icone': item['weather'][0]['icon'],
-                        'chuva': item.get('rain', {}).get('3h', 0),
+                        'condition': item['weather'][0]['main'],
+                        'chuva': round(item.get('rain', {}).get('3h', 0), 1),
                         'vento': round(item['wind']['speed'] * 3.6, 1)
                     })
-                    
                     if len(previsoes) >= 5:
                         break
-            
+
             return previsoes
         return None
     except Exception as e:

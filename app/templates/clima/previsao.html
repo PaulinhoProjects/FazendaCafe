@@ -1,29 +1,44 @@
 {% extends "base.html" %}
 {% block titulo %}Previsão do Tempo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('clima.index') }}">Clima</a></li>
+<li class="breadcrumb-item active">Previsão 5 dias</li>
+{% endblock %}
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-calendar-week me-2"></i>Previsão — 5 dias</h2>
-        <a href="{{ url_for('clima.index') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-calendar-week me-2"></i>Previsão do Tempo</h1>
+        <p class="page-subtitle">Próximos 5 dias</p>
     </div>
-    {% if previsoes %}
-    <div class="row">
-        {% for p in previsoes %}
-        <div class="col-md-2 mb-3">
-            <div class="card text-center shadow-sm">
-                <div class="card-body">
-                    <h6>{{ p.data|format_data if p.data else '-' }}</h6>
-                    <i class="bi {{ get_icone_clima(p.condition) if p.condition else 'bi-cloud' }}" style="font-size:2rem"></i>
-                    <p class="mt-2 mb-0"><strong>{{ p.temp_max }}°</strong> / {{ p.temp_min }}°</p>
-                    <small class="text-muted">{{ p.descricao|title if p.descricao else '-' }}</small>
-                    <br><small>💧 {{ p.umidade }}%</small>
+    <div>
+        <a href="{{ url_for('clima.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Voltar ao clima atual</a>
+    </div>
+</div>
+
+{% if previsoes %}
+<div class="row g-3">
+    {% for p in previsoes %}
+    <div class="col-6 col-md-4 col-lg mb-3">
+        <div class="card shadow-sm border-0 text-center h-100">
+            <div class="card-body">
+                <div class="fw-semibold">{{ p.dia_semana }}</div>
+                <div class="text-muted small">{{ p.data }}</div>
+                <i class="bi {{ get_icone_clima(p.condition) }} text-primary my-2 d-block" style="font-size:2.2rem"></i>
+                <div class="fs-4 fw-bold">{{ p.temp_max|int }}° <small class="fs-6 text-muted">/ {{ p.temp_min|int }}°</small></div>
+                <div class="small text-muted">{{ p.descricao }}</div>
+                <hr class="my-2">
+                <div class="small">
+                    <span class="me-2" title="Umidade"><i class="bi bi-droplet-half text-info"></i> {{ p.umidade }}%</span>
+                    <span class="me-2" title="Vento"><i class="bi bi-wind text-secondary"></i> {{ p.vento }} km/h</span>
+                    <span title="Chuva prevista"><i class="bi bi-cloud-rain text-primary"></i> {{ p.chuva }} mm</span>
                 </div>
             </div>
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div class="alert alert-warning">Não foi possível carregar a previsão.</div>
-    {% endif %}
+    {% endfor %}
 </div>
+{% else %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Não foi possível carregar a previsão do tempo.</div>
+{% endif %}
 {% endblock %}
