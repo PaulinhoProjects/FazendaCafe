@@ -4,7 +4,7 @@ Módulo de Dashboard e Estatísticas
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query
+from database import executar_query, executar_query_dict
 from datetime import datetime, timedelta
 
 def get_resumo_geral():
@@ -126,9 +126,9 @@ def get_pragas_por_talhao():
     LIMIT 10
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
-        labels = [r[0] for r in resultado]
-        dados = [r[1] for r in resultado]
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
+        labels = [r['nome'] for r in resultado]
+        dados = [r['total'] for r in resultado]
         return {'labels': labels, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
@@ -143,9 +143,9 @@ def get_aplicacoes_por_periodo():
     ORDER BY total DESC
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
-        labels = [r[0] for r in resultado]
-        dados = [r[1] for r in resultado]
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
+        labels = [r['nome'] for r in resultado]
+        dados = [r['total'] for r in resultado]
         return {'labels': labels, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
@@ -160,13 +160,13 @@ def get_aplicacoes_ultimos_6_meses():
     ORDER BY mes ASC
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         meses = []
         dados = []
         for r in resultado:
-            ano, mes = r[0].split('-')
+            ano, mes = r['mes'].split('-')
             meses.append(f"{mes}/{ano}")
-            dados.append(r[1])
+            dados.append(r['total'])
         return {'labels': meses, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
