@@ -53,11 +53,11 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Latitude (GPS)</label>
-                    <input type="number" step="any" name="latitude" class="form-control" value="{{ talhao.latitude or '' }}">
+                    <input type="number" step="any" min="-90" max="90" name="latitude" class="form-control" value="{{ talhao.latitude or '' }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Longitude (GPS)</label>
-                    <input type="number" step="any" name="longitude" class="form-control" value="{{ talhao.longitude or '' }}">
+                    <input type="number" step="any" min="-180" max="180" name="longitude" class="form-control" value="{{ talhao.longitude or '' }}">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Observações</label>
