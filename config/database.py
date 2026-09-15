@@ -109,8 +109,11 @@ def executar_query(query, parametros=None, fetch_one=False, fetch_all=False, dic
             if not conn:
                 raise Exception("Não foi possível obter conexão com o banco")
 
-            from psycopg2.extras import RealDictCursor
-            cursor = conn.cursor(cursor_factory=RealDictCursor if dict_cursor else None)
+            if dict_cursor:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                cursor = conn.cursor()
             cursor.execute(query, parametros or ())
 
             if fetch_one:
