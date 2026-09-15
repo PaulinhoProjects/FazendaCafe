@@ -42,8 +42,7 @@ def create_app(config_class=Config):
 
     # Context processors
     try:
-        from app.context_processors import alertas_context, config_context
-        app.context_processor(alertas_context)
+        from app.context_processors import config_context
         app.context_processor(config_context)
     except Exception as e:
         print(f"Aviso: context processors não carregados: {e}")
