@@ -15,7 +15,7 @@ from reportlab.lib.units import cm
 from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query
+from database import executar_query, executar_query_dict, transacao
 
 # =====================================================
 # FUNÇÕES AUXILIARES
@@ -82,17 +82,17 @@ def buscar_produto_por_id(id):
     WHERE id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'nome': r[1],
-                'unidade': r[2],
-                'estoque_minimo': r[3],
-                'quantidade_atual': float(r[4]) if r[4] else 0,
-                'observacoes': r[5],
-                'ativo': r[6],
-                'categoria': r[7]
+                'id': r['id'],
+                'nome': r['nome'],
+                'unidade': r['unidade'],
+                'estoque_minimo': r['estoque_minimo'],
+                'quantidade_atual': r['quantidade_atual'],
+                'observacoes': r['observacoes'],
+                'ativo': r['ativo'],
+                'categoria': r['categoria'],
             }
         return None
     except Exception as e:
@@ -153,32 +153,28 @@ def excluir_produto(id):
 # =====================================================
 
 def registrar_movimentacao(dados):
-    """Registra entrada/saída e atualiza o saldo do produto"""
+    """Registra entrada/saída e atualiza o saldo do produto (ATÔMICO)"""
     try:
-        # Inserir movimentação
-        query_mov = """
-        INSERT INTO movimentacoes_estoque 
-            (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes)
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """
-        mov_id = executar_query(query_mov,
-            (dados['produto_id'], dados['tipo'], dados['quantidade'],
-             dados.get('unidade'), dados['data_movimento'],
-             dados.get('valor_unitario'), dados.get('observacoes')),
-            fetch_one=True)
-        
-        if not mov_id:
-            return None
-        
-        # Atualizar quantidade atual do produto
-        if dados['tipo'] == 'entrada':
-            update_saldo = "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s"
-        else:
-            update_saldo = "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s"
-        
-        executar_query(update_saldo, (dados['quantidade'], dados['produto_id']))
-        
-        return mov_id[0]
+        with transacao() as cur:
+            query_mov = """
+            INSERT INTO movimentacoes_estoque 
+                (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """
+            cur.execute(query_mov, (
+                dados['produto_id'], dados['tipo'], dados['quantidade'],
+                dados.get('unidade'), dados.get('data_movimento'),
+                dados.get('valor_unitario'), dados.get('observacoes')
+            ))
+            mov_id = cur.fetchone()[0]
+
+            if dados['tipo'] == 'entrada':
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                            (dados['quantidade'], dados['produto_id']))
+            else:
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
+                            (dados['quantidade'], dados['produto_id']))
+        return mov_id
     except Exception as e:
         print(f"Erro ao registrar movimentação: {e}")
         return None
@@ -267,48 +263,37 @@ def buscar_movimentacao_por_id(id):
         return None
 
 def atualizar_movimentacao(id, dados_novos):
-    """Atualiza uma movimentação e ajusta o saldo do produto"""
+    """Atualiza uma movimentação e ajusta o saldo do produto (ATÔMICO)"""
     try:
-        # Buscar movimentação antiga
         mov_antiga = buscar_movimentacao_por_id(id)
         if not mov_antiga:
             return False
-        
-        # Reverter o efeito da movimentação antiga
-        if mov_antiga['tipo'] == 'entrada':
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                (mov_antiga['quantidade'], mov_antiga['produto_id'])
-            )
-        else:
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                (mov_antiga['quantidade'], mov_antiga['produto_id'])
-            )
-        
-        # Aplicar o efeito da nova movimentação
-        if dados_novos['tipo'] == 'entrada':
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                (dados_novos['quantidade'], dados_novos['produto_id'])
-            )
-        else:
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                (dados_novos['quantidade'], dados_novos['produto_id'])
-            )
-        
-        # Atualizar a movimentação
-        query = """
-        UPDATE movimentacoes_estoque
-        SET produto_id=%s, tipo=%s, quantidade=%s, unidade=%s,
-            data_movimento=%s, valor_unitario=%s, observacoes=%s
-        WHERE id=%s
-        """
-        executar_query(query,
-            (dados_novos['produto_id'], dados_novos['tipo'], dados_novos['quantidade'],
-             dados_novos.get('unidade'), dados_novos['data_movimento'],
-             dados_novos.get('valor_unitario'), dados_novos.get('observacoes'), id))
+
+        with transacao() as cur:
+            # Reverter o efeito da movimentação antiga
+            if mov_antiga['tipo'] == 'entrada':
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
+                            (mov_antiga['quantidade'], mov_antiga['produto_id']))
+            else:
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                            (mov_antiga['quantidade'], mov_antiga['produto_id']))
+
+            # Aplicar o efeito da movimentação nova
+            if dados_novos['tipo'] == 'entrada':
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                            (dados_novos['quantidade'], dados_novos['produto_id']))
+            else:
+                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
+                            (dados_novos['quantidade'], dados_novos['produto_id']))
+
+            cur.execute("""
+                UPDATE movimentacoes_estoque
+                SET produto_id=%s, tipo=%s, quantidade=%s, unidade=%s,
+                    data_movimento=%s, valor_unitario=%s, observacoes=%s
+                WHERE id=%s
+            """, (dados_novos['produto_id'], dados_novos['tipo'], dados_novos['quantidade'],
+                  dados_novos.get('unidade'), dados_novos.get('data_movimento'),
+                  dados_novos.get('valor_unitario'), dados_novos.get('observacoes'), id))
         return True
     except Exception as e:
         print(f"Erro ao atualizar movimentação: {e}")
@@ -354,29 +339,16 @@ def excluir_movimentacao(id):
         if conn:
             ConexaoBanco.liberar_conexao(conn)
 
-def listar_movimentacoes_por_periodo(data_inicio, data_fim):
-    """Lista movimentações em um período específico"""
-    query = """
-    SELECT m.id, p.nome as produto_nome, m.tipo, m.quantidade,
-           m.unidade, m.data_movimento, m.valor_unitario, m.observacoes
-    FROM movimentacoes_estoque m
-    JOIN produtos_estoque p ON p.id = m.produto_id
-    WHERE m.data_movimento BETWEEN %s AND %s
-    ORDER BY m.data_movimento DESC
-    """
     try:
-        resultado = executar_query(query, (data_inicio, data_fim), fetch_all=True)
+        resultado = executar_query(query, (data_inicio, data_fim), fetch_all=True, dict_cursor=True)
         movs = []
         for r in resultado:
             movs.append({
-                'id': r[0],
-                'produto_nome': r[1],
-                'tipo': r[2],
-                'quantidade': float(r[3]) if r[3] else 0,
-                'unidade': r[4],
-                'data_movimento': r[5],
-                'valor_unitario': float(r[6]) if r[6] else None,
-                'observacoes': r[7]
+                'id': r['id'], 'produto_nome': r['produto_nome'], 'tipo': r['tipo'],
+                'quantidade': r['quantidade'], 'unidade': r['unidade'],
+                'data_movimento': r['data_movimento'],
+                'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
+                'observacoes': r['observacoes']
             })
         return movs
     except Exception as e:
@@ -667,13 +639,13 @@ def get_consumo_ultimos_6_meses():
     ORDER BY mes ASC
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         meses = []
         dados = []
         for r in resultado:
-            ano, mes = r[0].split('-')
+            ano, mes = r['mes'].split('-')
             meses.append(f"{mes}/{ano}")
-            dados.append(float(r[1]) if r[1] else 0)
+            dados.append(float(r['total']) if r['total'] else 0)
         return {'labels': meses, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
@@ -690,9 +662,9 @@ def get_top_produtos_consumo(limite=10):
     LIMIT %s
     """
     try:
-        resultado = executar_query(query, (limite,), fetch_all=True)
-        labels = [r[0] for r in resultado]
-        dados = [float(r[1]) if r[1] else 0 for r in resultado]
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
+        labels = [r['nome'] for r in resultado]
+        dados = [float(r['total']) if r['total'] else 0 for r in resultado]
         return {'labels': labels, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}
