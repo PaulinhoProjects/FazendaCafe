@@ -16,8 +16,8 @@ from datetime import datetime
 def listar_tipos_adubacao():
     query = "SELECT id, nome, descricao FROM tipos_adubacao WHERE ativo = TRUE ORDER BY nome"
     try:
-        resultado = executar_query(query, fetch_all=True)
-        return [{'id': r[0], 'nome': r[1], 'descricao': r[2]} for r in resultado] if resultado else []
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
+        return [{'id': r['id'], 'nome': r['nome'], 'descricao': r['descricao']} for r in resultado] if resultado else []
     except Exception as e:
         print(f"Erro ao listar tipos: {e}")
         return []
@@ -39,15 +39,15 @@ def gerar_recomendacao_automatica(analise_id):
         JOIN parametros_analise p ON p.id = r.parametro_id
         WHERE r.analise_id = %s
         """
-        resultados = executar_query(query_resultados, (analise_id,), fetch_all=True)
-        
+        resultados = executar_query(query_resultados, (analise_id,), fetch_all=True, dict_cursor=True)
+
         if not resultados:
             return None, "Análise sem resultados"
-        
+
         # Converter para dicionário
         valores = {}
         for r in resultados:
-            valores[r[0]] = float(r[1]) if r[1] else 0
+            valores[r['nome']] = float(r['valor']) if r['valor'] else 0
         
         # Regras básicas de recomendação (exemplo simplificado)
         recomendacoes = []
@@ -178,22 +178,22 @@ def listar_recomendacoes(talhao_id=None):
         LIMIT 100
         """
         params = None
-    
+
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         recomendacoes = []
         for r in resultado:
             recomendacoes.append({
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'analise_id': r[3],
-                'analise_data': r[4],
-                'data_recomendacao': r[5],
-                'data_validade': r[6],
-                'responsavel': r[7],
-                'observacoes': r[8],
-                'status': r[9]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'analise_id': r['analise_id'],
+                'analise_data': r['analise_data'],
+                'data_recomendacao': r['data_recomendacao'],
+                'data_validade': r['data_validade'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes'],
+                'status': r['status']
             })
         return recomendacoes
     except Exception as e:
@@ -213,19 +213,19 @@ def buscar_recomendacao_por_id(id):
     WHERE r.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'analise_id': r[3],
-                'analise_data': r[4],
-                'data_recomendacao': r[5],
-                'data_validade': r[6],
-                'responsavel': r[7],
-                'observacoes': r[8],
-                'status': r[9]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'analise_id': r['analise_id'],
+                'analise_data': r['analise_data'],
+                'data_recomendacao': r['data_recomendacao'],
+                'data_validade': r['data_validade'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes'],
+                'status': r['status']
             }
         return None
     except Exception as e:
@@ -241,16 +241,16 @@ def listar_itens_recomendacao(recomendacao_id):
     ORDER BY nutriente
     """
     try:
-        resultado = executar_query(query, (recomendacao_id,), fetch_all=True)
+        resultado = executar_query(query, (recomendacao_id,), fetch_all=True, dict_cursor=True)
         itens = []
         for r in resultado:
             itens.append({
-                'id': r[0],
-                'nutriente': r[1],
-                'quantidade': float(r[2]) if r[2] else 0,
-                'unidade': r[3],
-                'fonte': r[4],
-                'observacoes': r[5]
+                'id': r['id'],
+                'nutriente': r['nutriente'],
+                'quantidade': float(r['quantidade_recomendada']) if r['quantidade_recomendada'] else 0,
+                'unidade': r['unidade'],
+                'fonte': r['fonte_recomendada'],
+                'observacoes': r['observacoes']
             })
         return itens
     except Exception as e:
@@ -331,19 +331,19 @@ def buscar_adubacao_por_id(id):
     WHERE a.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'recomendacao_id': r[3],
-                'recomendacao_data': r[4],
-                'tipo_id': r[5],
-                'tipo_nome': r[6],
-                'data_aplicacao': r[7],
-                'responsavel': r[8],
-                'observacoes': r[9]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'recomendacao_id': r['recomendacao_id'],
+                'recomendacao_data': r['data_recomendacao'],
+                'tipo_id': r['tipo_adubacao_id'],
+                'tipo_nome': r['tipo_nome'],
+                'data_aplicacao': r['data_aplicacao'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes']
             }
         return None
     except Exception as e:
@@ -358,17 +358,17 @@ def listar_produtos_adubacao(adubacao_id):
     WHERE adubacao_id = %s
     """
     try:
-        resultado = executar_query(query, (adubacao_id,), fetch_all=True)
+        resultado = executar_query(query, (adubacao_id,), fetch_all=True, dict_cursor=True)
         produtos = []
         for r in resultado:
             produtos.append({
-                'id': r[0],
-                'nome': r[1],
-                'quantidade': float(r[2]) if r[2] else 0,
-                'unidade': r[3],
-                'custo': float(r[4]) if r[4] else None,
-                'fornecedor': r[5],
-                'observacoes': r[6]
+                'id': r['id'],
+                'nome': r['produto_nome'],
+                'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
+                'unidade': r['unidade'],
+                'custo': float(r['custo_unitario']) if r['custo_unitario'] else None,
+                'fornecedor': r['fornecedor'],
+                'observacoes': r['observacoes']
             })
         return produtos
     except Exception as e:
@@ -383,14 +383,14 @@ def listar_nutrientes_aplicados(adubacao_id):
     WHERE adubacao_id = %s
     """
     try:
-        resultado = executar_query(query, (adubacao_id,), fetch_all=True)
+        resultado = executar_query(query, (adubacao_id,), fetch_all=True, dict_cursor=True)
         nutrientes = []
         for r in resultado:
             nutrientes.append({
-                'id': r[0],
-                'nutriente': r[1],
-                'quantidade': float(r[2]) if r[2] else 0,
-                'unidade': r[3]
+                'id': r['id'],
+                'nutriente': r['nutriente'],
+                'quantidade': float(r['quantidade_aplicada']) if r['quantidade_aplicada'] else 0,
+                'unidade': r['unidade']
             })
         return nutrientes
     except Exception as e:
@@ -412,19 +412,19 @@ def listar_adubacoes(limite=100):
     LIMIT %s
     """
     try:
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         adubacoes = []
         for r in resultado:
             adubacoes.append({
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'recomendacao_id': r[3],
-                'recomendacao_data': r[4],
-                'tipo_id': r[5],
-                'tipo_nome': r[6],
-                'data_aplicacao': r[7],
-                'responsavel': r[8]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'recomendacao_id': r['recomendacao_id'],
+                'recomendacao_data': r['data_recomendacao'],
+                'tipo_id': r['tipo_adubacao_id'],
+                'tipo_nome': r['tipo_nome'],
+                'data_aplicacao': r['data_aplicacao'],
+                'responsavel': r['responsavel']
             })
         return adubacoes
     except Exception as e:
