@@ -28,7 +28,7 @@
         <li class="sidebar-item"><a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}"><i class="bi bi-tree"></i>Manejo do Mato</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
         <li class="sidebar-section-label">Insumos</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque{% if alertas_globais and alertas_globais.count_estoque_baixo > 0 %}</span>{% endif %}</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}"><i class="bi bi-receipt"></i>Notas Fiscais</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}"><i class="bi bi-recycle"></i>Devolução de Embalagens</a></li>
         <li class="sidebar-section-label">Ambiente</li>
