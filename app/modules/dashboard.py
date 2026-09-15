@@ -303,11 +303,12 @@ def get_ultimos_manejos(limite=3):
         ORDER BY m.data_manejo DESC
         LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
         manejos = []
         for r in resultado:
             manejos.append({
-                'id': r[0], 'data': r[1], 'talhao': r[2], 'tipo': r[3]
+                'id': r['id'], 'data': r['data_manejo'],
+                'talhao': r['talhao'], 'tipo': r['tipo_manejo']
             })
         return manejos
     except Exception:
