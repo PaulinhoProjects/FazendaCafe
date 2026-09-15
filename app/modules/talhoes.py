@@ -6,7 +6,7 @@ import sys
 import os
 import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query
+from database import executar_query, executar_query_dict
 
 def criar_tabela_talhoes():
     """Cria a tabela de talhões se não existir."""
@@ -108,30 +108,30 @@ def buscar_talhao_por_id(talhao_id):
     WHERE id = %s
     """
     try:
-        r = executar_query(query, (talhao_id,), fetch_one=True)
+        r = executar_query(query, (talhao_id,), fetch_one=True, dict_cursor=True)
         if not r:
             return None
-        area = float(r[2]) if r[2] else 0.0
-        espacamento = r[9] if r[9] else None
+        area = float(r['area_hectares']) if r['area_hectares'] else 0.0
+        espacamento = r['espacamento'] if r['espacamento'] else None
         pes_cafe, formula = calcular_pes_cafe(area, espacamento)
         return {
-            'id': r[0],
-            'nome': r[1],
+            'id': r['id'],
+            'nome': r['nome'],
             'area': area,
             'area_hectares': area,
-            'data_plantio': r[3],
-            'variedade': r[4] if r[4] else 'Não informada',
-            'variedade_cafe': r[4] if r[4] else 'Não informada',
-            'altitude': float(r[5]) if r[5] else None,
-            'altitude_media': float(r[5]) if r[5] else None,
-            'observacoes': r[6],
-            'data_cadastro': r[7],
-            'ativo': r[8],
+            'data_plantio': r['data_plantio'],
+            'variedade': r['variedade_cafe'] if r['variedade_cafe'] else 'Não informada',
+            'variedade_cafe': r['variedade_cafe'] if r['variedade_cafe'] else 'Não informada',
+            'altitude': float(r['altitude_media']) if r['altitude_media'] else None,
+            'altitude_media': float(r['altitude_media']) if r['altitude_media'] else None,
+            'observacoes': r['observacoes'],
+            'data_cadastro': r['data_cadastro'],
+            'ativo': r['ativo'],
             'espacamento': espacamento,
-            'produtor_id': r[10],
-            'latitude': float(r[11]) if r[11] else None,
-            'longitude': float(r[12]) if r[12] else None,
-            'foto_url': r[13] if r[13] else None,
+            'produtor_id': r['produtor_id'],
+            'latitude': float(r['latitude']) if r['latitude'] else None,
+            'longitude': float(r['longitude']) if r['longitude'] else None,
+            'foto_url': r['foto_url'] if r['foto_url'] else None,
             'pes_cafe': pes_cafe,
             'formula_pes': formula
         }
@@ -220,10 +220,11 @@ def get_historico_talhao(talhao_id):
         WHERE ap.talhao_id = %s
         ORDER BY data_aplicacao DESC LIMIT 20
         """
-        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        resultado = executar_query(query, (talhao_id,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             historico.append({
-                'data': r[0], 'tipo': r[1], 'detalhe': r[2] or 'Sem receita', 'responsavel': r[3] or '—'
+                'data': r['data_aplicacao'], 'tipo': r['tipo'],
+                'detalhe': r['detalhe'] or 'Sem receita', 'responsavel': r['responsavel'] or '—'
             })
     except Exception:
         pass
@@ -237,10 +238,11 @@ def get_historico_talhao(talhao_id):
         WHERE a.talhao_id = %s AND a.ativo = TRUE
         ORDER BY data_coleta DESC LIMIT 20
         """
-        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        resultado = executar_query(query, (talhao_id,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             historico.append({
-                'data': r[0], 'tipo': r[1], 'detalhe': r[2], 'responsavel': r[3]
+                'data': r['data_coleta'], 'tipo': r['tipo'],
+                'detalhe': r['detalhe'], 'responsavel': r['responsavel']
             })
     except Exception:
         pass
@@ -253,14 +255,14 @@ def get_historico_talhao(talhao_id):
         WHERE talhao_id = %s
         ORDER BY data_manejo DESC LIMIT 20
         """
-        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        resultado = executar_query(query, (talhao_id,), fetch_all=True, dict_cursor=True)
         for r in resultado:
             historico.append({
-                'data': r[0], 'tipo': r[1], 'detalhe': r[2], 'responsavel': r[3] or '—'
+                'data': r['data_manejo'], 'tipo': r['tipo'],
+                'detalhe': r['detalhe'], 'responsavel': r['responsavel'] or '—'
             })
     except Exception:
         pass
 
-    # Ordenar por data
     historico.sort(key=lambda x: x['data'] if x['data'] else None, reverse=True)
     return historico[:30]
