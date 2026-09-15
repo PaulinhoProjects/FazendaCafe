@@ -16,10 +16,10 @@ from datetime import datetime
 def listar_periodos():
     query = "SELECT id, nome, descricao FROM periodos_lavoura WHERE ativo = TRUE ORDER BY nome"
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        return [{'id': r[0], 'nome': r[1], 'descricao': r[2]} for r in resultado]
+        return [{'id': r['id'], 'nome': r['nome'], 'descricao': r['descricao']} for r in resultado]
     except Exception as e:
         print(f"Erro ao listar períodos: {e}")
         return []
@@ -35,12 +35,12 @@ def listar_receitas(periodo_id=None):
     else:
         query = "SELECT id, nome, periodo_id, descricao, formula_completa FROM receitas WHERE ativo = TRUE ORDER BY nome"
         params = None
-    
+
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        return [{'id': r[0], 'nome': r[1], 'periodo_id': r[2], 'descricao': r[3], 'formula': r[4]} for r in resultado]
+        return [{'id': r['id'], 'nome': r['nome'], 'periodo_id': r['periodo_id'], 'descricao': r['descricao'], 'formula': r['formula_completa']} for r in resultado]
     except Exception as e:
         print(f"Erro ao listar receitas: {e}")
         return []
@@ -65,16 +65,16 @@ def buscar_receita_por_id(id):
     """Busca uma receita específica"""
     query = "SELECT id, nome, periodo_id, descricao, formula_completa, produtos, observacoes FROM receitas WHERE id = %s"
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'nome': r[1],
-                'periodo_id': r[2],
-                'descricao': r[3],
-                'formula': r[4],
-                'produtos': r[5],
-                'observacoes': r[6]
+                'id': r['id'],
+                'nome': r['nome'],
+                'periodo_id': r['periodo_id'],
+                'descricao': r['descricao'],
+                'formula': r['formula_completa'],
+                'produtos': r['produtos'],
+                'observacoes': r['observacoes']
             }
         return None
     except Exception as e:
@@ -88,7 +88,7 @@ def buscar_receita_por_id(id):
 def listar_aplicacoes(talhao_id=None):
     if talhao_id:
         query = """
-        SELECT ap.id, ap.talhao_id, t.nome as talhao_nome, 
+        SELECT ap.id, ap.talhao_id, t.nome as talhao_nome,
                ap.periodo_id, p.nome as periodo_nome,
                ap.receita_id, r.nome as receita_nome,
                ap.data_aplicacao, ap.data_prevista_retorno,
@@ -105,7 +105,7 @@ def listar_aplicacoes(talhao_id=None):
         params = (talhao_id,)
     else:
         query = """
-        SELECT ap.id, ap.talhao_id, t.nome as talhao_nome, 
+        SELECT ap.id, ap.talhao_id, t.nome as talhao_nome,
                ap.periodo_id, p.nome as periodo_nome,
                ap.receita_id, r.nome as receita_nome,
                ap.data_aplicacao, ap.data_prevista_retorno,
@@ -120,28 +120,28 @@ def listar_aplicacoes(talhao_id=None):
         LIMIT 100
         """
         params = None
-    
+
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         aplicacoes = []
         for r in resultado:
             aplicacoes.append({
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'periodo_id': r[3],
-                'periodo_nome': r[4],
-                'receita_id': r[5],
-                'receita_nome': r[6] if r[6] else 'Receita não informada',
-                'data_aplicacao': r[7],
-                'data_prevista_retorno': r[8],  # ← NOME CORRETO
-                'responsavel': r[9],
-                'condicoes': r[10],
-                'observacoes': r[11],
-                'tipo_aplicacao': r[12],
-                'status_retorno': r[13],        # ← NOVO
-                'observacoes_retorno': r[14],    # ← NOVO
-                'data_retorno_realizado': r[15]  # ← NOVO
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'periodo_id': r['periodo_id'],
+                'periodo_nome': r['periodo_nome'],
+                'receita_id': r['receita_id'],
+                'receita_nome': r['receita_nome'] if r['receita_nome'] else 'Receita não informada',
+                'data_aplicacao': r['data_aplicacao'],
+                'data_prevista_retorno': r['data_prevista_retorno'],
+                'responsavel': r['responsavel'],
+                'condicoes': r['condicoes_climaticas'],
+                'observacoes': r['observacoes'],
+                'tipo_aplicacao': r['tipo_aplicacao'],
+                'status_retorno': r['status_retorno'],
+                'observacoes_retorno': r['observacoes_retorno'],
+                'data_retorno_realizado': r['data_retorno_realizado']
             })
         return aplicacoes
     except Exception as e:
@@ -184,26 +184,26 @@ def buscar_aplicacao_por_id(id):
     WHERE ap.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'periodo_id': r[3],
-                'periodo_nome': r[4],
-                'receita_id': r[5],
-                'receita_nome': r[6],
-                'receita_formula': r[7],
-                'data_aplicacao': r[8],
-                'data_prevista_retorno': r[9],  # ← NOME CORRETO
-                'responsavel': r[10],
-                'condicoes': r[11],
-                'observacoes': r[12],
-                'tipo_aplicacao': r[13],
-                'status_retorno': r[14],        # ← NOVO
-                'observacoes_retorno': r[15],    # ← NOVO
-                'data_retorno_realizado': r[16]  # ← NOVO
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'periodo_id': r['periodo_id'],
+                'periodo_nome': r['periodo_nome'],
+                'receita_id': r['receita_id'],
+                'receita_nome': r['receita_nome'],
+                'receita_formula': r['formula_completa'],
+                'data_aplicacao': r['data_aplicacao'],
+                'data_prevista_retorno': r['data_prevista_retorno'],
+                'responsavel': r['responsavel'],
+                'condicoes': r['condicoes_climaticas'],
+                'observacoes': r['observacoes'],
+                'tipo_aplicacao': r['tipo_aplicacao'],
+                'status_retorno': r['status_retorno'],
+                'observacoes_retorno': r['observacoes_retorno'],
+                'data_retorno_realizado': r['data_retorno_realizado']
             }
         return None
     except Exception as e:
@@ -221,20 +221,20 @@ def listar_pragas_doencas(tipo=None):
     else:
         query = "SELECT id, nome, tipo, nome_cientifico, sintomas FROM pragas_doencas WHERE ativo = TRUE ORDER BY nome"
         params = None
-    
+
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        
+
         pragas = []
         for r in resultado:
             pragas.append({
-                'id': r[0],
-                'nome': r[1],
-                'tipo': r[2],
-                'cientifico': r[3],
-                'sintomas': r[4]
+                'id': r['id'],
+                'nome': r['nome'],
+                'tipo': r['tipo'],
+                'cientifico': r['nome_cientifico'],
+                'sintomas': r['sintomas']
             })
         return pragas
     except Exception as e:
@@ -274,27 +274,27 @@ def listar_ocorrencias_por_talhao(talhao_id):
     ORDER BY op.data_deteccao DESC
     """
     try:
-        resultado = executar_query(query, (talhao_id,), fetch_all=True)
+        resultado = executar_query(query, (talhao_id,), fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        
+
         ocorrencias = []
         for r in resultado:
             ocorrencias.append({
-                'id': r[0],
-                'praga': r[1],
-                'tipo': r[2],
-                'data_deteccao': r[3],
-                'nivel': r[4],
-                'tratado': r[5],
-                'data_tratamento': r[6],
-                'observacoes': r[7]
+                'id': r['id'],
+                'praga': r['praga_nome'],
+                'tipo': r['tipo'],
+                'data_deteccao': r['data_deteccao'],
+                'nivel': r['nivel_infestacao'],
+                'tratado': r['tratado_na_aplicacao'],
+                'data_tratamento': r['data_tratamento'],
+                'observacoes': r['observacoes']
             })
         return ocorrencias
     except Exception as e:
         print(f"Erro ao listar ocorrências: {e}")
         return []
-
+    
 def listar_ocorrencias_por_aplicacao(aplicacao_id):
     """Lista pragas detectadas em uma aplicação"""
     query = """
@@ -304,18 +304,18 @@ def listar_ocorrencias_por_aplicacao(aplicacao_id):
     WHERE op.aplicacao_id = %s
     """
     try:
-        resultado = executar_query(query, (aplicacao_id,), fetch_all=True)
+        resultado = executar_query(query, (aplicacao_id,), fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        
+
         ocorrencias = []
         for r in resultado:
             ocorrencias.append({
-                'id': r[0],
-                'nome': r[1],
-                'tipo': r[2],
-                'nivel': r[3],
-                'observacoes': r[4]
+                'id': r['id'],
+                'nome': r['nome'],
+                'tipo': r['tipo'],
+                'nivel': r['nivel_infestacao'],
+                'observacoes': r['observacoes']
             })
         return ocorrencias
     except Exception as e:
@@ -759,12 +759,12 @@ def buscar_retorno_por_aplicacao(id):
     WHERE id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'status_retorno': r[0],
-                'observacoes_retorno': r[1],
-                'data_retorno_realizado': r[2]
+                'status_retorno': r['status_retorno'],
+                'observacoes_retorno': r['observacoes_retorno'],
+                'data_retorno_realizado': r['data_retorno_realizado']
             }
         return None
     except Exception as e:
