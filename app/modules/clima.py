@@ -25,10 +25,10 @@ def _cache_valido():
 def get_coordenadas(cidade, uf, pais):
     """Obtém coordenadas da cidade"""
     try:
-        url = f"http://api.openweathermap.org/geo/1.0/direct?q={cidade},{uf},{pais}&limit=1&appid={API_KEY}"
+        url = f"https://api.openweathermap.org/geo/1.0/direct?q={cidade},{uf},{pais}&limit=1&appid={API_KEY}"
         response = requests.get(url)
         data = response.json()
-        
+
         if data and len(data) > 0:
             return {
                 'lat': data[0]['lat'],
@@ -41,35 +41,20 @@ def get_coordenadas(cidade, uf, pais):
         return None
 
 def get_clima_atual():
-    """Obtém clima atual com prints de debug"""
-    print("="*50)
-    print("🔍 INICIANDO BUSCA DE CLIMA")
-    print("="*50)
-    
+    """Obtém clima atual com cache de 30 minutos."""
+    if _cache_valido() and _CACHE['clima'] is not None:
+        return _CACHE['clima']
+
     try:
-        # Primeiro pegar coordenadas
-        print(f"📍 Buscando coordenadas para: {CIDADE}, {UF}, {PAIS}")
         coords = get_coordenadas(CIDADE, UF, PAIS)
-        
         if not coords:
-            print("❌ Não foi possível obter coordenadas")
             return None
-            
-        print(f"✅ Coordenadas encontradas: {coords}")
-        
-        # Buscar clima atual
+
         url = f"https://api.openweathermap.org/data/2.5/weather?lat={coords['lat']}&lon={coords['lon']}&appid={API_KEY}&units=metric&lang=pt_br"
-        print(f"🌐 URL da API: {url}")
-        
         response = requests.get(url)
-        print(f"📡 Status code: {response.status_code}")
-        
         data = response.json()
-        print(f"📦 Resposta da API: {data}")
-        
+
         if response.status_code == 200:
-            print("✅ API respondeu com sucesso!")
-            
             clima = {
                 'cidade': coords['nome'],
                 'temperatura': round(data['main']['temp'], 1),
@@ -85,21 +70,13 @@ def get_clima_atual():
                 'por_sol': datetime.fromtimestamp(data['sys']['sunset']).strftime('%H:%M'),
                 'atualizacao': datetime.now().strftime('%H:%M')
             }
-            
-            # Adicionar alertas
             clima['alertas'] = gerar_alertas(clima)
-            
-            print(f"✅ Clima processado: {clima['temperatura']}°C, {clima['descricao']}")
+            _CACHE['clima'] = clima
+            _CACHE['timestamp'] = datetime.now()
             return clima
-        else:
-            print(f"❌ Erro na API. Código: {response.status_code}")
-            print(f"❌ Mensagem: {data}")
-            return None
-            
+        return None
     except Exception as e:
-        print(f"❌ Exceção ao buscar clima: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Erro ao buscar clima: {e}")
         return None
 
 def get_previsao():
