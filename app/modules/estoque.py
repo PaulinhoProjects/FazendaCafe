@@ -639,7 +639,7 @@ def get_valor_por_categoria():
         COALESCE(SUM(p.quantidade_atual * COALESCE((
             SELECT valor_unitario FROM movimentacoes_estoque 
             WHERE produto_id = p.id AND valor_unitario IS NOT NULL 
-            ORDER BY data_movimento DESC LIMIT 1
+            ORDER BY data_movimento DESC, id DESC LIMIT 1
         ), 0)), 0) as valor
     FROM produtos_estoque p
     WHERE p.ativo = TRUE
