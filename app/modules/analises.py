@@ -16,8 +16,8 @@ from datetime import datetime
 def listar_tipos_analise():
     query = "SELECT id, nome FROM tipos_analise WHERE ativo = TRUE ORDER BY nome"
     try:
-        resultado = executar_query(query, fetch_all=True)
-        return [{'id': r[0], 'nome': r[1]} for r in resultado] if resultado else []
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
+        return [{'id': r['id'], 'nome': r['nome']} for r in resultado] if resultado else []
     except Exception as e:
         print(f"Erro ao listar tipos: {e}")
         return []
@@ -34,8 +34,8 @@ def listar_parametros_por_tipo(tipo_analise_id):
     ORDER BY ordem_exibicao
     """
     try:
-        resultado = executar_query(query, (tipo_analise_id,), fetch_all=True)
-        return [{'id': r[0], 'nome': r[1], 'unidade': r[2]} for r in resultado] if resultado else []
+        resultado = executar_query(query, (tipo_analise_id,), fetch_all=True, dict_cursor=True)
+        return [{'id': r['id'], 'nome': r['nome'], 'unidade': r['unidade']} for r in resultado] if resultado else []
     except Exception as e:
         print(f"Erro ao listar parâmetros: {e}")
         return []
@@ -48,24 +48,21 @@ def listar_laboratorios():
     """Retorna lista de laboratórios ativos"""
     query = "SELECT id, nome, responsavel, telefone, email, endereco, observacoes FROM laboratorios WHERE ativo = TRUE ORDER BY nome"
     try:
-        resultado = executar_query(query, fetch_all=True)
-        
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         if not resultado:
             return []
-        
         laboratorios = []
         for r in resultado:
             laboratorios.append({
-                'id': r[0],
-                'nome': r[1],
-                'responsavel': r[2],
-                'telefone': r[3],
-                'email': r[4],
-                'endereco': r[5],
-                'observacoes': r[6]
+                'id': r['id'],
+                'nome': r['nome'],
+                'responsavel': r['responsavel'],
+                'telefone': r['telefone'],
+                'email': r['email'],
+                'endereco': r['endereco'],
+                'observacoes': r['observacoes']
             })
         return laboratorios
-        
     except Exception as e:
         print(f"Erro ao listar laboratórios: {e}")
         return []
@@ -122,32 +119,32 @@ def listar_analises(talhao_id=None):
         LIMIT 100
         """
         params = None
-    
+
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         if not resultado:
-            return []  # <-- IMPORTANTE: retorna lista vazia se não houver resultados
-        
+            return []
+
         analises = []
         for r in resultado:
             analises.append({
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'tipo_id': r[3],
-                'tipo_nome': r[4],
-                'laboratorio_id': r[5],
-                'laboratorio_nome': r[6],
-                'data_coleta': r[7],
-                'data_resultado': r[8],
-                'numero_protocolo': r[9],
-                'responsavel': r[10],
-                'observacoes': r[11]
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'tipo_id': r['tipo_analise_id'],
+                'tipo_nome': r['tipo_nome'],
+                'laboratorio_id': r['laboratorio_id'],
+                'laboratorio_nome': r['lab_nome'],
+                'data_coleta': r['data_coleta'],
+                'data_resultado': r['data_resultado'],
+                'numero_protocolo': r['numero_protocolo'],
+                'responsavel': r['responsavel_coleta'],
+                'observacoes': r['observacoes']
             })
         return analises
     except Exception as e:
         print(f"Erro ao listar análises: {e}")
-        return []  # <-- IMPORTANTE: sempre retorna lista vazia em caso de erro
+        return []
 
 def buscar_analise_por_id(id):
     query = """
@@ -163,22 +160,22 @@ def buscar_analise_por_id(id):
     WHERE a.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'talhao_id': r[1],
-                'talhao_nome': r[2],
-                'tipo_id': r[3],
-                'tipo_nome': r[4],
-                'laboratorio_id': r[5],
-                'laboratorio_nome': r[6],
-                'data_coleta': r[7],
-                'data_resultado': r[8],
-                'numero_protocolo': r[9],
-                'responsavel': r[10],
-                'observacoes': r[11],
-                'arquivo_pdf': r[12]  # <-- NOVO
+                'id': r['id'],
+                'talhao_id': r['talhao_id'],
+                'talhao_nome': r['talhao_nome'],
+                'tipo_id': r['tipo_analise_id'],
+                'tipo_nome': r['tipo_nome'],
+                'laboratorio_id': r['laboratorio_id'],
+                'laboratorio_nome': r['lab_nome'],
+                'data_coleta': r['data_coleta'],
+                'data_resultado': r['data_resultado'],
+                'numero_protocolo': r['numero_protocolo'],
+                'responsavel': r['responsavel_coleta'],
+                'observacoes': r['observacoes'],
+                'arquivo_pdf': r['arquivo_pdf']
             }
         return None
     except Exception as e:
@@ -232,16 +229,16 @@ def listar_resultados_por_analise(analise_id):
     ORDER BY p.ordem_exibicao
     """
     try:
-        resultado = executar_query(query, (analise_id,), fetch_all=True)
+        resultado = executar_query(query, (analise_id,), fetch_all=True, dict_cursor=True)
         resultados = []
         for r in resultado:
             resultados.append({
-                'id': r[0],
-                'parametro': r[1],
-                'unidade': r[2],
-                'valor': float(r[3]) if r[3] else None,
-                'interpretacao': r[4],
-                'observacoes': r[5]
+                'id': r['id'],
+                'parametro': r['parametro'],
+                'unidade': r['unidade'],
+                'valor': float(r['valor']) if r['valor'] else None,
+                'interpretacao': r['interpretacao'],
+                'observacoes': r['observacoes']
             })
         return resultados
     except Exception as e:
@@ -339,16 +336,16 @@ def excluir_tipo_analise(id):
 def buscar_laboratorio_por_id(id):
     query = "SELECT id, nome, responsavel, telefone, email, endereco, observacoes FROM laboratorios WHERE id = %s"
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'nome': r[1],
-                'responsavel': r[2],
-                'telefone': r[3],
-                'email': r[4],
-                'endereco': r[5],
-                'observacoes': r[6]
+                'id': r['id'],
+                'nome': r['nome'],
+                'responsavel': r['responsavel'],
+                'telefone': r['telefone'],
+                'email': r['email'],
+                'endereco': r['endereco'],
+                'observacoes': r['observacoes']
             }
         return None
     except Exception as e:
