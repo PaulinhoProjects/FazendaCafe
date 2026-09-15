@@ -315,37 +315,44 @@ def atualizar_movimentacao(id, dados_novos):
         return False
 
 def excluir_movimentacao(id):
-    """Exclui uma movimentação e ajusta o saldo do produto"""
+    """Exclui logicamente a movimentação e reverte o saldo na mesma transação."""
+    conn = None
     try:
-        # Buscar a movimentação para saber o produto e a quantidade
-        mov = executar_query(
-            "SELECT produto_id, tipo, quantidade FROM movimentacoes_estoque WHERE id = %s", 
-            (id,), 
-            fetch_one=True
-        )
-        if not mov:
-            return False, "Movimentação não encontrada"
-        
-        produto_id, tipo, quantidade = mov
-        
-        # Reverter o efeito no saldo
-        if tipo == 'entrada':
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                (quantidade, produto_id)
-            )
-        else:
-            executar_query(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                (quantidade, produto_id)
-            )
-        
-        # Excluir a movimentação
-        executar_query("DELETE FROM movimentacoes_estoque WHERE id = %s", (id,))
-        return True, "Movimentação excluída com sucesso"
+        conn = ConexaoBanco.get_conexao()
+        if not conn:
+            return False, "Não foi possível conectar ao banco."
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT produto_id, tipo, quantidade FROM movimentacoes_estoque "
+                    "WHERE id = %s AND ativo = TRUE FOR UPDATE",
+                    (id,),
+                )
+                mov = cur.fetchone()
+                if not mov:
+                    return False, "Movimentação não encontrada."
+                produto_id, tipo, quantidade = mov
+                if produto_id:
+                    sinal = 1 if tipo == 'saida' else -1
+                    cur.execute(
+                        "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                        (sinal * quantidade, produto_id),
+                    )
+                cur.execute(
+                    "UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s",
+                    (id,),
+                )
+            conn.commit()
+            return True, "Movimentação excluída e saldo reajustado."
+        except Exception:
+            conn.rollback()
+            raise
     except Exception as e:
-        print(f"Erro ao excluir movimentação: {e}")
+        print(f"Erro ao excluir movimentação {id}: {e}")
         return False, f"Erro ao excluir: {str(e)}"
+    finally:
+        if conn:
+            ConexaoBanco.liberar_conexao(conn)
 
 def listar_movimentacoes_por_periodo(data_inicio, data_fim):
     """Lista movimentações em um período específico"""
