@@ -7,35 +7,204 @@
 {% block conteudo %}
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-gear me-2"></i>Configurações do Sistema</h1>
-        <p class="page-subtitle">Gerencie as configurações do AgroCafé</p>
+        <h1 class="page-title"><i class="bi bi-gear me-2"></i>Configurações</h1>
+        <p class="page-subtitle">Sistema e gestão de usuários</p>
     </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="POST" action="{{ url_for('config.salvar') }}">
-            <div class="row g-4">
-                {% for chave, info in configs.items() %}
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label" for="valor_{{ chave }}">{{ info.descricao or chave }}</label>
-                        <input type="text" class="form-control" id="valor_{{ chave }}" name="valor_{{ chave }}"
-                            value="{{ info.valor or '' }}" placeholder="Chave: {{ chave }}">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}{% endif %}{% endwith %}
+
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sistema" type="button" role="tab">
+            <i class="bi bi-sliders me-1"></i>Sistema
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab">
+            <i class="bi bi-people me-1"></i>Usuários <span class="badge bg-secondary">{{ usuarios|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- ABA SISTEMA -->
+    <div class="tab-pane fade show active" id="sistema" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><h5 class="mb-0">Configurações do Sistema</h5></div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('config.salvar') }}">
+                    <div class="row g-4">
+                        {% for chave, info in configs.items() %}
+                        <div class="col-md-6">
+                            <label class="form-label" for="valor_{{ chave }}">{{ info.descricao or chave }}</label>
+                            <input type="text" class="form-control" id="valor_{{ chave }}" name="valor_{{ chave }}" value="{{ info.valor or '' }}">
+                            <small class="text-muted">Chave: <code>{{ chave }}</code></small>
+                            {% if chave == 'api_clima_key' %}
+                            <small class="text-muted d-block">Chave da API OpenWeatherMap — usada na tela de Clima.</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
                     </div>
-                </div>
-                {% endfor %}
+                    <input type="hidden" name="chaves" value="">
+                    {% for chave, info in configs.items() %}
+                    <input type="hidden" name="chaves" value="{{ chave }}">
+                    {% endfor %}
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar Configurações</button>
+                    </div>
+                </form>
             </div>
-            <input type="hidden" name="chaves" value="">
-            {% for chave, info in configs.items() %}
-            <input type="hidden" name="chaves" value="{{ chave }}">
-            {% endfor %}            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle me-1"></i>Salvar Configurações
+        </div>
+    </div>
+
+    <!-- ABA USUÁRIOS -->
+    <div class="tab-pane fade" id="usuarios" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Usuários do Sistema</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+                    <i class="bi bi-person-plus me-1"></i>Novo Usuário
                 </button>
-                <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">Voltar</a>
             </div>
-        </form>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th><th>Login</th><th>Nível</th><th>Status</th><th>Último acesso</th><th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for u in usuarios %}
+                            <tr>
+                                <td class="fw-semibold">{{ u.nome }}</td>
+                                <td><code>{{ u.login }}</code></td>
+                                <td>
+                                    {% if u.tipo == 'admin' %}<span class="badge bg-danger">Administrador</span>
+                                    {% elif u.tipo == 'operador' %}<span class="badge bg-info text-dark">Operador</span>
+                                    {% elif u.tipo == 'agronomista' %}<span class="badge bg-success">Agrônomo</span>
+                                    {% else %}<span class="badge bg-secondary">Usuário</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if u.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-dark">Inativo</span>{% endif %}
+                                </td>
+                                <td>{{ u.ultimo_acesso.strftime('%d/%m/%Y %H:%M') if u.ultimo_acesso else 'Nunca' }}</td>
+                                <td class="text-end">
+                                    {% if u.id != session.get('user_id') %}
+                                    <form method="POST" action="{{ url_for('config.usuario_nivel', user_id=u.id) }}" class="d-inline-block">
+                                        <select name="tipo" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()" title="Alterar nível">
+                                            <option value="admin" {% if u.tipo=='admin' %}selected{% endif %}>Administrador</option>
+                                            <option value="operador" {% if u.tipo=='operador' %}selected{% endif %}>Operador</option>
+                                            <option value="agronomista" {% if u.tipo=='agronomista' %}selected{% endif %}>Agrônomo</option>
+                                            <option value="user" {% if u.tipo=='user' %}selected{% endif %}>Usuário</option>
+                                        </select>
+                                    </form>
+                                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalSenha{{ u.id }}" title="Redefinir senha"><i class="bi bi-key"></i></button>
+                                    {% if u.ativo %}
+                                    <form method="POST" action="{{ url_for('config.usuario_desativar', user_id=u.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desativar" onclick="return confirm('Desativar este usuário?')"><i class="bi bi-person-x"></i></button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('config.usuario_ativar', user_id=u.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar"><i class="bi bi-person-check"></i></button>
+                                    </form>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted small">(você)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% if not usuarios %}
+                            <tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário cadastrado.</td></tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% for u in usuarios %}
+        <div class="modal fade" id="modalSenha{{ u.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="POST" action="{{ url_for('config.usuario_senha', user_id=u.id) }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="bi bi-key me-2"></i>Redefinir senha — {{ u.nome }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label class="form-label">Nova senha *</label>
+                            <input type="password" name="nova_senha" class="form-control" minlength="6" required>
+                            <small class="text-muted">Mínimo de 6 caracteres.</small>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-warning">Redefinir senha</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
+
+<!-- Modal novo usuário -->
+<div class="modal fade" id="modalNovoUsuario" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('config.usuario_novo') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Novo Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nome *</label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Login *</label>
+                        <input type="text" name="login" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Senha *</label>
+                        <input type="password" name="senha" class="form-control" minlength="6" required>
+                        <small class="text-muted">Mínimo de 6 caracteres.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nível de acesso</label>
+                        <select name="tipo" class="form-select">
+                            <option value="user">Usuário</option>
+                            <option value="agronomista">Agrônomo</option>
+                            <option value="operador">Operador</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var hash = window.location.hash;
+    if (hash) {
+        var trigger = document.querySelector('[data-bs-target="' + hash + '"]');
+        if (trigger) { new bootstrap.Tab(trigger).show(); }
+    }
+});
+</script>
 {% endblock %}

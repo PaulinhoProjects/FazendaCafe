@@ -148,3 +148,21 @@ def alterar_nivel_usuario(user_id, novo_tipo, admin_id):
         return True, "Nivel alterado"
     except Exception as e:
         return False, str(e)
+
+
+def ativar_usuario(user_id):
+    """Reativa um usuário previamente desativado."""
+    try:
+        executar_query("UPDATE usuarios SET ativo = TRUE WHERE id = %s", (user_id,))
+        return True, "Usuário reativado com sucesso"
+    except Exception as e:
+        return False, str(e)
+
+def alterar_senha_usuario(user_id, nova_senha):
+    """Redefine a senha de um usuário (uso administrativo)."""
+    try:
+        senha_hash = generate_password_hash(nova_senha)
+        executar_query("UPDATE usuarios SET senha_hash = %s WHERE id = %s", (senha_hash, user_id))
+        return True, "Senha redefinida com sucesso"
+    except Exception as e:
+        return False, str(e)
