@@ -52,7 +52,9 @@ def _vento_cardinal(graus):
         return '-'
 
 def get_clima_atual():
-    """Obtém clima atual com dados completos para o dashboard."""
+    """Obtém clima atual com dados completos para o dashboard (cache de 30 min)."""
+    if _cache_valido() and _CACHE['clima'] is not None:
+        return _CACHE['clima']
     try:
         coords = get_coordenadas(CIDADE, UF, PAIS)
         if not coords:
@@ -84,6 +86,8 @@ def get_clima_atual():
             }
 
             clima['alertas'] = gerar_alertas(clima)
+            _CACHE['clima'] = clima
+            _CACHE['timestamp'] = datetime.now()
             return clima
         else:
             print(f"Erro na API de clima. Código: {response.status_code}")
@@ -94,7 +98,9 @@ def get_clima_atual():
         return None
 
 def get_previsao():
-    """Obtém previsão para os próximos dias."""
+    """Obtém previsão para os próximos dias (cache de 30 min)."""
+    if _cache_valido() and _CACHE['previsao'] is not None:
+        return _CACHE['previsao']
     try:
         coords = get_coordenadas(CIDADE, UF, PAIS)
         if not coords:
@@ -127,6 +133,8 @@ def get_previsao():
                     if len(previsoes) >= 5:
                         break
 
+            _CACHE['previsao'] = previsoes
+            _CACHE['timestamp'] = datetime.now()
             return previsoes
         return None
     except Exception as e:
