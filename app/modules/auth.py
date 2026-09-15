@@ -62,9 +62,9 @@ def criar_tabela_usuarios():
 def buscar_usuario_por_id(user_id):
     query = "SELECT id, nome, login, tipo FROM usuarios WHERE id = %s AND ativo = TRUE"
     try:
-        r = executar_query(query, (user_id,), fetch_one=True)
+        r = executar_query(query, (user_id,), fetch_one=True, dict_cursor=True)
         if r:
-            return Usuario(r[0], r[1], r[2], r[3])
+            return Usuario(r['id'], r['nome'], r['login'], r['tipo'])
         return None
     except Exception as e:
         print(f"Erro: {e}")
@@ -73,7 +73,7 @@ def buscar_usuario_por_id(user_id):
 def buscar_usuario_por_login(login):
     query = "SELECT id, nome, login, tipo, senha_hash FROM usuarios WHERE login = %s AND ativo = TRUE"
     try:
-        return executar_query(query, (login,), fetch_one=True)
+        return executar_query(query, (login,), fetch_one=True, dict_cursor=True)
     except Exception as e:
         print(f"Erro: {e}")
         return None
@@ -82,18 +82,18 @@ def autenticar_usuario(login, senha):
     usuario_data = buscar_usuario_por_login(login)
     if not usuario_data:
         return None, "Usuario nao encontrado"
-    hash_banco = usuario_data[4]
+    hash_banco = usuario_data['senha_hash']
     if not verificar_senha(hash_banco, senha):
         return None, "Senha incorreta"
     try:
-        executar_query("UPDATE usuarios SET ultimo_acesso = %s WHERE id = %s", (datetime.now(), usuario_data[0]))
+        executar_query("UPDATE usuarios SET ultimo_acesso = %s WHERE id = %s", (datetime.now(), usuario_data['id']))
     except Exception:
         pass
     return {
-        'id': usuario_data[0],
-        'nome': usuario_data[1],
-        'login': usuario_data[2],
-        'tipo': usuario_data[3]
+        'id': usuario_data['id'],
+        'nome': usuario_data['nome'],
+        'login': usuario_data['login'],
+        'tipo': usuario_data['tipo']
     }, None
 
 def validar_usuario(login, senha):
@@ -119,12 +119,12 @@ def criar_usuario(nome, login, senha, tipo='user'):
 def listar_usuarios():
     query = "SELECT id, nome, login, tipo, ativo, data_cadastro, ultimo_acesso FROM usuarios ORDER BY id"
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         usuarios = []
         for r in resultado:
             usuarios.append({
-                'id': r[0], 'nome': r[1], 'login': r[2], 'tipo': r[3],
-                'ativo': r[4], 'data_cadastro': r[5], 'ultimo_acesso': r[6]
+                'id': r['id'], 'nome': r['nome'], 'login': r['login'], 'tipo': r['tipo'],
+                'ativo': r['ativo'], 'data_cadastro': r['data_cadastro'], 'ultimo_acesso': r['ultimo_acesso']
             })
         return usuarios
     except Exception as e:
