@@ -143,6 +143,44 @@ def executar_query(query, parametros=None, fetch_one=False, fetch_all=False, dic
             if conn:
                 ConexaoBanco.liberar_conexao(conn)
 
+def executar_transacao(funcao):
+    """
+    Executa `funcao(cursor)` dentro de UMA ÚNICA transação atômica.
+    A função recebe um cursor pronto e pode rodar quantos comandos quiser.
+    No fim: commit de tudo. Se QUALQUER exceção ocorrer: rollback de tudo.
+    Atende a regra 6 do AGENTS.md (alteração de saldo = uma transação com rollback).
+    Retorna o valor devolvido pela função.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = ConexaoBanco.get_conexao()
+        if not conn:
+            raise Exception("Não foi possível obter conexão com o banco")
+
+        # Garante que a conexão do pool comece sem transação pendente
+        conn.rollback()
+
+        cursor = conn.cursor()
+        retorno = funcao(cursor)
+        conn.commit()
+        return retorno
+
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print(f"Erro na transação (ROLLBACK aplicado): {e}")
+        raise e
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            ConexaoBanco.liberar_conexao(conn)
+
 # =====================================================
 # CONFIGURAÇÕES DO SISTEMA
 # =====================================================

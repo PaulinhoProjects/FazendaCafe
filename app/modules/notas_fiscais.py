@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query
+from database import executar_query, executar_transacao
 
 # =====================================================
 # FUNÇÕES PARA NOTAS FISCAIS
@@ -244,7 +244,8 @@ def buscar_ou_criar_produto(nome, unidade='L', categoria='Outros'):
         return None
 
 def adicionar_item_nota(nota_id, dados):
-    """Adiciona um item a uma nota fiscal e registra entrada automatica no estoque."""
+    """Adiciona um item a uma nota fiscal e registra entrada automatica no estoque.
+    Tudo em UMA transação: ou grava tudo, ou não grava nada."""
     nome_produto = dados.get('nome_produto')
     quantidade = dados.get('quantidade')
     valor_unitario = dados.get('valor_unitario')
@@ -261,80 +262,96 @@ def adicionar_item_nota(nota_id, dados):
     except (ValueError, TypeError):
         return None, "Quantidade e valor devem ser numeros validos"
 
-    # 1. Buscar ou criar o produto
-    produto_id = buscar_ou_criar_produto(nome_produto, unidade, categoria)
-    if not produto_id:
-        return None, "Erro ao buscar/criar produto"
+    nome_limpo = nome_produto.strip()
 
-    # 2. Registrar movimentacao de entrada vinculada a NF
-    query_mov = """
-    INSERT INTO movimentacoes_estoque
-    (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes, nota_fiscal_id)
-    VALUES (%s, 'entrada', %s, %s, CURRENT_DATE, %s, %s, %s)
-    RETURNING id
-    """
-    obs = f"Entrada via NF - {dados.get('observacoes', '')}"
-    try:
-        mov_result = executar_query(query_mov, (produto_id, quantidade, unidade, valor_unitario, obs, nota_id), fetch_one=True)
-        mov_id = mov_result[0] if mov_result else None
-    except Exception as e:
-        return None, f"Erro ao registrar entrada: {e}"
+    def _operacao(cursor):
+        # 1. Buscar ou criar o produto (dentro da mesma transação)
+        cursor.execute(
+            "SELECT id FROM produtos_estoque WHERE LOWER(nome) = LOWER(%s) AND ativo = TRUE",
+            (nome_limpo,)
+        )
+        linha = cursor.fetchone()
+        if linha:
+            produto_id = linha[0]
+        else:
+            cursor.execute(
+                """INSERT INTO produtos_estoque (nome, unidade, categoria, estoque_minimo, quantidade_atual, ativo)
+                   VALUES (%s, %s, %s, 0, 0, TRUE) RETURNING id""",
+                (nome_limpo, unidade, categoria)
+            )
+            produto_id = cursor.fetchone()[0]
 
-    # 3. Atualizar saldo do produto
-    try:
-        executar_query(
+        # 2. Registrar movimentacao de entrada vinculada a NF
+        obs = f"Entrada via NF - {dados.get('observacoes', '')}"
+        cursor.execute(
+            """INSERT INTO movimentacoes_estoque
+               (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes, nota_fiscal_id)
+               VALUES (%s, 'entrada', %s, %s, CURRENT_DATE, %s, %s, %s) RETURNING id""",
+            (produto_id, quantidade, unidade, valor_unitario, obs, nota_id)
+        )
+        mov_id = cursor.fetchone()[0]
+
+        # 3. Atualizar saldo do produto
+        cursor.execute(
             "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
             (quantidade, produto_id)
         )
-    except Exception as e:
-        print(f"Erro ao atualizar saldo: {e}")
 
-    # 4. Atualizar valor total da NF
-    try:
+        # 4. Atualizar valor total da NF
         if valor_unitario:
-            executar_query(
+            cursor.execute(
                 "UPDATE notas_fiscais SET valor_total = COALESCE(valor_total, 0) + (%s * %s) WHERE id = %s",
                 (quantidade, valor_unitario, nota_id)
             )
-    except Exception:
-        pass
 
-    return mov_id, "Item adicionado e entrada registrada no estoque!"
+        return mov_id
+
+    try:
+        mov_id = executar_transacao(_operacao)
+        return mov_id, "Item adicionado e entrada registrada no estoque!"
+    except Exception as e:
+        return None, f"Erro ao adicionar item: {e}"
 
 def remover_item_nota(movimentacao_id):
-    """Remove um item da nota fiscal e reverte a entrada no estoque."""
-    try:
-        # Buscar a movimentacao
-        query_busca = """
-        SELECT m.produto_id, m.quantidade, m.nota_fiscal_id, m.valor_unitario
-        FROM movimentacoes_estoque m WHERE m.id = %s AND m.tipo = 'entrada'
-        """
-        r = executar_query(query_busca, (movimentacao_id,), fetch_one=True, dict_cursor=True)
+    """Remove um item da nota fiscal e reverte a entrada no estoque.
+    Tudo em UMA transação: ou estorna tudo, ou não estorna nada."""
+    def _operacao(cursor):
+        cursor.execute(
+            """SELECT m.produto_id, m.quantidade, m.nota_fiscal_id, m.valor_unitario
+               FROM movimentacoes_estoque m WHERE m.id = %s AND m.tipo = 'entrada'""",
+            (movimentacao_id,)
+        )
+        r = cursor.fetchone()
         if not r:
-            return False, "Item nao encontrado"
+            raise ValueError("Item nao encontrado")
 
-        produto_id = r['produto_id']
-        quantidade = float(r['quantidade']) if r['quantidade'] else 0
-        nota_id = r['nota_fiscal_id']
-        valor_unit = float(r['valor_unitario']) if r['valor_unitario'] else 0
+        produto_id = r[0]
+        quantidade = float(r[1]) if r[1] else 0
+        nota_id = r[2]
+        valor_unit = float(r[3]) if r[3] else 0
 
         # Reverter o saldo do produto
-        executar_query(
+        cursor.execute(
             "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
             (quantidade, produto_id)
         )
 
         # Reverter valor total da NF
         if valor_unit:
-            executar_query(
+            cursor.execute(
                 "UPDATE notas_fiscais SET valor_total = GREATEST(COALESCE(valor_total, 0) - (%s * %s), 0) WHERE id = %s",
                 (quantidade, valor_unit, nota_id)
             )
 
         # Excluir a movimentacao
-        executar_query("DELETE FROM movimentacoes_estoque WHERE id = %s", (movimentacao_id,))
+        cursor.execute("DELETE FROM movimentacoes_estoque WHERE id = %s", (movimentacao_id,))
+        return True
 
+    try:
+        executar_transacao(_operacao)
         return True, "Item removido e entrada estornada no estoque!"
+    except ValueError as e:
+        return False, str(e)
     except Exception as e:
         print(f"Erro ao remover item: {e}")
         return False, f"Erro: {e}"
