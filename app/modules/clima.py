@@ -8,10 +8,19 @@ from datetime import datetime, timedelta
 import os
 
 # Configurações
-API_KEY = "386faf8e19c5a12ccf3fc1d9635f3ea0"
+API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 CIDADE = "Campos Gerais"
 UF = "MG"
 PAIS = "BR"
+
+# Cache de 30 minutos para reduzir chamadas à API
+_CACHE = {'clima': None, 'previsao': None, 'timestamp': None}
+TEMPO_CACHE_SEGUNDOS = 30 * 60
+
+def _cache_valido():
+    if _CACHE['timestamp'] is None:
+        return False
+    return (datetime.now() - _CACHE['timestamp']).total_seconds() < TEMPO_CACHE_SEGUNDOS
 
 def get_coordenadas(cidade, uf, pais):
     """Obtém coordenadas da cidade"""
