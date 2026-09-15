@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
 from app.modules import estoque
 from app.modules.login_manager import login_required, admin_required
-from datetime import datetime
+from app.models import get_logger
 import io
 import csv
+
+logger = get_logger(__name__)
 
 estoque_bp = Blueprint('estoque', __name__, url_prefix='/estoque')
 
@@ -58,7 +60,7 @@ def detalhe_produto(id):
     try:
         produto = estoque.buscar_produto_por_id(id)
         if not produto:
-            flash('Produto nao encontrado.', 'warning')
+            flash('Produto não encontrado.', 'warning')
             return redirect(url_for('estoque.listar_produtos'))
         movimentacoes = estoque.listar_movimentacoes(produto_id=id)
         return render_template('estoque/produtos/detalhe.html', produto=produto, movimentacoes=movimentacoes)
@@ -89,7 +91,7 @@ def editar_produto(id):
     try:
         produto = estoque.buscar_produto_por_id(id)
         if not produto:
-            flash('Produto nao encontrado.', 'warning')
+            flash('Produto não encontrado.', 'warning')
             return redirect(url_for('estoque.listar_produtos'))
         return render_template('estoque/produtos/editar.html', produto=produto)
     except Exception as e:
@@ -117,7 +119,7 @@ def listar_movimentacoes():
         movimentacoes = estoque.listar_movimentacoes()
         return render_template('estoque/movimentacoes/lista.html', movimentacoes=movimentacoes)
     except Exception as e:
-        flash('Erro ao carregar movimentacoes.', 'error')
+        flash('Erro ao carregar movimentações.', 'error')
         return render_template('estoque/movimentacoes/lista.html', movimentacoes=[])
 
 @estoque_bp.route('/movimentacoes/nova', methods=['GET', 'POST'])
@@ -136,7 +138,7 @@ def nova_movimentacao():
             }
             mov_id = estoque.registrar_movimentacao(dados)
             if mov_id:
-                flash('Movimentacao registrada!', 'success')
+                flash('Movimentação registrada!', 'success')
                 return redirect(url_for('estoque.listar_movimentacoes'))
             else:
                 flash('Erro ao registrar.', 'error')
@@ -165,7 +167,7 @@ def editar_movimentacao(id):
                 'observacoes': request.form.get('observacoes')
             }
             if estoque.atualizar_movimentacao(id, dados):
-                flash('Movimentacao atualizada!', 'success')
+                flash('Movimentação atualizada!', 'success')
                 return redirect(url_for('estoque.listar_movimentacoes'))
             else:
                 flash('Erro ao atualizar.', 'error')
@@ -174,7 +176,7 @@ def editar_movimentacao(id):
     try:
         mov = estoque.buscar_movimentacao_por_id(id)
         if not mov:
-            flash('Movimentacao nao encontrada.', 'warning')
+            flash('Movimentação não encontrada.', 'warning')
             return redirect(url_for('estoque.listar_movimentacoes'))
         produtos = estoque.listar_produtos(ativos=True)
         return render_template('estoque/movimentacoes/editar.html', movimentacao=mov, produtos=produtos)
@@ -188,16 +190,20 @@ def detalhe_movimentacao(id):
     try:
         mov = estoque.buscar_movimentacao_por_id(id)
         if not mov:
-            flash('Movimentacao nao encontrada.', 'warning')
+            flash('Movimentação não encontrada.', 'warning')
             return redirect(url_for('estoque.listar_movimentacoes'))
-        return render_template('estoque/movimentacoes/detalhe.html', movimentacao=mov)
+        return render_template(
+            'estoque/movimentacoes/detalhe.html',
+            movimentacao=mov
+        )
     except Exception as e:
+        logger.error(f"Erro ao carregar detalhes da movimentação {id}: {e}")
         flash('Erro ao carregar detalhes.', 'error')
         return redirect(url_for('estoque.listar_movimentacoes'))
 
 @estoque_bp.route('/movimentacoes/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir_movimentacao(id):
     try:
         sucesso, mensagem = estoque.excluir_movimentacao(id)
@@ -206,6 +212,7 @@ def excluir_movimentacao(id):
         else:
             flash(mensagem, 'warning')
     except Exception as e:
+        logger.error(f"Erro ao excluir movimentação {id}: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('estoque.listar_movimentacoes'))
 
@@ -264,5 +271,5 @@ def relatorio():
             grafico_top=grafico_top
         )
     except Exception as e:
-        flash('Erro ao gerar relatorio.', 'error')
+        flash('Erro ao gerar relatório.', 'error')
         return redirect(url_for('estoque.dashboard'))
