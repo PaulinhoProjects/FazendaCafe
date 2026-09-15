@@ -28,34 +28,34 @@ def listar_notas(data_inicio=None, data_fim=None, fornecedor=None):
     WHERE n.ativo = TRUE
     """
     params = []
-    
+
     if data_inicio and data_fim:
         query += " AND n.data_recebimento BETWEEN %s AND %s"
         params.extend([data_inicio, data_fim])
-    
+
     if fornecedor:
         query += " AND n.fornecedor ILIKE %s"
         params.append(f"%{fornecedor}%")
-    
+
     query += " GROUP BY n.id ORDER BY n.data_recebimento DESC, n.id DESC"
-    
+
     try:
-        resultado = executar_query(query, params if params else None, fetch_all=True)
+        resultado = executar_query(query, params if params else None, fetch_all=True, dict_cursor=True)
         notas = []
         for r in resultado:
             notas.append({
-                'id': r[0],
-                'numero_nota': r[1],
-                'serie': r[2],
-                'data_emissao': r[3],
-                'data_recebimento': r[4],
-                'fornecedor': r[5],
-                'cnpj_fornecedor': r[6],
-                'valor_total': float(r[7]) if r[7] else None,
-                'arquivo_pdf': r[8],
-                'observacoes': r[9],
-                'data_cadastro': r[10],
-                'total_produtos': r[11]
+                'id': r['id'],
+                'numero_nota': r['numero_nota'],
+                'serie': r['serie'],
+                'data_emissao': r['data_emissao'],
+                'data_recebimento': r['data_recebimento'],
+                'fornecedor': r['fornecedor'],
+                'cnpj_fornecedor': r['cnpj_fornecedor'],
+                'valor_total': float(r['valor_total']) if r['valor_total'] else None,
+                'arquivo_pdf': r['arquivo_pdf'],
+                'observacoes': r['observacoes'],
+                'data_cadastro': r['data_cadastro'],
+                'total_produtos': r['total_produtos']
             })
         return notas
     except Exception as e:
@@ -72,20 +72,20 @@ def buscar_nota_por_id(id):
     WHERE n.id = %s AND n.ativo = TRUE
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'numero_nota': r[1],
-                'serie': r[2],
-                'data_emissao': r[3],
-                'data_recebimento': r[4],
-                'fornecedor': r[5],
-                'cnpj_fornecedor': r[6],
-                'valor_total': float(r[7]) if r[7] else None,
-                'arquivo_pdf': r[8],
-                'observacoes': r[9],
-                'data_cadastro': r[10]
+                'id': r['id'],
+                'numero_nota': r['numero_nota'],
+                'serie': r['serie'],
+                'data_emissao': r['data_emissao'],
+                'data_recebimento': r['data_recebimento'],
+                'fornecedor': r['fornecedor'],
+                'cnpj_fornecedor': r['cnpj_fornecedor'],
+                'valor_total': float(r['valor_total']) if r['valor_total'] else None,
+                'arquivo_pdf': r['arquivo_pdf'],
+                'observacoes': r['observacoes'],
+                'data_cadastro': r['data_cadastro']
             }
         return None
     except Exception as e:
@@ -138,16 +138,16 @@ def listar_movimentacoes_por_nota(nota_id):
     ORDER BY m.id
     """
     try:
-        resultado = executar_query(query, (nota_id,), fetch_all=True)
+        resultado = executar_query(query, (nota_id,), fetch_all=True, dict_cursor=True)
         movs = []
         for r in resultado:
             movs.append({
-                'id': r[0],
-                'produto_nome': r[1],
-                'quantidade': float(r[2]) if r[2] else 0,
-                'unidade': r[3],
-                'valor_unitario': float(r[4]) if r[4] else None,
-                'observacoes': r[5]
+                'id': r['id'],
+                'produto_nome': r['produto_nome'],
+                'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
+                'unidade': r['unidade'],
+                'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
+                'observacoes': r['observacoes']
             })
         return movs
     except Exception as e:
@@ -309,14 +309,14 @@ def remover_item_nota(movimentacao_id):
         SELECT m.produto_id, m.quantidade, m.nota_fiscal_id, m.valor_unitario
         FROM movimentacoes_estoque m WHERE m.id = %s AND m.tipo = 'entrada'
         """
-        r = executar_query(query_busca, (movimentacao_id,), fetch_one=True)
+        r = executar_query(query_busca, (movimentacao_id,), fetch_one=True, dict_cursor=True)
         if not r:
             return False, "Item nao encontrado"
 
-        produto_id = r[0]
-        quantidade = float(r[1]) if r[1] else 0
-        nota_id = r[2]
-        valor_unit = float(r[3]) if r[3] else 0
+        produto_id = r['produto_id']
+        quantidade = float(r['quantidade']) if r['quantidade'] else 0
+        nota_id = r['nota_fiscal_id']
+        valor_unit = float(r['valor_unitario']) if r['valor_unitario'] else 0
 
         # Reverter o saldo do produto
         executar_query(
