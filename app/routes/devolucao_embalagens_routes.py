@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app,send_from_directory
 from app.modules import devolucao_embalagens
 from app.modules.login_manager import login_required, admin_required
 import os
+import uuid
 
 devolucao_bp = Blueprint('devolucao', __name__, url_prefix='/devolucoes')
 
@@ -43,7 +44,8 @@ def nova():
             if 'arquivo_pdf' in request.files:
                 file = request.files['arquivo_pdf']
                 if file and file.filename:
-                    filename = f"devolucao_{request.form.get('data_devolucao', 'sem_data')}.pdf"
+                    _data = request.form.get('data_devolucao', 'sem_data')
+                    filename = f"devolucao_{_data}_{uuid.uuid4().hex[:8]}.pdf"
                     filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                     file.save(filepath)
                     arquivo_pdf = filename
@@ -57,6 +59,16 @@ def nova():
         except Exception as e:
             flash(f'Erro: {e}', 'error')
     return render_template('devolucao/nova.html')
+
+@devolucao_bp.route('/arquivo/<path:filename>')
+@login_required
+def arquivo(filename):
+    """Serve o PDF do comprovante (abre em nova aba)."""
+    try:
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    except Exception:
+        flash('Comprovante não encontrado.', 'warning')
+        return redirect(url_for('devolucao.listar'))
 
 @devolucao_bp.route('/<int:id>')
 @login_required

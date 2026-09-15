@@ -61,6 +61,10 @@
                         <td>{{ d.nome_responsavel or '-' }}</td>
                         <td>{{ d.numero_comprovante or '-' }}</td>
                         <td class="text-end">
+                            {% if d.arquivo_pdf %}
+                            <a href="{{ url_for('devolucao.arquivo', filename=d.arquivo_pdf) }}" target="_blank" rel="noopener"
+                               class="btn btn-sm btn-outline-danger" title="Ver comprovante"><i class="bi bi-file-earmark-pdf"></i></a>
+                            {% endif %}
                             <a href="{{ url_for('devolucao.detalhe', id=d.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                             {% if session.get('tipo') == 'admin' %}
                             <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"

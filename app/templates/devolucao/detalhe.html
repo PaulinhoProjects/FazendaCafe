@@ -1,18 +1,91 @@
 {% extends "base.html" %}
 {% block titulo %}Detalhe da Devolução{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('devolucao.listar') }}">Devolução de Embalagens</a></li>
+<li class="breadcrumb-item active">Devolução #{{ devolucao.id }}</li>
+{% endblock %}
 {% block conteudo %}
-    
-        Devolução #{{ devolucao.id }}
-         Voltar
-    
-    
-        Dados da Devolução
-        
-            Data{{ devolucao.data_devolucao|format_data if devolucao.data_devolucao else '-' }}Local{{ devolucao.local_devolucao or '-' }}Quantidade de Embalagens{{ devolucao.quantidade_embalagens }}Responsável{{ devolucao.nome_responsavel or '-' }}Nº Comprovante{{ devolucao.numero_comprovante or '-' }}Observações{{ devolucao.observacoes or '-' }}
-            {% if devolucao.arquivo_pdf %}
-            Ver Comprovante PDF
-            {% endif %}
-        
-    
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-recycle me-2"></i>Devolução #{{ devolucao.id }}</h1>
+        <p class="page-subtitle">Registro de devolução de embalagens</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('devolucao.listar') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        {% if session.get('tipo') == 'admin' %}
+        <button type="button" class="btn btn-outline-danger"
+                onclick="confirmarExclusaoGlobal('devolução #{{ devolucao.id }}', '{{ url_for('devolucao.excluir', id=devolucao.id) }}')">
+            <i class="bi bi-trash me-1"></i>Excluir
+        </button>
+        {% endif %}
+    </div>
+</div>
 
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white"><h5 class="mb-0">Dados da Devolução</h5></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Data da Devolução</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.data_devolucao|format_data if devolucao.data_devolucao else '—' }}</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Local de Devolução</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.local_devolucao or '—' }}</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Quantidade de Embalagens</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.quantidade_embalagens or 0 }}</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Responsável</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.nome_responsavel or '—' }}</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Nº do Comprovante</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.numero_comprovante or '—' }}</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Registrado em</div>
+                        <div class="fs-5 fw-semibold">{{ devolucao.data_cadastro|format_data if devolucao.data_cadastro else '—' }}</div>
+                    </div>
+                </div>
+                {% if devolucao.observacoes %}
+                <hr>
+                <div class="text-muted small">Observações</div>
+                <div>{{ devolucao.observacoes }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-file-earmark-pdf me-2"></i>Comprovante</h5></div>
+            <div class="card-body d-flex flex-column">
+                {% if devolucao.arquivo_pdf %}
+                <p class="text-muted">O comprovante em PDF está anexado a esta devolução.</p>
+                <a href="{{ url_for('devolucao.arquivo', filename=devolucao.arquivo_pdf) }}"
+                   target="_blank" rel="noopener" class="btn btn-danger btn-lg w-100 mb-2">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Ver Comprovante PDF
+                </a>
+                <a href="{{ url_for('devolucao.arquivo', filename=devolucao.arquivo_pdf) }}"
+                   download class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-download me-1"></i>Baixar
+                </a>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-file-earmark-x" style="font-size:2.5rem;opacity:.4"></i>
+                    <p class="text-muted mt-2 mb-0">Nenhum comprovante anexado a esta devolução.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
