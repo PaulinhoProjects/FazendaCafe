@@ -139,18 +139,41 @@ def buscar_talhao_por_id(talhao_id):
         print(f"Erro ao buscar talhão: {e}")
         return None
 
+def _converter_numero(valor, nome_campo, casas=None):
+    """Converte valor de formulário para float, aceitando vírgula.
+    Retorna None se vazio. Levanta ValueError amigável se não for numérico."""
+    if valor is None or str(valor).strip() == '':
+        return None
+    texto = str(valor).strip().replace(',', '.')
+    try:
+        numero = float(texto)
+    except (ValueError, TypeError):
+        raise ValueError(f"{nome_campo} inválido. Use números, ex: 12.5")
+    if casas is not None:
+        numero = round(numero, casas)
+    return numero
+
+def _converter_coordenada(valor, nome_campo, limite):
+    """Converte latitude/longitude validando o intervalo permitido."""
+    numero = _converter_numero(valor, nome_campo, casas=7)
+    if numero is None:
+        return None
+    if abs(numero) > limite:
+        raise ValueError(f"{nome_campo} fora do intervalo permitido (-{limite} a {limite})")
+    return numero
+
 def inserir_talhao(dados):
     """Insere um novo talhão."""
     if isinstance(dados, dict):
         nome = dados.get('nome')
-        area = dados.get('area') or dados.get('area_hectares')
+        area = _converter_numero(dados.get('area') or dados.get('area_hectares'), 'Área', casas=2)
         data_plantio = dados.get('data_plantio') or None
         variedade = dados.get('variedade') or dados.get('variedade_cafe') or ''
-        altitude = dados.get('altitude') or dados.get('altitude_media') or None
+        altitude = _converter_numero(dados.get('altitude') or dados.get('altitude_media'), 'Altitude', casas=2)
         observacoes = dados.get('observacoes') or ''
         espacamento = dados.get('espacamento') or None
-        latitude = dados.get('latitude') or None
-        longitude = dados.get('longitude') or None
+        latitude = _converter_coordenada(dados.get('latitude'), 'Latitude', 90)
+        longitude = _converter_coordenada(dados.get('longitude'), 'Longitude', 180)
         foto_url = dados.get('foto_url') or None
     else:
         return None
