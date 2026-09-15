@@ -23,12 +23,12 @@
         <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}"><i class="bi bi-pin-map"></i>Talhões</a></li>
         <li class="sidebar-section-label">Manejo do Cafezal</li>
         <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}"><i class="bi bi-tools"></i>Visão Geral</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização{% if alertas_globais and alertas_globais.count_retornos_pendentes > 0 %}<span class="badge bg-warning rounded-pill">{{ alertas_globais.count_retornos_pendentes }}</span>{% endif %}</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/manejo-mato' in request.path %}active{% endif %}" href="{{ url_for('manejo_mato.listar') }}"><i class="bi bi-tree"></i>Manejo do Mato</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises{% if alertas_globais and alertas_globais.count_analises_pendentes > 0 %}<span class="badge bg-info rounded-pill">{{ alertas_globais.count_analises_pendentes }}</span>{% endif %}</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
         <li class="sidebar-section-label">Insumos</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque{% if alertas_globais and alertas_globais.count_estoque_baixo > 0 %}<span class="badge bg-danger rounded-pill">{{ alertas_globais.count_estoque_baixo }}</span>{% endif %}</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque{% if alertas_globais and alertas_globais.count_estoque_baixo > 0 %}</span>{% endif %}</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}"><i class="bi bi-receipt"></i>Notas Fiscais</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}"><i class="bi bi-recycle"></i>Devolução de Embalagens</a></li>
         <li class="sidebar-section-label">Ambiente</li>
@@ -47,15 +47,6 @@
 <div class="main-content">
     <header class="topbar">
         <button class="topbar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-        {% if alertas_globais and alertas_globais.count_total_alertas > 0 %}
-        <div class="topbar-alerts">
-            <a href="{{ url_for('estoque.dashboard') }}" class="text-decoration-none">
-                <span class="badge bg-danger rounded-pill">
-                    <i class="bi bi-bell-fill me-1"></i>{{ alertas_globais.count_total_alertas }}
-                </span>
-            </a>
-        </div>
-        {% endif %}
         <div class="topbar-search">
             <input type="text" id="buscaGlobal" class="form-control form-control-sm" placeholder="Buscar no sistema..."
                 onkeydown="if(event.key === 'Enter') buscarGlobal()">
