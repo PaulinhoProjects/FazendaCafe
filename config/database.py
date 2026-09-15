@@ -8,6 +8,9 @@ from psycopg2 import pool
 import os
 from datetime import datetime
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class ConexaoBanco:
     """
@@ -23,12 +26,13 @@ class ConexaoBanco:
             try:
                 print(f"[{datetime.now()}] Inicializando pool de conexões...")
                 cls._pool = psycopg2.pool.SimpleConnectionPool(
-                    1, 10,
-                    host="localhost",
-                    port="5432",
-                    database="fazenda_cafe",
-                    user="postgres",
-                    password="Pcaf123."
+                    1,
+                    10,
+                    host=os.getenv("DB_HOST", "localhost"),
+                    port=os.getenv("DB_PORT", "5432"),
+                    database=os.getenv("DB_NAME", "fazenda_cafe"),
+                    user=os.getenv("DB_USER", "postgres"),
+                    password=os.getenv("DB_PASSWORD"),
                 )
                 cls._inicializado = True
                 print(f"[{datetime.now()}] Pool de conexões inicializado com sucesso!")
