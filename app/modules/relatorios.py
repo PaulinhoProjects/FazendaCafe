@@ -336,33 +336,3 @@ def gerar_relatorio_analises():
         f'analises_{datetime.now().strftime("%Y%m%d")}.pdf',
         orientacao='paisagem'
     )
-
-def gerar_relatorio_manejos():
-    """Gera relatório PDF de manejos do mato."""
-    from app.modules import manejo_mato
-
-    try:
-        manejos = manejo_mato.listar_manejos()
-    except Exception:
-        manejos = []
-
-    dados = []
-    for m in manejos:
-        dados.append([
-            m.get('data_manejo', '—').strftime('%d/%m/%Y') if hasattr(m.get('data_manejo'), 'strftime') else str(m.get('data_manejo', '—')),
-            m.get('talhao', '—') or m.get('talhao_nome', '—'),
-            m.get('tipo_manejo', '—'),
-            m.get('produtos', '—') or 'Não informado',
-            m.get('responsavel', '—') or '—'
-        ])
-
-    colunas = ['Data', 'Talhão', 'Tipo de Manejo', 'Produtos', 'Responsável']
-
-    return gerar_pdf(
-        'Relatório de Manejos do Mato',
-        f"Total: {len(dados)} manejos registrados",
-        dados,
-        colunas,
-        f'manejos_{datetime.now().strftime("%Y%m%d")}.pdf',
-        orientacao='retrato'
-    )
