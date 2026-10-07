@@ -23,7 +23,7 @@
         <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}"><i class="bi bi-pin-map"></i>Talhões</a></li>
         <li class="sidebar-section-label">Manejo do Cafezal</li>
         <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}"><i class="bi bi-tools"></i>Visão Geral</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-spray"></i>Pulverização</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.listar_aplicacoes') }}"><i class="bi bi-tree-fill"></i>Pulverização</a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li> 
         <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
         <li class="sidebar-section-label">Insumos</li>
