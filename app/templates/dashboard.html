@@ -20,18 +20,19 @@
 {% set atrasados = alertas|selectattr('status', 'equalto', 'atrasado')|list %}
 
 <!-- Cabeçalho -->
-<div class="page-header">
+<section class="hero-kaldi" aria-label="Boas-vindas">
+    <img class="hero-kaldi-marca" src="{{ url_for('static', filename='img/kaldi-icone.svg') }}" alt="">
     <div>
-        <h1 class="page-title"><span><span id="saudacao">Olá</span>, {{ (session.get('usuario') or 'Usuário').split(' ')[0] }}</span></h1>
-        <p class="page-subtitle"><i class="bi bi-calendar3 me-1"></i>{{ data_atual }} &middot; Resumo da fazenda</p>
+        <h1><span id="saudacao">Olá</span>, {{ (session.get('usuario') or 'Usuário').split(' ')[0] }}<span class="cereja" aria-hidden="true"></span></h1>
+        <p><i class="bi bi-calendar3 me-1"></i>{{ data_atual }} &middot; Veja como está a fazenda hoje</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-pin-map me-1"></i>Talhões</a>
-        <a href="{{ url_for('estoque.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-box-seam me-1"></i>Estoque</a>
-        <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-1"></i>Análises</a>
-        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-primary"><i class="bi bi-droplet-half me-1"></i>Pulverizações</a>
+        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-hero"><i class="bi bi-pin-map me-1"></i>Talhões</a>
+        <a href="{{ url_for('estoque.dashboard') }}" class="btn btn-hero"><i class="bi bi-box-seam me-1"></i>Estoque</a>
+        <a href="{{ url_for('analises.listar') }}" class="btn btn-hero"><i class="bi bi-clipboard-data me-1"></i>Análises</a>
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-hero-principal"><i class="bi bi-droplet-half me-1"></i>Pulverizações</a>
     </div>
-</div>
+</section>
 
 {% if atrasados %}
 <div class="alert-banner alert-banner-danger">

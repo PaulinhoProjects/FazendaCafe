@@ -10,6 +10,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from app.modules.relatorios import moldura_kaldi, COR_PRIMARIA, COR_LINHA
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from datetime import datetime
@@ -420,7 +421,7 @@ def gerar_pdf_produtos(produtos):
     """Gera arquivo PDF com a lista de produtos"""
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=2*cm, leftMargin=2*cm,
-                           topMargin=2*cm, bottomMargin=2*cm)
+                           topMargin=2.4*cm, bottomMargin=1.8*cm)
     
     elements = []
     styles = getSampleStyleSheet()
@@ -445,14 +446,14 @@ def gerar_pdf_produtos(produtos):
     
     table = Table(data, colWidths=[2*cm, 5*cm, 3*cm, 3*cm, 3*cm, 3*cm, 3*cm])
     style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), COR_PRIMARIA),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.4, COR_LINHA)
     ])
     
     for i, p in enumerate(produtos, start=1):
@@ -468,7 +469,7 @@ def gerar_pdf_produtos(produtos):
     rodape = Paragraph(f"Total de produtos: {total_produtos} | Produtos com estoque baixo: {total_baixo}", styles['Normal'])
     elements.append(rodape)
     
-    doc.build(elements)
+    doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
 
@@ -510,7 +511,7 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
     """Gera PDF com movimentações em um período"""
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=1.5*cm, leftMargin=1.5*cm,
-                           topMargin=1.5*cm, bottomMargin=1.5*cm)
+                           topMargin=2.4*cm, bottomMargin=1.8*cm)
     
     elements = []
     styles = getSampleStyleSheet()
@@ -548,7 +549,7 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
     
     table = Table(data, colWidths=[2.5*cm, 5*cm, 2.5*cm, 2.5*cm, 2*cm, 2.5*cm, 2.5*cm])
     style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), COR_PRIMARIA),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -568,7 +569,7 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
     table.setStyle(style)
     elements.append(table)
     
-    doc.build(elements)
+    doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
 

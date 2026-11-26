@@ -21,12 +21,21 @@
     --text-3: #7B857E;
 
     /* Marca */
-    --primary: #1F5C3E;
-    --primary-hover: #184B32;
-    --primary-light: #2E7552;
-    --primary-lighter: #3F8A63;
-    --primary-50: #EEF5F0;
-    --primary-100: #D8EADF;
+    --primary: #1A5A3B;
+    --primary-hover: #134A30;
+    --primary-light: #23734B;
+    --primary-lighter: #2E8A5C;
+    --primary-50: #EAF4EE;
+    --primary-100: #D0E7D9;
+
+    /* Marca Kaldi (logo): selo, profundidade e cereja — a cereja só em detalhes da marca */
+    --marca-verde: #1A5A3B;
+    --marca-verde-claro: #2E8A5C;
+    --marca-verde-fundo: #0F3524;
+    --marca-folha: #D6F0DF;
+    --marca-cereja: #D9381F;
+    --marca-gradiente: linear-gradient(135deg, #2E8A5C 0%, #1A5A3B 55%, #0F3524 100%);
+    --font-display: 'Manrope', 'Inter', -apple-system, 'Segoe UI', sans-serif;
     --accent: #A9713B;
     --accent-50: #F8F0E6;
     --accent-light: #FAEDCD;
@@ -86,7 +95,7 @@
     --shadow-sm: 0 1px 3px rgba(16, 24, 20, 0.06), 0 1px 2px rgba(16, 24, 20, 0.04);
     --shadow-md: 0 4px 12px -2px rgba(16, 24, 20, 0.08), 0 2px 4px -2px rgba(16, 24, 20, 0.05);
     --shadow-lg: 0 16px 40px -8px rgba(16, 24, 20, 0.16), 0 4px 10px -4px rgba(16, 24, 20, 0.08);
-    --ring: 0 0 0 3px rgba(31, 92, 62, 0.16);
+    --ring: 0 0 0 3px rgba(46, 138, 92, 0.2);
 
     /* Forma e movimento */
     --radius-sm: 6px;
@@ -103,11 +112,11 @@
     --bs-secondary-color: var(--text-3);
     --bs-emphasis-color: var(--text);
     --bs-link-color: var(--primary);
-    --bs-link-color-rgb: 31, 92, 62;
+    --bs-link-color-rgb: 26, 90, 59;
     --bs-link-hover-color: var(--primary-hover);
-    --bs-link-hover-color-rgb: 24, 75, 50;
-    --bs-primary: #1F5C3E;
-    --bs-primary-rgb: 31, 92, 62;
+    --bs-link-hover-color-rgb: 19, 74, 48;
+    --bs-primary: #1A5A3B;
+    --bs-primary-rgb: 26, 90, 59;
     --bs-success: #2E7D4F;
     --bs-success-rgb: 46, 125, 79;
     --bs-danger: #C2362B;
@@ -158,10 +167,10 @@
     --text-2: #B6C0B9;
     --text-3: #859088;
 
-    --primary: #2E7552;
-    --primary-hover: #358660;
-    --primary-light: #3F8A63;
-    --primary-lighter: #4FA277;
+    --primary: #23734B;
+    --primary-hover: #2A8156;
+    --primary-light: #2E8A5C;
+    --primary-lighter: #46A274;
     --primary-text: #72C79A;
     --primary-50: rgba(79, 162, 119, 0.12);
     --primary-100: rgba(79, 162, 119, 0.26);
@@ -1956,6 +1965,166 @@ a.stat-card-link:hover::after { opacity: 1; transform: translateX(0); }
         box-shadow: var(--shadow-md);
         max-width: 400px;
     }
+}
+
+/* -------------------------------------------------------------------------
+   16b. IDENTIDADE KALDI
+   ------------------------------------------------------------------------- */
+/* Títulos na mesma fonte do logo */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6,
+.page-title, .stat-value, .modal-title, .card-title,
+.card-header h5, .card-header h6, .card-header-split h6,
+.weather-temp, .auth-form-head h1, .auth-brand-body h2, .empty-state h5 {
+    font-family: var(--font-display);
+}
+.page-title { font-weight: 800; letter-spacing: -0.03em; }
+.stat-card .stat-value { font-weight: 800; letter-spacing: -0.035em; }
+
+/* Botão principal com o volume do selo */
+.btn-primary, .btn-success {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 60%);
+}
+
+/* Item ativo do menu com o verde claro do selo */
+.sidebar-link.active::before { background: var(--marca-verde-claro); }
+
+/* Faixa de boas-vindas do dashboard */
+.hero-kaldi {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: var(--marca-gradiente);
+    color: #fff;
+    padding: 1.6rem 1.75rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    box-shadow: 0 12px 32px -16px rgba(15, 53, 36, 0.6);
+    isolation: isolate;
+}
+.hero-kaldi::before {
+    /* textura de linhas de plantio, como as curvas de nível do cafezal */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(-28deg, rgba(255, 255, 255, 0.045) 0 2px, transparent 2px 22px);
+    z-index: -1;
+}
+.hero-kaldi-marca {
+    position: absolute;
+    right: -38px;
+    bottom: -58px;
+    width: 230px;
+    height: 230px;
+    opacity: 0.12;
+    z-index: -1;
+    pointer-events: none;
+}
+.hero-kaldi h1 {
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    margin: 0;
+}
+.hero-kaldi p { margin: 0.3rem 0 0; color: rgba(255, 255, 255, 0.78); font-size: 0.9rem; }
+.hero-kaldi .btn-hero {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: rgba(255, 255, 255, 0.1);
+    --bs-btn-border-color: rgba(255, 255, 255, 0.22);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: rgba(255, 255, 255, 0.18);
+    --bs-btn-hover-border-color: rgba(255, 255, 255, 0.35);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: rgba(255, 255, 255, 0.24);
+    --bs-btn-active-border-color: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(4px);
+}
+.hero-kaldi .btn-hero-principal {
+    --bs-btn-color: var(--marca-verde-fundo);
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: #fff;
+    --bs-btn-hover-color: var(--marca-verde-fundo);
+    --bs-btn-hover-bg: var(--marca-folha);
+    --bs-btn-hover-border-color: var(--marca-folha);
+    --bs-btn-active-color: var(--marca-verde-fundo);
+    --bs-btn-active-bg: var(--marca-folha);
+    --bs-btn-active-border-color: var(--marca-folha);
+    font-weight: 600;
+}
+.hero-kaldi .cereja {
+    display: inline-block;
+    width: 0.42em;
+    height: 0.42em;
+    border-radius: 50%;
+    margin-left: 0.12em;
+    background: radial-gradient(circle at 35% 30%, #FF8A6B 0 15%, #D9381F 55%, #8C1C10 100%);
+    vertical-align: 0.05em;
+}
+
+/* Login: painel da marca no gradiente do selo */
+.auth-brand {
+    background:
+        radial-gradient(700px 420px at 0% 0%, rgba(46, 138, 92, 0.55), transparent 60%),
+        radial-gradient(600px 460px at 100% 100%, rgba(217, 56, 31, 0.18), transparent 60%),
+        #0F3524;
+}
+.auth-brand-marca {
+    position: absolute;
+    right: -70px;
+    bottom: -90px;
+    width: 360px;
+    height: 360px;
+    opacity: 0.1;
+    pointer-events: none;
+}
+.auth-historia {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: rgba(233, 242, 236, 0.68);
+    border-left: 2px solid rgba(255, 255, 255, 0.18);
+    padding-left: 0.9rem;
+    margin: 0 0 1.5rem;
+    max-width: 52ch;
+}
+.auth-historia b { color: #fff; font-weight: 600; }
+
+/* Páginas de erro */
+.erro-kaldi {
+    min-height: calc(100vh - var(--topbar-height) - 8rem);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 2rem 1rem;
+}
+.erro-kaldi-caixa { max-width: 460px; display: grid; justify-items: center; gap: 0.75rem; }
+.erro-kaldi-icone { width: 72px; height: 72px; border-radius: 20px; box-shadow: 0 12px 28px -12px rgba(15, 53, 36, 0.55); }
+.erro-kaldi-codigo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 4.5rem;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    background: var(--marca-gradiente);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    margin-top: 0.5rem;
+}
+.erro-kaldi h1 { font-size: 1.35rem; font-weight: 800; margin: 0; }
+.erro-kaldi p { color: var(--text-3); margin: 0; }
+.erro-kaldi-acoes { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-top: 0.75rem; }
+[data-theme="dark"] .erro-kaldi-codigo { background: linear-gradient(135deg, #72C79A, #2E8A5C); -webkit-background-clip: text; background-clip: text; }
+
+@media (max-width: 767.98px) {
+    .hero-kaldi { padding: 1.25rem; }
+    .hero-kaldi h1 { font-size: 1.35rem; }
+    .hero-kaldi-marca { width: 160px; height: 160px; right: -30px; bottom: -40px; }
 }
 
 /* -------------------------------------------------------------------------

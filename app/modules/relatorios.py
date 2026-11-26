@@ -20,6 +20,7 @@ COR_CINZA = HexColor('#6C757D')
 COR_CINZA_CLARO = HexColor('#F8F9FA')
 COR_BRANCO = HexColor('#FFFFFF')
 COR_FOLHA = HexColor('#E6F4EA')
+COR_LINHA = HexColor('#D5DDD7')
 
 
 def _logo_kaldi(tamanho=26):
@@ -55,6 +56,41 @@ def _logo_kaldi(tamanho=26):
     desenho = Drawing(tamanho, tamanho)
     desenho.add(marca)
     return desenho
+
+
+
+def moldura_kaldi(canvas, doc):
+    """Desenha o cabeçalho e o rodapé da marca Kaldi em cada página do PDF.
+    Use em doc.build(..., onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi).
+    Requer topMargin >= 2.2cm e bottomMargin >= 1.4cm."""
+    from reportlab.graphics import renderPDF
+    largura, altura = doc.pagesize
+    esquerda = doc.leftMargin
+    direita = largura - doc.rightMargin
+    canvas.saveState()
+
+    # Cabeçalho: selo + nome + slogan + linha
+    base_y = altura - 1.45 * cm
+    renderPDF.draw(_logo_kaldi(18), canvas, esquerda, base_y - 4)
+    canvas.setFillColor(COR_PRIMARIA)
+    canvas.setFont('Helvetica-Bold', 13)
+    canvas.drawString(esquerda + 24, base_y + 1, 'kaldi')
+    canvas.setFillColor(COR_CINZA)
+    canvas.setFont('Helvetica', 7.5)
+    canvas.drawRightString(direita, base_y + 3, 'Tecnologia que Colhe Resultados')
+    canvas.setStrokeColor(COR_LINHA)
+    canvas.setLineWidth(0.6)
+    canvas.line(esquerda, altura - 1.7 * cm, direita, altura - 1.7 * cm)
+
+    # Rodapé: data de geração + página
+    canvas.setStrokeColor(COR_LINHA)
+    canvas.line(esquerda, 1.15 * cm, direita, 1.15 * cm)
+    canvas.setFont('Helvetica', 7.5)
+    canvas.setFillColor(COR_CINZA)
+    canvas.drawString(esquerda, 0.75 * cm, f"Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}")
+    canvas.drawRightString(direita, 0.75 * cm, f"Kaldi  ·  página {doc.page}")
+    canvas.restoreState()
+
 
 
 def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retrato'):
@@ -124,49 +160,6 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
         alignment=TA_LEFT
     )
 
-    # Cabeçalho
-    marca = Table(
-        [[_logo_kaldi(26), Paragraph("kaldi", ParagraphStyle(
-            'LogoKaldi',
-            parent=styles['Title'],
-            fontSize=22,
-            leading=26,
-            textColor=COR_PRIMARIA,
-            fontName='Helvetica-Bold',
-            alignment=TA_LEFT
-        ))]],
-        colWidths=[34, 70]
-    )
-    marca.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-        ('TOPPADDING', (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-    ]))
-    marca.hAlign = 'CENTER'
-    elementos.append(marca)
-    elementos.append(Spacer(1, 4))
-    elementos.append(Paragraph("Tecnologia que Colhe Resultados", ParagraphStyle(
-        'SloganAgroCafe',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=COR_ACENT,
-        spaceAfter=15,
-        alignment=TA_CENTER
-    )))
-
-    # Linha separadora
-    elementos.append(Table(
-        [['']],
-        colWidths=[pagesize[0] - 4*cm],
-        rowHeights=[1],
-        style=TableStyle([
-            ('LINEBELOW', (0, 0), (-1, -1), 2, COR_PRIMARIA),
-        ])
-    ))
-    elementos.append(Spacer(1, 15))
-
     # Titulo e subtitulo do relatorio
     elementos.append(Paragraph(titulo, estilo_titulo))
     elementos.append(Paragraph(subtitulo, estilo_subtitulo))
@@ -233,23 +226,7 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
             )
         ))
 
-    # Rodapé com data de geração
-    elementos.append(Spacer(1, 25))
-    elementos.append(Table(
-        [[
-            Paragraph(
-                f"Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
-                ParagraphStyle('RodapeData', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA)
-            ),
-            Paragraph(
-                "Kaldi · Tecnologia que Colhe Resultados",
-                ParagraphStyle('RodapeMarca', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA, alignment=TA_RIGHT)
-            )
-        ]],
-        colWidths=[(pagesize[0] - 4*cm) / 2, (pagesize[0] - 4*cm) / 2]
-    ))
-
-    doc.build(elementos)
+    doc.build(elementos, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     output.seek(0)
     return output
 

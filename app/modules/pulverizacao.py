@@ -438,8 +438,8 @@ def gerar_pdf_pulverizacoes(aplicacoes, data_inicio=None, data_fim=None):
         pagesize=landscape(A4),
         rightMargin=1*cm,
         leftMargin=1*cm,
-        topMargin=1.5*cm,
-        bottomMargin=1.5*cm
+        topMargin=2.4*cm,
+        bottomMargin=1.8*cm
     )
     
     elements = []
@@ -533,7 +533,7 @@ def gerar_pdf_pulverizacoes(aplicacoes, data_inicio=None, data_fim=None):
 # Estilo da tabela
     style = TableStyle([
     # Cabeçalho - Azul petróleo escuro (mais suave que azul forte)
-    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4A6FA5')),  # Azul mais suave
+    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5A3B')),  # Verde Kaldi
     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
     ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -581,7 +581,8 @@ def gerar_pdf_pulverizacoes(aplicacoes, data_inicio=None, data_fim=None):
     elements.append(rodape)
     
     # Gerar PDF
-    doc.build(elements)
+    from app.modules.relatorios import moldura_kaldi
+    doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
 
@@ -608,8 +609,8 @@ def gerar_pdf_receitas(receitas, periodo_filtro=None, mes=None, ano=None, termo_
         pagesize=landscape(A4),
         rightMargin=1*cm,
         leftMargin=1*cm,
-        topMargin=1.5*cm,
-        bottomMargin=1.5*cm
+        topMargin=2.4*cm,
+        bottomMargin=1.8*cm
     )
     
     elements = []
@@ -689,7 +690,7 @@ def gerar_pdf_receitas(receitas, periodo_filtro=None, mes=None, ano=None, termo_
     # Estilo da tabela
     style = TableStyle([
         # Cabeçalho
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B7A57')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5A3B')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -730,7 +731,8 @@ def gerar_pdf_receitas(receitas, periodo_filtro=None, mes=None, ano=None, termo_
     elements.append(rodape)
     
     # Gerar PDF
-    doc.build(elements)
+    from app.modules.relatorios import moldura_kaldi
+    doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
 

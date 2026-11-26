@@ -1,15 +1,2 @@
-{% extends "base.html" %}
-
-{% block title %}Acesso Negado — Fazenda Café{% endblock %}
-
-{% block content %}
-<div class="container mt-5">
-    <div class="alert alert-danger text-center">
-        <h2 class="mb-3">403 - Acesso Negado.</h2>
-        <p>Você não tem permissão para acessar esta página.</p>
-        <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary mt-3">
-            Voltar ao início
-        </a>
-    </div>
-</div>
-{% endblock %}
+{# Página de erro 403 com a identidade Kaldi (usa erro.html) #}
+{% with codigo=403, titulo='Acesso negado', mensagem='Você não tem permissão para abrir esta página. Fale com o administrador do sistema se precisar de acesso.' %}{% include 'erro.html' %}{% endwith %}

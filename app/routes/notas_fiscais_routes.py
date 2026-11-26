@@ -178,7 +178,7 @@ def relatorio_pdf(id):
         from reportlab.lib.units import cm
         import io
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2.4*cm, bottomMargin=1.8*cm)
         elements = []
         styles = getSampleStyleSheet()
         elements.append(Paragraph(f"Nota Fiscal #{nota.get('numero_nota', '')}", styles['Title']))
@@ -200,7 +200,7 @@ def relatorio_pdf(id):
             ])
         tabela = Table(data_tabela, colWidths=[6*cm, 2.5*cm, 2*cm, 3*cm, 3*cm])
         tabela.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C5F2D')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5A3B')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
@@ -209,7 +209,8 @@ def relatorio_pdf(id):
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
         ]))
         elements.append(tabela)
-        doc.build(elements)
+        from app.modules.relatorios import moldura_kaldi
+        doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
         buffer.seek(0)
         return Response(buffer.getvalue(), mimetype='application/pdf',
                        headers={'Content-Disposition': f'attachment; filename=NF_{nota.get("numero_nota", id)}.pdf'})
