@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
-from app.modules import pulverizacao
+from app.modules import pulverizacao, receitas, estoque, talhoes
 from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
 import csv
+import json
 from app.models import get_logger
 
 logger = get_logger(__name__)
@@ -233,85 +234,144 @@ def limpar_retorno(id):
     return redirect(url_for('pulverizacao.retorno_aplicacao', id=id))
 
 # =====================================================
-# RECEITAS
+# RECEITAS ESTRUTURADAS (PRODUTOS + TALHOES + COMPRAS)
 # =====================================================
+
+def _dados_formulario_receita():
+    return {
+        'periodos': pulverizacao.listar_periodos(),
+        'produtos': estoque.listar_produtos(ativos=True),
+        'talhoes_disponiveis': talhoes.listar_talhoes(),
+    }
+
+
+def _lista_do_formulario(campo, mensagem):
+    try:
+        valores = json.loads(request.form.get(campo) or '[]')
+    except (TypeError, ValueError):
+        raise ValueError(mensagem)
+    if not isinstance(valores, list):
+        raise ValueError(mensagem)
+    return valores
+
+
+def _cabecalho_do_formulario():
+    return {
+        'nome': request.form.get('nome'),
+        'periodo_id': request.form.get('periodo_id'),
+        'descricao': request.form.get('descricao'),
+        'observacoes': request.form.get('observacoes'),
+    }
+
+
+def _periodo_nome(periodo_id):
+    if not periodo_id:
+        return 'Geral'
+    for periodo in pulverizacao.listar_periodos():
+        if periodo['id'] == periodo_id:
+            return periodo['nome']
+    return 'Geral'
+
 
 @pulverizacao_bp.route('/receitas')
 @login_required
 def listar_receitas():
     try:
-        receitas = pulverizacao.listar_receitas()
-        return render_template('pulverizacao/receitas/lista.html', receitas=receitas)
+        lista = pulverizacao.listar_receitas()
+        contagens = receitas.contar_talhoes_por_receita()
+        return render_template('pulverizacao/receitas/lista.html',
+                               receitas=lista, contagens=contagens)
     except Exception as e:
         logger.error(f"pulverizacao_routes.listar_receitas: {e}")
         flash('Erro ao carregar receitas.', 'error')
-        return render_template('pulverizacao/receitas/lista.html', receitas=[])
+        return render_template('pulverizacao/receitas/lista.html', receitas=[], contagens={})
+
 
 @pulverizacao_bp.route('/receitas/nova', methods=['GET', 'POST'])
 @login_required
 def nova_receita():
     if request.method == 'POST':
         try:
-            dados = {
-                'nome': request.form.get('nome'),
-                'periodo_id': request.form.get('periodo_id'),
-                'descricao': request.form.get('descricao'),
-                'formula': request.form.get('formula'),
-                'produtos': request.form.get('produtos'),
-                'observacoes': request.form.get('observacoes')
-            }
-            receita_id = pulverizacao.inserir_receita(dados)
-            if receita_id:
-                flash('Receita cadastrada com sucesso!', 'success')
-                return redirect(url_for('pulverizacao.listar_receitas'))
-            else:
-                flash('Erro ao cadastrar receita.', 'error')
+            receita_id, _ = receitas.salvar_receita(
+                _cabecalho_do_formulario(),
+                _lista_do_formulario('itens_json', 'Lista de produtos inválida.'),
+                _lista_do_formulario('talhoes_json', 'Seleção de talhões inválida.'),
+            )
+            flash('Receita cadastrada com sucesso!', 'success')
+            return redirect(url_for('pulverizacao.detalhe_receita', id=receita_id))
         except Exception as e:
             logger.error(f"pulverizacao_routes.nova_receita: {e}")
-            flash(f'Erro: {e}', 'error')
+            flash(str(e), 'error')
 
     try:
-        periodos = pulverizacao.listar_periodos()
-        return render_template('pulverizacao/receitas/nova.html', periodos=periodos)
+        return render_template('pulverizacao/receitas/formulario.html',
+                               receita=None, itens=[], talhoes_selecionados=[],
+                               resumo=None, acao=url_for('pulverizacao.nova_receita'),
+                               **_dados_formulario_receita())
     except Exception as e:
         logger.error(f"pulverizacao_routes.nova_receita: {e}")
-        flash('Erro ao carregar formulario.', 'error')
+        flash('Erro ao carregar formulário.', 'error')
         return redirect(url_for('pulverizacao.listar_receitas'))
+
+
+@pulverizacao_bp.route('/receitas/<int:id>')
+@login_required
+def detalhe_receita(id):
+    try:
+        receita = pulverizacao.buscar_receita_por_id(id)
+        if not receita:
+            flash('Receita não encontrada.', 'warning')
+            return redirect(url_for('pulverizacao.listar_receitas'))
+        return render_template(
+            'pulverizacao/receitas/detalhe.html',
+            receita=receita,
+            periodo_nome=_periodo_nome(receita.get('periodo_id')),
+            itens=receitas.listar_itens(id),
+            talhoes=receitas.listar_talhoes(id),
+            resumo=receitas.resumo_compras(id),
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.detalhe_receita: {e}")
+        flash('Erro ao carregar receita.', 'error')
+        return redirect(url_for('pulverizacao.listar_receitas'))
+
 
 @pulverizacao_bp.route('/receitas/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_receita(id):
     if request.method == 'POST':
         try:
-            dados = {
-                'nome': request.form.get('nome'),
-                'periodo_id': request.form.get('periodo_id'),
-                'descricao': request.form.get('descricao'),
-                'formula': request.form.get('formula'),
-                'produtos': request.form.get('produtos'),
-                'observacoes': request.form.get('observacoes')
-            }
-            if pulverizacao.atualizar_receita(id, dados):
-                flash('Receita atualizada com sucesso!', 'success')
-                return redirect(url_for('pulverizacao.listar_receitas'))
-            else:
-                flash('Erro ao atualizar.', 'error')
+            receitas.salvar_receita(
+                _cabecalho_do_formulario(),
+                _lista_do_formulario('itens_json', 'Lista de produtos inválida.'),
+                _lista_do_formulario('talhoes_json', 'Seleção de talhões inválida.'),
+                receita_id=id,
+            )
+            flash('Receita atualizada com sucesso!', 'success')
+            return redirect(url_for('pulverizacao.detalhe_receita', id=id))
         except Exception as e:
             logger.error(f"pulverizacao_routes.editar_receita: {e}")
-            flash(f'Erro: {e}', 'error')
+            flash(str(e), 'error')
 
     try:
         receita = pulverizacao.buscar_receita_por_id(id)
         if not receita:
-            flash('Receita nao encontrada.', 'warning')
+            flash('Receita não encontrada.', 'warning')
             return redirect(url_for('pulverizacao.listar_receitas'))
-        periodos = pulverizacao.listar_periodos()
-        return render_template('pulverizacao/receitas/editar.html',
-                             receita=receita, periodos=periodos)
+        return render_template(
+            'pulverizacao/receitas/formulario.html',
+            receita=receita,
+            itens=receitas.listar_itens(id),
+            talhoes_selecionados=receitas.listar_talhoes(id),
+            resumo=receitas.resumo_compras(id),
+            acao=url_for('pulverizacao.editar_receita', id=id),
+            **_dados_formulario_receita()
+        )
     except Exception as e:
         logger.error(f"pulverizacao_routes.editar_receita: {e}")
-        flash('Erro ao carregar formulario.', 'error')
+        flash('Erro ao carregar formulário.', 'error')
         return redirect(url_for('pulverizacao.listar_receitas'))
+
 
 @pulverizacao_bp.route('/receitas/<int:id>/excluir', methods=['POST'])
 @login_required
@@ -319,6 +379,7 @@ def excluir_receita(id):
     try:
         sucesso, msg = pulverizacao.excluir_receita(id)
         if sucesso:
+            receitas.desativar_detalhes(id)
             flash(msg, 'success')
         else:
             flash(msg, 'warning')

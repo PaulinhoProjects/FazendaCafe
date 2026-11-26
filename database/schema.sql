@@ -311,3 +311,27 @@ CROSS JOIN (VALUES
 ) AS v(nome, unidade, ordem)
 WHERE t.nome = 'Foliar'
 AND NOT EXISTS (SELECT 1 FROM parametros_analise p WHERE p.tipo_analise_id = t.id AND p.nome = v.nome);
+
+-- Itens estruturados das receitas de pulverizacao
+CREATE TABLE IF NOT EXISTS receita_itens (
+    id SERIAL PRIMARY KEY,
+    receita_id INTEGER NOT NULL REFERENCES receitas(id),
+    produto_id INTEGER REFERENCES produtos_estoque(id),
+    produto_nome VARCHAR(150),
+    dose NUMERIC(12,3) NOT NULL,
+    unidade VARCHAR(20) NOT NULL,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Talhoes destinatarios de cada receita (um lancamento atende varios talhoes)
+CREATE TABLE IF NOT EXISTS receita_talhoes (
+    id SERIAL PRIMARY KEY,
+    receita_id INTEGER NOT NULL REFERENCES receitas(id),
+    talhao_id INTEGER NOT NULL REFERENCES talhoes(id),
+    area_hectares NUMERIC(10,2) NOT NULL DEFAULT 0,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (receita_id, talhao_id)
+);

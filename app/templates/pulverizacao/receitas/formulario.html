@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block titulo %}{% if receita %}Editar Receita{% else %}Nova Receita{% endif %}{% endblock %}
+{% block styles %}
+<style>
+    .etapas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+    .etapa-botao { border: 0; background: transparent; padding: 6px 10px; border-radius: 16px; font-size: .82rem; color: #6c757d; }
+    .etapa-botao.ativa { background: #0d6efd; color: #fff; font-weight: 600; }
+    .etapa-botao.concluida { background: #e7f1ff; color: #0d6efd; }
+    .etapa-painel { display: none; }
+    .etapa-painel.visivel { display: block; }
+    .lista-talhoes { max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; }
+    .linha-talhao { display: flex; align-items: center; gap: 8px; padding: 4px 2px; }
+    .linha-talhao label { flex: 1; margin: 0; cursor: pointer; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-journal-text me-2"></i>{% if receita %}Editar Receita{% else %}Nova Receita{% endif %}</h2>
+            <p class="text-muted mb-0">Indicação → produtos → talhões → resumo de compras</p>
+        </div>
+        <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Receitas
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="etapas">
+                <button type="button" class="etapa-botao ativa" data-ir="1">1 · Indicação</button>
+                <button type="button" class="etapa-botao" data-ir="2">2 · Produtos</button>
+                <button type="button" class="etapa-botao" data-ir="3">3 · Talhões</button>
+                <button type="button" class="etapa-botao" data-ir="4">4 · Resumo e compras</button>
+            </div>
+
+            <form method="POST" action="{{ acao }}" id="formReceita">
+                <input type="hidden" name="itens_json" id="itensJson">
+                <input type="hidden" name="talhoes_json" id="talhoesJson">
+
+                <section class="etapa-painel visivel" data-etapa="1">
+                    <h5 class="mb-3">1. O que o agrônomo identificou</h5>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Nome da receita *</label>
+                            <input type="text" name="nome" class="form-control" required
+                                   value="{{ receita.nome if receita else '' }}" placeholder="Ex: Controle bicho-mineiro safra 26/27">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Período da lavoura</label>
+                            <select name="periodo_id" class="form-select">
+                                <option value="">Geral</option>
+                                {% for p in periodos %}
+                                <option value="{{ p.id }}" {% if receita and receita.periodo_id == p.id %}selected{% endif %}>{{ p.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrição / indicação</label>
+                        <textarea name="descricao" class="form-control" rows="2" placeholder="O que foi constatado na visita e o que deve ser feito">{{ receita.descricao if receita else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea name="observacoes" class="form-control" rows="2">{{ receita.observacoes if receita else '' }}</textarea>
+                    </div>
+                </section>
+
+                <section class="etapa-painel" data-etapa="2">
+                    <h5 class="mb-3">2. Produtos e dose por hectare</h5>
+                    <p class="text-muted small">Digite para buscar no estoque. Se o produto ainda não estiver cadastrado, ele será criado com saldo zero e entrará na lista de compras.</p>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Produto</label>
+                            <input class="form-control" list="listaProdutos" id="buscaProduto" placeholder="Buscar produto..." autocomplete="off">
+                            <datalist id="listaProdutos">
+                                {% for p in produtos %}<option value="{{ p.nome }}">{{ p.unidade }} · saldo {{ p.quantidade_atual }}</option>{% endfor %}
+                            </datalist>
+                            <div class="form-text" id="dicaProduto"></div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Dose / ha</label>
+                            <input type="number" step="0.001" min="0.001" class="form-control" id="doseProduto">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Unidade</label>
+                            <select class="form-select" id="unidadeProduto">
+                                {% for u in ['L','kg','g','ml','sc','un'] %}<option value="{{ u }}">{{ u }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Obs. (opcional)</label>
+                            <input type="text" class="form-control" id="obsProduto">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" class="btn btn-success w-100" id="btnAddProduto" title="Adicionar produto"><i class="bi bi-plus-lg"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-hover">
+                            <thead><tr><th>Produto</th><th>Dose/ha</th><th>Un.</th><th>Saldo</th><th>Obs.</th><th></th></tr></thead>
+                            <tbody id="corpoItens"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="etapa-painel" data-etapa="3">
+                    <h5 class="mb-3">3. Talhões destinatários</h5>
+                    <p class="text-muted small">A mesma receita pode atender vários talhões. Marque todos os que receberão esta aplicação.</p>
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" class="form-control form-control-sm" id="buscaTalhao" placeholder="Filtrar talhão...">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTodosTalhoes">Selecionar todos</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNenhumTalhao">Limpar</button>
+                    </div>
+                    <div class="lista-talhoes" id="listaTalhoes">
+                        {% for t in talhoes_disponiveis %}
+                        <div class="linha-talhao" data-nome="{{ t.nome|lower }}">
+                            <input type="checkbox" class="check-talhao" value="{{ t.id }}" data-area="{{ t.area }}"
+                                   {% if talhoes_selecionados and t.id in talhoes_selecionados|map(attribute='id')|list %}checked{% endif %}>
+                            <label>{{ t.nome }}</label>
+                            <span class="text-muted small">{{ t.area|float|round(2) }} ha</span>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">Nenhum talhão ativo cadastrado.</p>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-2"><strong id="totalArea">0.00 ha selecionados</strong></div>
+                </section>
+
+                <section class="etapa-painel" data-etapa="4">
+                    <h5 class="mb-3">4. Resumo e lista de compras</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead><tr><th>Produto</th><th>Dose/ha</th><th>Área (ha)</th><th>Necessário</th><th>Saldo</th><th>Comprar</th></tr></thead>
+                            <tbody id="corpoResumo"></tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-info py-2" id="avisoCompras"></div>
+                </section>
+
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" id="btnVoltar" style="display:none"><i class="bi bi-arrow-left me-1"></i>Voltar</button>
+                    <span></span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" id="btnAvancar">Avançar<i class="bi bi-arrow-right ms-1"></i></button>
+                        <button type="submit" class="btn btn-success" id="btnSalvar" style="display:none"><i class="bi bi-check-circle me-1"></i>Salvar receita</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    const produtosDisponiveis = {{ produtos | tojson }};
+    let itens = {{ itens | tojson }};
+    let etapaAtual = 1;
+
+    const paineis = document.querySelectorAll('.etapa-painel');
+    const botoesEtapa = document.querySelectorAll('.etapa-botao');
+    const btnVoltar = document.getElementById('btnVoltar');
+    const btnAvancar = document.getElementById('btnAvancar');
+    const btnSalvar = document.getElementById('btnSalvar');
+
+    function mostrarEtapa(numero) {
+        etapaAtual = numero;
+        paineis.forEach(p => p.classList.toggle('visivel', Number(p.dataset.etapa) === numero));
+        botoesEtapa.forEach(b => {
+            const n = Number(b.dataset.ir);
+            b.classList.toggle('ativa', n === numero);
+            b.classList.toggle('concluida', n < numero);
+        });
+        btnVoltar.style.display = numero === 1 ? 'none' : '';
+        btnAvancar.style.display = numero === 4 ? 'none' : '';
+        btnSalvar.style.display = numero === 4 ? '' : 'none';
+        if (numero === 4) calcularResumo();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function produtoPorNome(nome) {
+        const alvo = (nome || '').trim().toLowerCase();
+        return produtosDisponiveis.find(p => p.nome.toLowerCase() === alvo);
+    }
+
+    function renderizarItens() {
+        const corpo = document.getElementById('corpoItens');
+        corpo.innerHTML = '';
+        itens.forEach((item, indice) => {
+            const tr = document.createElement('tr');
+            const nome = document.createElement('td');
+            nome.textContent = item.nome || item.produto_nome || 'Sem nome';
+            if (!item.produto_id) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-warning text-dark ms-1';
+                badge.textContent = 'novo';
+                nome.appendChild(badge);
+            }
+            const dose = document.createElement('td');
+            dose.textContent = Number(item.dose).toFixed(3).replace('.', ',');
+            const unidade = document.createElement('td');
+            unidade.textContent = item.unidade;
+            const saldo = document.createElement('td');
+            saldo.textContent = Number(item.saldo || 0).toFixed(2).replace('.', ',');
+            const obs = document.createElement('td');
+            obs.textContent = item.observacoes || '—';
+            const acao = document.createElement('td');
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'btn btn-sm btn-outline-danger';
+            botao.innerHTML = '<i class="bi bi-trash"></i>';
+            botao.onclick = () => { itens.splice(indice, 1); renderizarItens(); };
+            acao.appendChild(botao);
+            tr.append(nome, dose, unidade, saldo, obs, acao);
+            corpo.appendChild(tr);
+        });
+    }
+
+    document.getElementById('buscaProduto').addEventListener('input', function() {
+        const encontrado = produtoPorNome(this.value);
+        const dica = document.getElementById('dicaProduto');
+        if (encontrado) {
+            dica.innerHTML = 'No estoque: <strong>' + encontrado.quantidade_atual + ' ' + encontrado.unidade + '</strong>';
+            document.getElementById('unidadeProduto').value = encontrado.unidade;
+        } else {
+            dica.textContent = this.value.trim() ? 'Produto novo — será cadastrado com saldo zero.' : '';
+        }
+    });
+
+    document.getElementById('btnAddProduto').addEventListener('click', function() {
+        const campo = document.getElementById('buscaProduto');
+        const nome = campo.value.trim();
+        const dose = parseFloat(document.getElementById('doseProduto').value);
+        if (!nome) { alert('Informe o produto.'); return; }
+        if (!(dose > 0)) { alert('Informe uma dose maior que zero.'); return; }
+        const encontrado = produtoPorNome(nome);
+        itens.push({
+            produto_id: encontrado ? encontrado.id : null,
+            produto_nome: encontrado ? encontrado.nome : nome,
+            nome: nome,
+            dose: dose,
+            unidade: document.getElementById('unidadeProduto').value,
+            observacoes: document.getElementById('obsProduto').value.trim(),
+            saldo: encontrado ? Number(encontrado.quantidade_atual || 0) : 0
+        });
+        campo.value = '';
+        document.getElementById('doseProduto').value = '';
+        document.getElementById('obsProduto').value = '';
+        document.getElementById('dicaProduto').textContent = '';
+        renderizarItens();
+    });
+
+    function talhoesMarcados() {
+        return [...document.querySelectorAll('.check-talhao:checked')].map(c => ({
+            id: Number(c.value),
+            nome: c.parentElement.querySelector('label').textContent.trim(),
+            area: Number(c.dataset.area || 0)
+        }));
+    }
+
+    function atualizarTotal() {
+        const total = talhoesMarcados().reduce((soma, t) => soma + t.area, 0);
+        document.getElementById('totalArea').textContent = total.toFixed(2).replace('.', ',') + ' ha selecionados';
+    }
+
+    document.querySelectorAll('.check-talhao').forEach(c => c.addEventListener('change', atualizarTotal));
+    document.getElementById('buscaTalhao').addEventListener('input', function() {
+        const filtro = this.value.toLowerCase();
+        document.querySelectorAll('.linha-talhao').forEach(l => {
+            l.style.display = l.dataset.nome.includes(filtro) ? '' : 'none';
+        });
+    });
+    document.getElementById('btnTodosTalhoes').addEventListener('click', function() {
+        document.querySelectorAll('.check-talhao').forEach(c => { c.checked = true; });
+        atualizarTotal();
+    });
+    document.getElementById('btnNenhumTalhao').addEventListener('click', function() {
+        document.querySelectorAll('.check-talhao').forEach(c => { c.checked = false; });
+        atualizarTotal();
+    });
+
+    function calcularResumo() {
+        const area = talhoesMarcados().reduce((soma, t) => soma + t.area, 0);
+        const corpo = document.getElementById('corpoResumo');
+        corpo.innerHTML = '';
+        let faltantes = 0;
+        itens.forEach(item => {
+            const necessario = item.dose * area;
+            const saldo = Number(item.saldo || 0);
+            const comprar = Math.max(0, necessario - saldo);
+            if (comprar > 0) faltantes++;
+            const tr = document.createElement('tr');
+            [
+                item.nome || item.produto_nome,
+                Number(item.dose).toFixed(3).replace('.', ','),
+                area.toFixed(2).replace('.', ','),
+                necessario.toFixed(2).replace('.', ','),
+                saldo.toFixed(2).replace('.', ','),
+                comprar.toFixed(2).replace('.', ',')
+            ].forEach(texto => { const td = document.createElement('td'); td.textContent = texto; tr.appendChild(td); });
+            corpo.appendChild(tr);
+        });
+        document.getElementById('avisoCompras').textContent = faltantes
+            ? faltantes + ' produto(s) precisam ser comprados antes da aplicação.'
+            : 'Saldo suficiente para todos os produtos da receita.';
+    }
+
+    botoesEtapa.forEach(b => b.addEventListener('click', () => mostrarEtapa(Number(b.dataset.ir))));
+    btnAvancar.addEventListener('click', function() {
+        if (etapaAtual === 2 && !itens.length) { alert('Adicione pelo menos um produto.'); return; }
+        if (etapaAtual === 3 && !talhoesMarcados().length) { alert('Selecione pelo menos um talhão.'); return; }
+        mostrarEtapa(etapaAtual + 1);
+    });
+    btnVoltar.addEventListener('click', () => mostrarEtapa(etapaAtual - 1));
+
+    document.getElementById('formReceita').addEventListener('submit', function() {
+        document.getElementById('itensJson').value = JSON.stringify(itens.map(i => ({
+            produto_id: i.produto_id || '',
+            produto_nome: i.produto_nome || i.nome,
+            dose: i.dose,
+            unidade: i.unidade,
+            observacoes: i.observacoes || ''
+        })));
+        document.getElementById('talhoesJson').value = JSON.stringify(talhoesMarcados().map(t => t.id));
+    });
+
+    renderizarItens();
+    atualizarTotal();
+</script>
+{% endblock %}
