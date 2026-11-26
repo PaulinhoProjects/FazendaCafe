@@ -6,66 +6,94 @@
 <title>{% block titulo %}{% endblock %} | AgroCafé</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 {% block styles %}{% endblock %}
 </head>
 <body>
+<script>try { if (localStorage.getItem('agrocafe.sidebar') === 'recolhida') document.body.classList.add('sidebar-collapsed'); } catch (e) {}</script>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+{% set nome_usuario = session.get('usuario') or 'Usuário' %}
+{% set tipo_usuario = session.get('tipo') or 'visitante' %}
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <a href="{{ url_for('dashboard.index') }}" class="logo">
-            <i class="bi bi-cup-hot-fill"></i>AgroCafé
+        <a href="{{ url_for('dashboard.index') }}" class="logo" title="AgroCafé">
+            <span class="logo-mark"><i class="bi bi-cup-hot-fill"></i></span>
+            <span class="logo-text">AgroCafé</span>
         </a>
-        <div class="subtitle">Tecnologia que Colhe Resultados</div>
     </div>
     <ul class="sidebar-nav">
-        <li class="sidebar-item"><a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i>Dashboard</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}"><i class="bi bi-pin-map"></i>Talhões</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span class="sidebar-text">Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}" title="Talhões"><i class="bi bi-pin-map"></i><span class="sidebar-text">Talhões</span></a></li>
         <li class="sidebar-section-label">Manejo do Cafezal</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}"><i class="bi bi-tools"></i>Visão Geral</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.dashboard') }}"><i class="bi bi-tree-fill"></i>Pulverização</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}"><i class="bi bi-flower1"></i>Adubação</a></li> 
-        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}"><i class="bi bi-clipboard-data"></i>Análises</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}" title="Visão Geral"><i class="bi bi-kanban"></i><span class="sidebar-text">Visão Geral</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.dashboard') }}" title="Pulverização"><i class="bi bi-droplet-half"></i><span class="sidebar-text">Pulverização</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/adubacao' in request.path %}active{% endif %}" href="{{ url_for('adubacao.dashboard') }}" title="Adubação"><i class="bi bi-flower1"></i><span class="sidebar-text">Adubação</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/analises' in request.path %}active{% endif %}" href="{{ url_for('analises.listar') }}" title="Análises"><i class="bi bi-clipboard-data"></i><span class="sidebar-text">Análises</span></a></li>
         <li class="sidebar-section-label">Insumos</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}"><i class="bi bi-box-seam"></i>Estoque</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}"><i class="bi bi-receipt"></i>Notas Fiscais</a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}"><i class="bi bi-recycle"></i>Devolução de Embalagens</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}" title="Estoque"><i class="bi bi-box-seam"></i><span class="sidebar-text">Estoque</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}" title="Notas Fiscais"><i class="bi bi-receipt"></i><span class="sidebar-text">Notas Fiscais</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}" title="Devolução de Embalagens"><i class="bi bi-recycle"></i><span class="sidebar-text">Devolução de Embalagens</span></a></li>
         <li class="sidebar-section-label">Ambiente</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}"><i class="bi bi-cloud-sun"></i>Clima</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}" title="Clima"><i class="bi bi-cloud-sun"></i><span class="sidebar-text">Clima</span></a></li>
         <li class="sidebar-section-label">Relatórios</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/relatorios' in request.path %}active{% endif %}" href="{{ url_for('relatorios.index') }}"><i class="bi bi-file-earmark-pdf"></i>Relatórios PDF</a></li>
-        {% if session.get('tipo') == 'admin' %}
+        <li class="sidebar-item"><a class="sidebar-link {% if '/relatorios' in request.path %}active{% endif %}" href="{{ url_for('relatorios.index') }}" title="Relatórios PDF"><i class="bi bi-file-earmark-text"></i><span class="sidebar-text">Relatórios PDF</span></a></li>
+        {% if tipo_usuario == 'admin' %}
         <li class="sidebar-section-label">Administração</li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/configuracoes' in request.path %}active{% endif %}" href="{{ url_for('config.index') }}"><i class="bi bi-gear"></i>Configurações</a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/configuracoes' in request.path %}active{% endif %}" href="{{ url_for('config.index') }}" title="Configurações"><i class="bi bi-gear"></i><span class="sidebar-text">Configurações</span></a></li>
         {% endif %}
-        <li class="sidebar-section-label">Conta</li>
-        <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.perfil') }}"><i class="bi bi-person-circle"></i>Meu Perfil</a></li>
-        <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Sair</a></li>
     </ul>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <a href="{{ url_for('auth.perfil') }}" class="d-flex align-items-center gap-2 flex-grow-1 text-reset text-decoration-none" style="min-width: 0;" title="Meu Perfil">
+                <span class="avatar">{{ nome_usuario[0]|upper }}</span>
+                <span class="sidebar-user-info">
+                    <span class="sidebar-user-name d-block">{{ nome_usuario }}</span>
+                    <span class="sidebar-user-role d-block">{{ tipo_usuario|title }}</span>
+                </span>
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-logout" title="Sair"><i class="bi bi-box-arrow-right"></i></a>
+        </div>
+    </div>
 </aside>
 <div class="main-content">
     <header class="topbar">
-        <button class="topbar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        <button class="topbar-toggle" type="button" onclick="toggleSidebar()" aria-label="Alternar menu lateral" title="Alternar menu"><i class="bi bi-layout-sidebar"></i></button>
+        <nav class="topbar-breadcrumb" aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                {% block breadcrumb %}
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i></a></li>
+                {% endblock %}
+            </ol>
+        </nav>
         <div class="topbar-search">
+            <i class="bi bi-search"></i>
             <input type="text" id="buscaGlobal" class="form-control form-control-sm" placeholder="Buscar no sistema..."
-                onkeydown="if(event.key === 'Enter') buscarGlobal()">
+                onkeydown="if(event.key === 'Enter') buscarGlobal()" autocomplete="off">
+            <kbd>Ctrl K</kbd>
         </div>
-        <div class="topbar-user">
-            <div class="avatar">{{ session.get('usuario', 'U')[0]|upper }}</div>
-            <div class="user-info">
-                <div class="user-name">{{ session.get('usuario', 'Usuário') }}</div>
-                <div class="user-role"><span class="badge bg-{% if session.get('tipo') == 'admin' %}primary{% elif session.get('tipo') == 'operador' %}info{% else %}secondary{% endif %} rounded-pill">{{ session.get('tipo', 'visitante')|title }}</span></div>
-            </div>
+        <div class="topbar-user dropdown">
+            <button class="topbar-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="avatar">{{ nome_usuario[0]|upper }}</span>
+                <span class="user-info">
+                    <span class="user-name d-block">{{ nome_usuario }}</span>
+                    <span class="user-role d-block">{{ tipo_usuario|title }}</span>
+                </span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><h6 class="dropdown-header">Conectado como {{ nome_usuario }}</h6></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.perfil') }}"><i class="bi bi-person-circle"></i>Meu Perfil</a></li>
+                {% if tipo_usuario == 'admin' %}
+                <li><a class="dropdown-item" href="{{ url_for('config.index') }}"><i class="bi bi-gear"></i>Configurações</a></li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Sair</a></li>
+            </ul>
         </div>
     </header>
-    <div class="breadcrumb-bar">
-        <ol class="breadcrumb">
-            {% block breadcrumb %}
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}"><i class="bi bi-house-door"></i></a></li>
-            {% endblock %}
-        </ol>
-    </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -88,9 +116,24 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function toggleSidebar() {
+    if (window.innerWidth >= 992) {
+        const recolhida = document.body.classList.toggle('sidebar-collapsed');
+        try { localStorage.setItem('agrocafe.sidebar', recolhida ? 'recolhida' : 'aberta'); } catch (e) {}
+        return;
+    }
     document.getElementById('sidebar').classList.toggle('show');
     document.getElementById('sidebarOverlay').classList.toggle('show');
 }
+// Atalho Ctrl+K / Cmd+K para a busca global
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        const busca = document.getElementById('buscaGlobal');
+        if (busca && busca.offsetParent !== null) { e.preventDefault(); busca.focus(); busca.select(); }
+    }
+    if (e.key === 'Escape' && document.activeElement && document.activeElement.id === 'buscaGlobal') {
+        document.activeElement.blur();
+    }
+});
 document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', function() {
         if (window.innerWidth < 992) {
