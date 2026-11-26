@@ -7,10 +7,15 @@
 {% block styles %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-    #mapaTalhoes { height: 480px; width: 100%; border-radius: 8px; overflow: hidden; background: #e9ecef; }
+    #mapaTalhoes { height: 540px; width: 100%; border-radius: 8px; overflow: hidden; background: #e9ecef; }
     .leaflet-container { font-family: inherit; }
     .legendaria-mapa { font-size: .85rem; }
     .legendaria-mapa span { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+    .controlo-opacidade { background: #fff; padding: 6px 9px; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,.3); font-size: .78rem; }
+    .controlo-opacidade input { width: 110px; vertical-align: middle; }
+    .controlo-coordenadas { background: rgba(255,255,255,.92); padding: 3px 7px; border-radius: 3px; font-size: .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+    .leaflet-tooltip.etiqueta-talhao { background: #198754; color: #fff; border: none; box-shadow: 0 1px 3px rgba(0,0,0,.4); font-weight: 600; }
+    .leaflet-tooltip.etiqueta-talhao::before { border-top-color: #198754 !important; }
 </style>
 {% endblock %}
 {% block conteudo %}
@@ -47,9 +52,18 @@
     <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="mb-0"><i class="bi bi-map me-2 text-primary"></i>Mapa da Fazenda</h5>
-            <small class="text-muted">Delimitações do Google Earth + talhões com GPS</small>
+            <small class="text-muted">Imagem de satélite + delimitações do Google Earth + talhões com GPS</small>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <select id="selectTalhaoMapa" class="form-select form-select-sm" style="width:auto" aria-label="Ir para talhão">
+                <option value="">Ir para talhão...</option>
+                {% for t in dados_mapa.talhoes %}
+                <option value="{{ t.lat }},{{ t.lng }}">{{ t.nome }}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnEnquadrarMapa">
+                <i class="bi bi-camera-video me-1"></i>Enquadrar fazenda
+            </button>
             <a href="https://earth.google.com/earth/d/1qSE7lWxJBhAjDAPxGz2MyMVjkAr-a1WF?usp=sharing"
                target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-globe2 me-1"></i>Abrir no Google Earth
@@ -82,6 +96,9 @@
                 importada em {{ dados_mapa.importacao.data_importacao }}
                 {% else %}
                 Nenhuma camada KML importada — exporte o projeto do Earth e use “Importar KML/KMZ”.
+                {% endif %}
+                {% if not dados_mapa.talhoes %}
+                <div class="mt-1"><i class="bi bi-info-circle me-1"></i>Nenhum talhão ativo com GPS — cadastre latitude/longitude para ver os marcadores verdes.</div>
                 {% endif %}
             </div>
         </div>
@@ -251,11 +268,22 @@
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof L === 'undefined') { return; }
 
-        const mapa = L.map('mapaTalhoes', { scrollWheelZoom: false }).setView([-21.261, -45.895], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const mapa = L.map('mapaTalhoes', { scrollWheelZoom: false }).setView([-21.261, -45.895], 15);
+
+        const urlSatelite = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        const urlNomes = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundary_and_Places/MapServer/tile/{z}/{y}/{x}';
+        const atribuicaoEsri = 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+
+        const satelite = L.tileLayer(urlSatelite, { maxZoom: 19, attribution: atribuicaoEsri });
+        const sateliteNomes = L.layerGroup([
+            L.tileLayer(urlSatelite, { maxZoom: 19, attribution: atribuicaoEsri }),
+            L.tileLayer(urlNomes, { maxZoom: 19, attribution: atribuicaoEsri })
+        ]);
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(mapa);
+        });
+        satelite.addTo(mapa);
 
         const camadaImportada = L.layerGroup().addTo(mapa);
         const camadaTalhoes = L.layerGroup().addTo(mapa);
@@ -283,6 +311,7 @@
             }
             if (camada) {
                 camada.bindPopup(criarPopupMapa(item.nome, [item.descricao].filter(Boolean)));
+                camada.bindTooltip(item.nome, { sticky: true, direction: 'top', opacity: 0.92 });
                 camada.addTo(camadaImportada);
             }
         });
@@ -298,14 +327,68 @@
             link.textContent = 'Ver detalhes do talhão';
             popup.appendChild(link);
             marcador.bindPopup(popup);
+            marcador.bindTooltip(talhao.nome, {
+                permanent: true, direction: 'top', offset: [0, -8],
+                className: 'etiqueta-talhao'
+            });
             marcador.addTo(camadaTalhoes);
             pontos.push([talhao.lat, talhao.lng]);
         });
 
-        L.control.layers(null, {
+        L.control.layers({
+            'Satélite': satelite,
+            'Satélite + nomes': sateliteNomes,
+            'Mapa (OpenStreetMap)': osm
+        }, {
             'Áreas e pontos importados': camadaImportada,
             'Talhões cadastrados': camadaTalhoes
         }, { collapsed: false }).addTo(mapa);
+
+        L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(mapa);
+
+        const ControleOpacidade = L.Control.extend({
+            onAdd: function() {
+                const caixa = L.DomUtil.create('div', 'controlo-opacidade leaflet-control');
+                caixa.innerHTML = '<label>Transparência das áreas <input type="range" min="5" max="80" value="18"></label>';
+                const slider = caixa.querySelector('input');
+                L.DomEvent.disableClickPropagation(caixa);
+                L.DomEvent.disableScrollPropagation(caixa);
+                slider.addEventListener('input', function() {
+                    camadaImportada.eachLayer(function(camada) {
+                        if (typeof camada.setStyle === 'function') {
+                            camada.setStyle({ fillOpacity: Number(slider.value) / 100 });
+                        }
+                    });
+                });
+                return caixa;
+            }
+        });
+        mapa.addControl(new ControleOpacidade({ position: 'bottomright' }));
+
+        const ControleCoordenadas = L.Control.extend({
+            onAdd: function() {
+                return L.DomUtil.create('div', 'controlo-coordenadas leaflet-control');
+            }
+        });
+        const controleCoordenadas = new ControleCoordenadas({ position: 'bottomleft' });
+        mapa.addControl(controleCoordenadas);
+        mapa.on('mousemove', function(evento) {
+            controleCoordenadas.getContainer().textContent =
+                'Lat ' + evento.latlng.lat.toFixed(5) + ' | Lon ' + evento.latlng.lng.toFixed(5);
+        });
+
+        document.getElementById('btnEnquadrarMapa')?.addEventListener('click', function() {
+            if (pontos.length) {
+                mapa.flyToBounds(pontos, { padding: [30, 30], maxZoom: 16 });
+            }
+        });
+
+        document.getElementById('selectTalhaoMapa')?.addEventListener('change', function() {
+            const partes = this.value.split(',');
+            if (partes.length === 2) {
+                mapa.flyTo([parseFloat(partes[0]), parseFloat(partes[1])], 17);
+            }
+        });
 
         if (pontos.length) {
             mapa.fitBounds(pontos, { padding: [25, 25], maxZoom: 16 });
