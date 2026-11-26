@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de Manejo{% endblock %}
+{% block styles %}
+<style>
+    .metric-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .tabela-compacta td, .tabela-compacta th { padding: .45rem .6rem; font-size: .88rem; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <h2><i class="bi bi-clock-history me-2"></i>Histórico de Manejo</h2>
+            <p class="text-muted mb-0">Compare aplicações, safras/anos, produtos e receitas por talhão.</p>
+        </div>
+        <a href="{{ url_for('pulverizacao.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Pulverização
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <form method="GET" action="{{ url_for('pulverizacao.historico_manejo') }}" class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1">Talhão</label>
+                    <select name="talhao_id" class="form-select form-select-sm">
+                        <option value="">Todos os talhões</option>
+                        {% for t in talhoes %}
+                        <option value="{{ t.id }}" {% if filtro_talhao == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Ano / safra</label>
+                    <select name="ano" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for a in anos %}
+                        <option value="{{ a }}" {% if filtro_ano == a %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Período fenológico</label>
+                    <select name="periodo_id" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for p in periodos %}
+                        <option value="{{ p.id }}" {% if filtro_periodo == p.id %}selected{% endif %}>{{ p.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                    <a href="{{ url_for('pulverizacao.historico_manejo') }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.total }}</div><div class="small text-muted">Aplicações</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.talhoes }}</div><div class="small text-muted">Talhões</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.avaliadas }}</div><div class="small text-muted">Avaliadas</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.taxa_sucesso }}%</div><div class="small text-muted">Sucesso</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.nota_media }}</div><div class="small text-muted">Nota média</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="metric-value">{{ resumo.receitas }}</div><div class="small text-muted">Receitas</div></div></div></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong>Por safra / ano</strong></div>
+                <div class="card-body"><canvas id="graficoSafra" height="120"></canvas></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong>Sucesso por produto</strong></div>
+                <div class="card-body"><canvas id="graficoProduto" height="120"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Aplicações no recorte</strong></div>
+        <div class="card-body table-responsive p-0">
+            <table class="table table-sm table-hover tabela-compacta mb-0">
+                <thead><tr>
+                    <th>Safra</th><th>Data</th><th>Talhão</th><th>Período</th><th>Receita</th>
+                    <th>Produtos</th><th>Qtd.</th><th>Eficácia</th><th>Nota</th>
+                </tr></thead>
+                <tbody>
+                    {% for a in aplicacoes %}
+                    <tr>
+                        <td>{{ a.ano }}</td>
+                        <td>{{ a.data }}{% if a.hora %} {{ a.hora }}{% endif %}</td>
+                        <td><a href="{{ url_for('pulverizacao.fila_aplicacao', status='aplicada') }}">{{ a.talhao }}</a></td>
+                        <td>{{ a.periodo }}</td>
+                        <td>{{ a.receita }}</td>
+                        <td class="small">{{ a.produtos }}</td>
+                        <td>{{ '%.2f'|format(a.quantidade) }}</td>
+                        <td>
+                            {% if a.resultado %}
+                            <span class="badge bg-{{ 'success' if a.resultado in ('excelente','bom') else ('warning' if a.resultado == 'regular' else 'danger') }}">
+                                {{ {'excelente':'Excelente','bom':'Bom','regular':'Regular','ineficaz':'Ineficaz'}.get(a.resultado, a.resultado) }}
+                            </span>
+                            {% else %}<span class="text-muted small">não avaliada</span>{% endif %}
+                        </td>
+                        <td>{{ a.nota if a.nota is not none else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">Nenhuma aplicação concluída neste recorte.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong>Comparativo de produtos</strong></div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-sm tabela-compacta mb-0">
+                        <thead><tr><th>Produto</th><th>Aplicações</th><th>Quantidade</th><th>Sucesso</th><th>Nota</th></tr></thead>
+                        <tbody>
+                            {% for p in produtos %}
+                            <tr><td>{{ p.produto }}</td><td>{{ p.aplicacoes }}</td><td>{{ '%.2f'|format(p.quantidade) }}</td><td>{{ p.taxa_sucesso }}%</td><td>{{ p.nota_media }}</td></tr>
+                            {% else %}<tr><td colspan="5" class="text-center text-muted py-3">Sem dados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong>Comparativo de receitas</strong></div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-sm tabela-compacta mb-0">
+                        <thead><tr><th>Receita</th><th>Aplicações</th><th>Talhões</th><th>Sucesso</th><th>Nota</th></tr></thead>
+                        <tbody>
+                            {% for r in receitas %}
+                            <tr><td>{{ r.receita }}</td><td>{{ r.aplicacoes }}</td><td>{{ r.talhoes }}</td><td>{{ r.taxa_sucesso }}%</td><td>{{ r.nota_media }}</td></tr>
+                            {% else %}<tr><td colspan="5" class="text-center text-muted py-3">Sem dados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const safras = {{ safras|tojson }};
+        const produtos = {{ produtos|tojson }};
+        const cor = '#0d6efd';
+        new Chart(document.getElementById('graficoSafra'), {
+            type: 'bar',
+            data: {
+                labels: safras.map(s => String(s.ano)),
+                datasets: [
+                    { label: 'Aplicações', data: safras.map(s => s.total), backgroundColor: cor },
+                    { label: 'Nota média', data: safras.map(s => s.nota_media), backgroundColor: '#198754' }
+                ]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('graficoProduto'), {
+            type: 'bar',
+            data: {
+                labels: produtos.map(p => p.produto),
+                datasets: [{ label: 'Sucesso (%)', data: produtos.map(p => p.taxa_sucesso), backgroundColor: '#6f42c1' }]
+            },
+            options: { responsive: true, indexAxis: 'y', scales: { x: { beginAtZero: true, max: 100 } } }
+        });
+    });
+</script>
+{% endblock %}

@@ -386,3 +386,19 @@ CREATE TABLE IF NOT EXISTS aplicacao_tarefa_log (
     usuario VARCHAR(100),
     data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Avaliacao de eficacia registrada pelo agronomista apos a aplicacao
+CREATE TABLE IF NOT EXISTS avaliacoes_eficacia (
+    id SERIAL PRIMARY KEY,
+    tarefa_id INTEGER NOT NULL UNIQUE REFERENCES aplicacao_tarefas(id),
+    talhao_id INTEGER NOT NULL REFERENCES talhoes(id),
+    receita_id INTEGER NOT NULL REFERENCES receitas(id),
+    agronomista VARCHAR(100),
+    data_avaliacao DATE NOT NULL DEFAULT CURRENT_DATE,
+    resultado VARCHAR(20) NOT NULL,
+    nota INTEGER,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

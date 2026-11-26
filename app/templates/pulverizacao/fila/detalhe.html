@@ -134,6 +134,33 @@
     </div>
     {% endif %}
 
+    {% if tarefa.status == 'aplicada' %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-clipboard-check me-1"></i>Eficácia do manejo</strong>
+            {% if avaliacao %}
+            <span class="badge bg-{{ avaliacao.cor }}">
+                {{ avaliacao.rotulo }}{% if avaliacao.nota is not none %} · {{ avaliacao.nota }}/10{% endif %}
+            </span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if avaliacao %}
+            <p class="small text-muted mb-1">Avaliada em {{ avaliacao.data_avaliacao }} por {{ avaliacao.agronomista or '—' }}</p>
+            <p class="mb-0">{{ avaliacao.observacoes or 'Sem observações.' }}</p>
+            {% else %}
+            <p class="text-muted mb-0">Ainda não avaliada pelo agronomista.</p>
+            {% endif %}
+            {% if pode_avaliar %}
+            <hr>
+            <a href="{{ url_for('pulverizacao.avaliar_eficacia', id=tarefa.id) }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-clipboard-check me-1"></i>{{ 'Editar avaliação' if avaliacao else 'Registrar eficácia' }}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card shadow-sm mb-3">
         <div class="card-header"><strong>Histório da tarefa</strong></div>
         <div class="card-body">

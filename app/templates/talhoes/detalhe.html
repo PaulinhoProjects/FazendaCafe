@@ -12,6 +12,9 @@
         <p class="page-subtitle">Detalhes do talhão e histórico de atividades</p>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ url_for('pulverizacao.historico_manejo', talhao_id=talhao.id) }}" class="btn btn-outline-info">
+            <i class="bi bi-clock-history me-1"></i>Histórico de manejo
+        </a>
         {% if session.get('tipo') == 'admin' %}
         <a href="{{ url_for('talhoes.editar', id=talhao.id) }}" class="btn btn-warning">
             <i class="bi bi-pencil-square me-1"></i>Editar

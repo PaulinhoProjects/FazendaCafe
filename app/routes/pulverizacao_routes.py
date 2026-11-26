@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from app.modules import (pulverizacao, receitas, estoque, talhoes,
-                         clima, fila_aplicacao as fila)
+                         clima, fila_aplicacao as fila, eficacia,
+                         historico_manejo as historico)
 from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
@@ -435,6 +436,8 @@ def detalhe_tarefa(id):
             itens=fila.listar_itens_tarefa(id),
             clima_atual=clima_atual,
             pode_editar=pode_editar,
+            pode_avaliar=session.get('tipo') in ('admin', 'agronomista'),
+            avaliacao=eficacia.buscar_avaliacao(id),
             log=fila.listar_log(id),
         )
     except Exception as e:
@@ -506,6 +509,80 @@ def editar_tarefa(id):
 
     return render_template('pulverizacao/fila/editar.html',
                            tarefa=tarefa, log=fila.listar_log(id))
+
+
+@pulverizacao_bp.route('/fila/<int:id>/eficacia', methods=['GET', 'POST'])
+@login_required
+def avaliar_eficacia(id):
+    tarefa = fila.buscar_tarefa(id)
+    if not tarefa:
+        flash('Tarefa não encontrada.', 'warning')
+        return redirect(url_for('pulverizacao.fila_aplicacao'))
+    if tarefa['status'] != 'aplicada':
+        flash('Só é possível avaliar uma aplicação já concluída.', 'warning')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+    if session.get('tipo') not in ('admin', 'agronomista'):
+        logger.warning(
+            f"pulverizacao_routes.avaliar_eficacia: avaliação negada ao usuário "
+            f"{session.get('usuario')} (nível {session.get('tipo')}) na tarefa {id}"
+        )
+        flash('Somente agronomista ou administrador pode registrar eficácia.', 'error')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+    if request.method == 'POST':
+        try:
+            eficacia.salvar_avaliacao(id, {
+                'resultado': request.form.get('resultado'),
+                'nota': request.form.get('nota'),
+                'data_avaliacao': request.form.get('data_avaliacao'),
+                'observacoes': request.form.get('observacoes'),
+            }, session.get('usuario'))
+            flash('Eficácia registrada e ligada ao histórico do talhão.', 'success')
+            return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+        except Exception as e:
+            logger.error(f"pulverizacao_routes.avaliar_eficacia: {e}")
+            flash(str(e), 'error')
+
+    return render_template(
+        'pulverizacao/fila/eficacia.html',
+        tarefa=tarefa,
+        avaliacao=eficacia.buscar_avaliacao(id),
+        resultados=eficacia.RESULTADOS,
+        cores=eficacia.CORES,
+    )
+
+
+@pulverizacao_bp.route('/historico')
+@login_required
+def historico_manejo():
+    try:
+        talhao_id = request.args.get('talhao_id', type=int)
+        ano = request.args.get('ano', type=int)
+        periodo_id = request.args.get('periodo_id', type=int)
+        aplicacoes = historico.listar_aplicacoes(talhao_id, ano, periodo_id)
+        return render_template(
+            'pulverizacao/historico.html',
+            aplicacoes=aplicacoes,
+            resumo=historico.resumo(aplicacoes),
+            safras=historico.por_safra(aplicacoes),
+            produtos=historico.por_produto(talhao_id, ano, periodo_id),
+            receitas=historico.por_receita(talhao_id, ano, periodo_id),
+            talhoes=talhoes.listar_talhoes(),
+            periodos=pulverizacao.listar_periodos(),
+            anos=historico.anos_disponiveis(),
+            filtro_talhao=talhao_id,
+            filtro_ano=ano,
+            filtro_periodo=periodo_id,
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.historico_manejo: {e}")
+        flash('Erro ao carregar o histórico de manejo.', 'error')
+        return render_template(
+            'pulverizacao/historico.html',
+            aplicacoes=[], resumo=historico.resumo([]), safras=[],
+            produtos=[], receitas=[], talhoes=[], periodos=[], anos=[],
+            filtro_talhao=None, filtro_ano=None, filtro_periodo=None,
+        )
 
 
 # =====================================================
