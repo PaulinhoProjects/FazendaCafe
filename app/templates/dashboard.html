@@ -384,14 +384,21 @@
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof Chart === 'undefined') return;
 
-    // Paleta categórica da marca (ordem fixa, validada para daltonismo)
-    const SERIES = ['#2E7D4F', '#2F6FB0', '#C47A3A', '#8A5CC2', '#E0A526', '#D0566C'];
-    const TEXTO = '#4A544D', TEXTO_FRACO = '#7B857E', GRADE = '#EEF0EB', SUPERFICIE = '#FFFFFF';
+    // Paleta categórica da marca (ordem fixa, validada para daltonismo em cada tema)
+    const PALETAS = {
+        light: ['#2E7D4F', '#2F6FB0', '#C47A3A', '#8A5CC2', '#E0A526', '#D0566C'],
+        dark:  ['#3F9E68', '#4C8FD6', '#C27E42', '#A07FDB', '#BC8820', '#D45F77']
+    };
+    function temaAtual() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+    function token(nome) { return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
+    let SERIES = PALETAS[temaAtual()];
+    let TEXTO = token('--text-2'), TEXTO_FRACO = token('--text-3'), GRADE = token('--chart-grid'), SUPERFICIE = token('--surface');
+    const graficos = [];
 
     Chart.defaults.font.family = "'Inter', -apple-system, 'Segoe UI', sans-serif";
     Chart.defaults.font.size = 12;
     Chart.defaults.color = TEXTO_FRACO;
-    Chart.defaults.plugins.tooltip.backgroundColor = '#17201A';
+    Chart.defaults.plugins.tooltip.backgroundColor = '#0B100D';
     Chart.defaults.plugins.tooltip.padding = 10;
     Chart.defaults.plugins.tooltip.cornerRadius = 8;
     Chart.defaults.plugins.tooltip.titleFont = { weight: '600' };
@@ -413,8 +420,8 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.parentElement.innerHTML = '<div class="empty-state py-5"><i class="bi bi-bar-chart"></i><p>' + msg + '</p></div>';
         return true;
     }
-    const eixoY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: GRADE }, border: { display: false } };
-    const eixoX = { grid: { display: false }, border: { color: '#E5E7E1' } };
+    const eixoY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: function () { return GRADE; } }, border: { display: false } };
+    const eixoX = { grid: { display: false }, border: { color: function () { return token('--border'); } } };
 
     // Tendência (linha)
     const tLabels = {{ grafico_tendencia.labels|tojson }}, tDados = {{ grafico_tendencia.dados|tojson }};
@@ -424,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const grad = ctx.createLinearGradient(0, 0, 0, 260);
         grad.addColorStop(0, 'rgba(46, 125, 79, 0.18)');
         grad.addColorStop(1, 'rgba(46, 125, 79, 0)');
-        new Chart(ctx, {
+        graficos.push(new Chart(ctx, {
             type: 'line',
             data: { labels: tLabels, datasets: [{
                 label: 'Aplicações', data: tDados, borderColor: SERIES[0], backgroundColor: grad,
@@ -437,19 +444,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: { legend: { display: false } },
                 scales: { y: eixoY, x: eixoX }
             }
-        });
+        }));
     }
 
     function rosca(id, labels, dados, msg) {
         if (semDados(dados)) { vazio(id, msg); return; }
-        new Chart(document.getElementById(id), {
+        graficos.push(new Chart(document.getElementById(id), {
             type: 'doughnut',
             data: { labels: labels, datasets: [{
                 data: dados, backgroundColor: SERIES.slice(0, dados.length),
                 borderColor: SUPERFICIE, borderWidth: 2, hoverOffset: 4
             }]},
             options: { cutout: '68%', plugins: { legend: { position: 'bottom' } } }
-        });
+        }));
     }
     rosca('graficoPeriodo', {{ grafico_aplicacoes_periodo.labels|tojson }}, {{ grafico_aplicacoes_periodo.dados|tojson }}, 'Nenhuma aplicação registrada');
     rosca('graficoTiposPragas', {{ grafico_tipos_pragas.labels|tojson }}, {{ grafico_tipos_pragas.dados|tojson }}, 'Nenhuma ocorrência registrada');
@@ -458,16 +465,43 @@ document.addEventListener('DOMContentLoaded', function () {
     const pDados = {{ grafico_pragas_talhao.dados|tojson }};
     if (semDados(pDados)) { vazio('graficoPragasTalhao', 'Nenhuma ocorrência de praga registrada'); }
     else {
-        new Chart(document.getElementById('graficoPragasTalhao'), {
+        graficos.push(new Chart(document.getElementById('graficoPragasTalhao'), {
             type: 'bar',
             data: { labels: {{ grafico_pragas_talhao.labels|tojson }}, datasets: [{
                 label: 'Ocorrências', data: pDados, backgroundColor: SERIES[2],
-                hoverBackgroundColor: '#A8652C', borderRadius: 4, borderSkipped: 'bottom',
-                maxBarThickness: 36
+                borderRadius: 4, borderSkipped: 'bottom', maxBarThickness: 36
             }]},
             options: { plugins: { legend: { display: false } }, scales: { y: eixoY, x: eixoX } }
-        });
+        }));
     }
+
+    // Recolore os gráficos quando o usuário troca o tema
+    document.addEventListener('temaalterado', function () {
+        SERIES = PALETAS[temaAtual()];
+        TEXTO = token('--text-2'); TEXTO_FRACO = token('--text-3'); GRADE = token('--chart-grid'); SUPERFICIE = token('--surface');
+        Chart.defaults.color = TEXTO_FRACO;
+        Chart.defaults.plugins.legend.labels.color = TEXTO;
+        graficos.forEach(function (g) {
+            const tipo = g.config.type;
+            g.data.datasets.forEach(function (ds) {
+                if (tipo === 'doughnut') {
+                    ds.backgroundColor = SERIES.slice(0, ds.data.length);
+                    ds.borderColor = SUPERFICIE;
+                } else if (tipo === 'bar') {
+                    ds.backgroundColor = SERIES[2];
+                } else {
+                    ds.borderColor = SERIES[0];
+                    ds.pointBackgroundColor = SERIES[0];
+                    ds.pointBorderColor = SUPERFICIE;
+                }
+            });
+            if (g.options.plugins && g.options.plugins.legend) g.options.plugins.legend.labels.color = TEXTO;
+            if (g.options.scales) {
+                Object.values(g.options.scales).forEach(function (s) { if (s.ticks) s.ticks.color = TEXTO_FRACO; });
+            }
+            g.update('none');
+        });
+    });
 });
 </script>
 {% endif %}
