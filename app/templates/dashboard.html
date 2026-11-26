@@ -2,459 +2,364 @@
 
 {% block titulo %}Dashboard{% endblock %}
 
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
 {% block conteudo %}
 {% if not resumo %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-2"></i>
-    Nao foi possivel carregar os dados do dashboard. Verifique a conexao com o banco de dados.
+<div class="empty-state card">
+    <i class="bi bi-database-exclamation"></i>
+    <h5 class="mb-1">Não foi possível carregar o dashboard</h5>
+    <p>Verifique a conexão com o banco de dados e tente novamente.</p>
+    <div><a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise me-1"></i>Recarregar</a></div>
 </div>
 {% else %}
-<!-- Cabeçalho com saudação e data -->
-<div class="row mb-4">
-    <div class="col">
-        <div class="d-flex justify-content-between align-items-center bg-white p-4 rounded-4 shadow-sm">
-            <div>
-                <h1 class="display-5 fw-bold">
-                    <i class="bi bi-bar-chart-fill me-2 text-success"></i>
-                    Dashboard <span class="text-success">AgroCafé</span>
-                </h1>
-                <p class="text-muted lead mb-0">Tecnologia que Colhe Resultados</p>
-            </div>
-            <div class="text-end">
-                <div class="bg-light p-3 rounded-4">
-                    <i class="bi bi-calendar3 me-2"></i>{{ data_atual }}
-                </div>
-            </div>
-        </div>
+
+{% set atrasados = alertas|selectattr('status', 'equalto', 'atrasado')|list %}
+
+<!-- Cabeçalho -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><span><span id="saudacao">Olá</span>, {{ (session.get('usuario') or 'Usuário').split(' ')[0] }}</span></h1>
+        <p class="page-subtitle"><i class="bi bi-calendar3 me-1"></i>{{ data_atual }} &middot; Resumo da fazenda</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('talhoes.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-pin-map me-1"></i>Talhões</a>
+        <a href="{{ url_for('estoque.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-box-seam me-1"></i>Estoque</a>
+        <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-clipboard-data me-1"></i>Análises</a>
+        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="btn btn-primary"><i class="bi bi-droplet-half me-1"></i>Pulverizações</a>
     </div>
 </div>
 
-<!-- Seção do Clima -->
-{% if clima_atual %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #0B3B5C 0%, #1B5A7C 100%);">
-            <div class="card-body text-white">
-                <div class="row align-items-center">
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <i class="bi {{ get_icone_clima(clima_atual.codigo) }}" style="font-size: 4rem; color: #FFD700;"></i>
-                            <div class="ms-3">
-                                <h2 class="display-4 fw-bold mb-0 text-white">{{ clima_atual.temperatura }}°C</h2>
-                                <p class="mb-0 text-white-50">{{ clima_atual.descricao }}</p>
-                                <small class="text-white-50">Sensação: {{ clima_atual.sensacao }}°C</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="row">
-                            <div class="col-6">
-                                <i class="bi bi-droplet text-info me-1"></i> <span class="text-white">Umidade</span><br>
-                                <strong class="text-white">{{ clima_atual.umidade }}%</strong>
-                            </div>
-                            <div class="col-6">
-                                <i class="bi bi-wind text-info me-1"></i> <span class="text-white">Vento</span><br>
-                                <strong class="text-white">{{ clima_atual.vento_velocidade }} km/h</strong>
-                            </div>
-                            <div class="col-6 mt-2">
-                                <i class="bi bi-sun text-warning me-1"></i> <span class="text-white">Nascer</span><br>
-                                <strong class="text-white">{{ clima_atual.nascer_sol }}</strong>
-                            </div>
-                            <div class="col-6 mt-2">
-                                <i class="bi bi-moon text-secondary me-1"></i> <span class="text-white">Pôr</span><br>
-                                <strong class="text-white">{{ clima_atual.por_sol }}</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        {% if clima_atual.alertas %}
-                            <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Alertas</h6>
-                            {% for alerta in clima_atual.alertas %}
-                                <div class="alert alert-{% if alerta.severidade == 'alto' %}danger{% else %}warning{% endif %} py-1 px-2 mb-1 small" style="background-color: rgba(255,255,255,0.15); color: white; border: none;">
-                                    <i class="bi bi-{% if alerta.tipo == 'frio' %}thermometer-snow{% elif alerta.tipo == 'calor' %}thermometer-high{% elif alerta.tipo == 'chuva' %}cloud-rain{% elif alerta.tipo == 'vento' %}wind{% else %}exclamation{% endif %} me-1"></i>
-                                    {{ alerta.mensagem }}
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-center">
-                                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
-                                <p class="mb-0 text-white">Sem alertas no momento</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% if previsao %}
-                <hr class="my-3" style="border-color: rgba(255,255,255,0.2);">
-                <div class="row text-center">
-                    {% for dia in previsao %}
-                    <div class="col">
-                        <strong class="text-white">{{ dia.dia_semana[:3] }}</strong><br>
-                        <i class="bi {{ get_icone_clima(dia.icone) }}" style="color: #FFD700;"></i><br>
-                        <span class="small text-white-50">{{ dia.temp_max }}° / {{ dia.temp_min }}°</span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                <div class="text-end mt-2">
-                    <small class="text-white-50">Atualizado: {{ clima_atual.atualizacao }}</small>
-                </div>
-            </div>
-        </div>
+{% if atrasados %}
+<div class="alert-banner alert-banner-danger">
+    <div class="alert-banner-icon"><i class="bi bi-exclamation-octagon"></i></div>
+    <div class="alert-banner-content">
+        <div class="alert-banner-title">{{ atrasados|length }} retorno{{ 's' if atrasados|length > 1 }} de aplicação atrasado{{ 's' if atrasados|length > 1 }}</div>
+        <div class="alert-banner-text">Há talhões com o prazo de retorno vencido. Confira a lista de alertas abaixo.</div>
+    </div>
+    <div class="alert-banner-action">
+        <a href="#painel-alertas" class="btn btn-sm btn-outline-secondary">Ver alertas</a>
     </div>
 </div>
 {% endif %}
 
-<!-- LINHA 1: Cards de Resumo Rápido (8 cards em 2 linhas de 4) -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-primary-soft"><i class="bi bi-pin-map"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Talhões</div>
-                <div class="stat-value">{{ resumo.total_talhoes }}</div>
-                <div class="stat-meta">{{ "%.2f"|format(resumo.area_total) }} hectares</div>
-                <a class="stat-link" href="{{ url_for('talhoes.listar') }}">Ver detalhes →</a>
+<!-- Indicadores -->
+<div class="kpi-grid mb-4">
+    <a class="stat-card stat-card-link" href="{{ url_for('talhoes.listar') }}">
+        <div class="stat-icon bg-primary-soft"><i class="bi bi-pin-map"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Talhões</div>
+            <div class="stat-value">{{ resumo.total_talhoes }}</div>
+            <div class="stat-meta">{{ "%.2f"|format(resumo.area_total) }} ha de área</div>
+        </div>
+    </a>
+    <a class="stat-card stat-card-link" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">
+        <div class="stat-icon bg-info-soft"><i class="bi bi-droplet-half"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Pulverizações</div>
+            <div class="stat-value">{{ resumo.pulverizacoes_ano }}</div>
+            <div class="stat-meta">No ano atual</div>
+        </div>
+    </a>
+    <a class="stat-card stat-card-link" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">
+        <div class="stat-icon bg-danger-soft"><i class="bi bi-bug"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Pragas detectadas</div>
+            <div class="stat-value">{{ resumo.pragas_detectadas }}</div>
+            <div class="stat-meta">Tipos diferentes</div>
+        </div>
+    </a>
+    <a class="stat-card stat-card-link" href="#painel-alertas">
+        <div class="stat-icon bg-warning-soft"><i class="bi bi-bell"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Alertas</div>
+            <div class="stat-value">{{ alertas|length }}</div>
+            <div class="stat-meta">Retornos pendentes</div>
+        </div>
+    </a>
+    <a class="stat-card stat-card-link" href="{{ url_for('estoque.dashboard') }}">
+        <div class="stat-icon bg-primary-soft"><i class="bi bi-box-seam"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Produtos em estoque</div>
+            <div class="stat-value">{{ resumo_estoque.total_produtos }}</div>
+            <div class="stat-meta">
+                {% if resumo_estoque.estoque_baixo %}<span class="text-danger fw-medium">{{ resumo_estoque.estoque_baixo }} abaixo do mínimo</span>{% else %}Nenhum abaixo do mínimo{% endif %}
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-info-soft"><i class="bi bi-droplet"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Pulverizações</div>
-                <div class="stat-value">{{ resumo.pulverizacoes_ano }}</div>
-                <div class="stat-meta">No ano atual</div>
-                <a class="stat-link" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">Ver detalhes →</a>
-            </div>
+    </a>
+    <a class="stat-card stat-card-link" href="{{ url_for('analises.listar') }}">
+        <div class="stat-icon bg-info-soft"><i class="bi bi-clipboard-data"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Análises no ano</div>
+            <div class="stat-value">{{ resumo_analises.analises_ano }}</div>
+            <div class="stat-meta">{{ resumo_analises.pendentes }} pendentes</div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-danger-soft"><i class="bi bi-bug"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Pragas Detectadas</div>
-                <div class="stat-value">{{ resumo.pragas_detectadas }}</div>
-                <div class="stat-meta">Tipos diferentes</div>
-                <a class="stat-link" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">Ver detalhes →</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-warning-soft"><i class="bi bi-exclamation-triangle"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Alertas</div>
-                <div class="stat-value">{{ alertas|length }}</div>
-                <div class="stat-meta">Retornos pendentes</div>
-                <a class="stat-link" href="{{ url_for('pulverizacao.listar_aplicacoes') }}">Ver alertas →</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- LINHA 2: Cards de Resumo Secundários (3 cards) -->
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-primary-soft"><i class="bi bi-box-seam"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Estoque</div>
-                <div class="stat-value">{{ resumo_estoque.total_produtos }}</div>
-                <div class="stat-meta">{{ resumo_estoque.estoque_baixo }} com estoque baixo</div>
-                <a class="stat-link" href="{{ url_for('estoque.dashboard') }}">Ver estoque →</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-info-soft"><i class="bi bi-clipboard-data"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Análises</div>
-                <div class="stat-value">{{ resumo_analises.analises_ano }}</div>
-                <div class="stat-meta">{{ resumo_analises.pendentes }} pendentes</div>
-                <a class="stat-link" href="{{ url_for('analises.listar') }}">Ver análises →</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-accent-soft"><i class="bi bi-file-pdf"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Documentos</div>
-                <div class="stat-value">{{ resumo_pdfs.total_pdfs }}</div>
-                <div class="stat-meta">{{ resumo_pdfs.pdfs_mes }} neste mês</div>
-            </div>
+    </a>
+    <div class="stat-card">
+        <div class="stat-icon bg-accent-soft"><i class="bi bi-file-earmark-pdf"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Documentos</div>
+            <div class="stat-value">{{ resumo_pdfs.total_pdfs }}</div>
+            <div class="stat-meta">{{ resumo_pdfs.pdfs_mes }} neste mês</div>
         </div>
     </div>
 </div>
 
-<!-- LINHA 3: Acesso Rápido -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <h5 class="mb-3"><i class="bi bi-grid me-2"></i>Acesso Rápido</h5>
-                <div class="row g-2">
-                    <div class="col-md-2 col-6">
-                        <a href="{{ url_for('talhoes.listar') }}" class="text-decoration-none">
-                            <div class="card text-center border-0 bg-light hover-scale">
-                                <div class="card-body py-3">
-                                    <i class="bi bi-pin-map-fill text-primary" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-0">Talhões</h6>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="text-decoration-none">
-                            <div class="card text-center border-0 bg-light hover-scale">
-                                <div class="card-body py-3">
-                                    <i class="bi bi-droplet text-success" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-0">Pulverizações</h6>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <a href="{{ url_for('estoque.dashboard') }}" class="text-decoration-none">
-                            <div class="card text-center border-0 bg-light hover-scale">
-                                <div class="card-body py-3">
-                                    <i class="bi bi-box-seam text-info" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-0">Estoque</h6>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <a href="{{ url_for('analises.listar') }}" class="text-decoration-none">
-                            <div class="card text-center border-0 bg-light hover-scale">
-                                <div class="card-body py-3">
-                                    <i class="bi bi-clipboard-data text-secondary" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-0">Análises</h6>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
+<!-- Clima -->
+{% if clima_atual %}
+<div class="card weather-card mb-4">
+    <div class="card-body">
+        <div class="weather-grid">
+            <div class="weather-now">
+                <i class="bi {{ get_icone_clima(clima_atual.codigo) }} weather-icon"></i>
+                <div>
+                    <div class="weather-temp">{{ clima_atual.temperatura }}°<span>C</span></div>
+                    <div class="weather-desc">{{ clima_atual.descricao }}</div>
+                    <div class="weather-feel">Sensação de {{ clima_atual.sensacao }}°C</div>
                 </div>
             </div>
+            <div class="weather-metrics">
+                <div class="weather-metric"><i class="bi bi-droplet"></i><span>Umidade</span><strong>{{ clima_atual.umidade }}%</strong></div>
+                <div class="weather-metric"><i class="bi bi-wind"></i><span>Vento</span><strong>{{ clima_atual.vento_velocidade }} km/h</strong></div>
+                <div class="weather-metric"><i class="bi bi-sunrise"></i><span>Nascer do sol</span><strong>{{ clima_atual.nascer_sol }}</strong></div>
+                <div class="weather-metric"><i class="bi bi-sunset"></i><span>Pôr do sol</span><strong>{{ clima_atual.por_sol }}</strong></div>
+            </div>
+            <div class="weather-alerts">
+                {% if clima_atual.alertas %}
+                <div class="weather-alerts-title">Alertas para o manejo</div>
+                {% for alerta in clima_atual.alertas %}
+                <div class="weather-alert {{ 'is-high' if alerta.severidade == 'alto' }}">
+                    <i class="bi bi-{% if alerta.tipo == 'frio' %}thermometer-snow{% elif alerta.tipo == 'calor' %}thermometer-high{% elif alerta.tipo == 'chuva' %}cloud-rain{% elif alerta.tipo == 'vento' %}wind{% else %}exclamation-triangle{% endif %}"></i>
+                    <span>{{ alerta.mensagem }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="weather-alert is-ok"><i class="bi bi-check-circle"></i><span>Sem alertas climáticos no momento</span></div>
+                {% endif %}
+            </div>
+        </div>
+        {% if previsao %}
+        <div class="weather-forecast">
+            {% for dia in previsao %}
+            <div class="weather-day">
+                <span>{{ dia.dia_semana[:3] }}</span>
+                <i class="bi {{ get_icone_clima(dia.icone) }}"></i>
+                <small>{{ dia.temp_max }}° / {{ dia.temp_min }}°</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-muted">Atualizado às {{ clima_atual.atualizacao }}</small>
+        <a href="{{ url_for('clima.index') }}" class="small fw-medium">Ver previsão completa <i class="bi bi-arrow-right"></i></a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Gráficos -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6>Tendência de pulverizações</h6>
+                    <small class="text-muted fw-normal">Aplicações nos últimos 6 meses</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="graficoTendencia" aria-label="Gráfico de linha: aplicações por mês" role="img"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6>Aplicações por período</h6>
+                    <small class="text-muted fw-normal">Distribuição das pulverizações</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="graficoPeriodo" aria-label="Gráfico de rosca: aplicações por período" role="img"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6>Pragas por talhão</h6>
+                    <small class="text-muted fw-normal">Os 10 talhões com mais ocorrências</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="graficoPragasTalhao" aria-label="Gráfico de barras: ocorrências por talhão" role="img"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6>Tipos de ocorrência</h6>
+                    <small class="text-muted fw-normal">Pragas e doenças</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="graficoTiposPragas" aria-label="Gráfico de rosca: pragas e doenças" role="img"></canvas></div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- LINHA 4: Gráficos (2 linhas de 2) -->
+<!-- Alertas e atividades -->
 <div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-white border-0 pt-3">
-                <h5 class="mb-0"><i class="bi bi-graph-up text-success me-2"></i>Tendência de Pulverizações</h5>
-                <small class="text-muted">Últimos 6 meses</small>
+    <div class="col-lg-6" id="painel-alertas">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-bell me-2"></i>Alertas de retorno</h6>
+                <span class="badge bg-{{ 'danger' if atrasados else 'secondary' }} rounded-pill">{{ alertas|length }}</span>
             </div>
-            <div class="card-body">
-                <canvas id="graficoTendencia" style="height: 250px;"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-white border-0 pt-3">
-                <h5 class="mb-0"><i class="bi bi-pie-chart text-warning me-2"></i>Aplicações por Período</h5>
-                <small class="text-muted">Distribuição das pulverizações</small>
-            </div>
-            <div class="card-body">
-                <canvas id="graficoPeriodo" style="height: 250px;"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-white border-0 pt-3">
-                <h5 class="mb-0"><i class="bi bi-bar-chart text-danger me-2"></i>Pragas por Talhão</h5>
-                <small class="text-muted">Top 10 talhões com mais ocorrências</small>
-            </div>
-            <div class="card-body">
-                <canvas id="graficoPragasTalhao" style="height: 250px;"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-white border-0 pt-3">
-                <h5 class="mb-0"><i class="bi bi-donut text-info me-2"></i>Tipos de Ocorrências</h5>
-                <small class="text-muted">Pragas vs Doenças</small>
-            </div>
-            <div class="card-body">
-                <canvas id="graficoTiposPragas" style="height: 250px;"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- LINHA 5: Cards de Informações (2 cards lado a lado) -->
-<div class="row g-4 mb-4">
-    <!-- Alertas de Retorno -->
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-warning text-white">
-                <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Alertas de Retorno</h5>
-            </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="card-body p-0 panel-scroll">
                 {% if alertas %}
                 <div class="list-group list-group-flush">
                     {% for alerta in alertas %}
-                    <div class="list-group-item border-0 {% if alerta.status == 'atrasado' %}bg-danger bg-opacity-10{% endif %}">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ alerta.talhao }}</strong>
-                                <div class="small text-muted">
-                                    <i class="bi bi-calendar3 me-1"></i>Aplicação: {{ alerta.data_aplicacao }}
-                                </div>
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div class="min-w-0">
+                                <div class="fw-semibold text-truncate">{{ alerta.talhao }}</div>
+                                <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>Aplicação em {{ alerta.data_aplicacao }}</div>
                             </div>
-                            <div class="text-end">
-                                <div class="fw-bold">{{ alerta.data_retorno }}</div>
-                                <span class="badge bg-{{ 'danger' if alerta.status == 'atrasado' else 'warning' }}">
-                                    {{ 'ATRASADO' if alerta.status == 'atrasado' else 'Próximo' }}
-                                </span>
+                            <div class="text-end flex-shrink-0">
+                                <div class="small fw-semibold tabular">{{ alerta.data_retorno }}</div>
+                                {% if alerta.status == 'atrasado' %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>Atrasado</span>
+                                {% else %}
+                                <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>Próximo</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-check-circle text-success display-4"></i>
-                    <p class="text-muted mt-2">Nenhum alerta no momento</p>
-                </div>
+                <div class="empty-state py-4"><i class="bi bi-check2-circle"></i><p>Nenhum alerta no momento</p></div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Atividades Recentes -->
-    <div class="col-md-6">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Atividades Recentes</h5>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-clock-history me-2"></i>Atividades recentes</h6>
+                <a href="{{ url_for('pulverizacao.listar_aplicacoes') }}" class="small fw-medium">Ver todas</a>
             </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="card-body p-0 panel-scroll">
                 {% if atividades %}
                 <div class="list-group list-group-flush">
                     {% for atv in atividades %}
-                    <a href="{{ url_for('pulverizacao.detalhe_aplicacao', id=atv.id) }}" class="list-group-item list-group-item-action border-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ atv.talhao }}</strong>
-                                <div class="small text-muted">
-                                    <i class="bi bi-calendar3 me-1"></i>{{ atv.data }}
-                                    <span class="mx-1">•</span>
-                                    {{ atv.periodo }}
-                                </div>
+                    <a href="{{ url_for('pulverizacao.detalhe_aplicacao', id=atv.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div class="min-w-0">
+                                <div class="fw-semibold text-truncate">{{ atv.talhao }}</div>
+                                <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>{{ atv.data }} &middot; {{ atv.periodo }}</div>
                             </div>
-                            <span class="badge bg-light text-dark">{{ atv.responsavel }}</span>
+                            <span class="badge bg-light flex-shrink-0"><i class="bi bi-person me-1"></i>{{ atv.responsavel }}</span>
                         </div>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-inbox display-4 text-muted"></i>
-                    <p class="text-muted mt-2">Nenhuma atividade recente</p>
-                </div>
+                <div class="empty-state py-4"><i class="bi bi-inbox"></i><p>Nenhuma atividade recente</p></div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<!-- LINHA 6: Cards Secundários (3 cards lado a lado) -->
+<!-- Estoque, análises e manejos -->
 <div class="row g-4">
-    <!-- Produtos com Estoque Baixo -->
-    <div class="col-md-4">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-danger text-white">
-                <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Estoque Baixo</h5>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-exclamation-triangle me-2"></i>Estoque baixo</h6>
+                <span class="badge bg-{{ 'danger' if produtos_baixo else 'secondary' }} rounded-pill">{{ produtos_baixo|length }}</span>
             </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="card-body p-0 panel-scroll">
                 {% if produtos_baixo %}
                 <div class="list-group list-group-flush">
                     {% for p in produtos_baixo %}
-                    <a href="{{ url_for('estoque.detalhe_produto', id=p.id) }}" class="list-group-item list-group-item-action border-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>{{ p.nome }}</strong>
-                                <div class="small text-muted">Atual: {{ p.quantidade|format_quantidade }} {{ p.unidade }}</div>
+                    <a href="{{ url_for('estoque.detalhe_produto', id=p.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div class="min-w-0">
+                                <div class="fw-semibold text-truncate">{{ p.nome }}</div>
+                                <div class="small text-muted tabular">Atual: {{ p.quantidade|format_quantidade }} {{ p.unidade }}</div>
                             </div>
-                            <span class="badge bg-danger">Mín: {{ p.minimo|format_quantidade }}</span>
+                            <span class="badge bg-danger flex-shrink-0">Mín. {{ p.minimo|format_quantidade }}</span>
                         </div>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-check-circle text-success display-4"></i>
-                    <p class="text-muted mt-2">Tudo OK</p>
-                </div>
+                <div class="empty-state py-4"><i class="bi bi-check2-circle"></i><p>Todos os produtos acima do mínimo</p></div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Últimas Análises -->
-    <div class="col-md-4">
-        <div class="card border-0 shadow-lg h-100">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Últimas Análises</h5>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-clipboard-data me-2"></i>Últimas análises</h6>
+                <a href="{{ url_for('analises.listar') }}" class="small fw-medium">Ver todas</a>
             </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="card-body p-0 panel-scroll">
                 {% if ultimas_analises %}
                 <div class="list-group list-group-flush">
                     {% for a in ultimas_analises %}
-                    <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="list-group-item list-group-item-action border-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>{{ a.talhao }}</strong>
-                                <div class="small text-muted">{{ a.data }} - {{ a.tipo }}</div>
+                    <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div class="min-w-0">
+                                <div class="fw-semibold text-truncate">{{ a.talhao }}</div>
+                                <div class="small text-muted">{{ a.data }} &middot; {{ a.tipo }}</div>
                             </div>
-                            <span class="badge {% if a.status == 'Pendente' %}bg-warning{% else %}bg-success{% endif %}">
-                                {{ a.status }}
-                            </span>
+                            <span class="badge {{ 'bg-warning' if a.status == 'Pendente' else 'bg-success' }} flex-shrink-0">{{ a.status }}</span>
                         </div>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-inbox display-4 text-muted"></i>
-                    <p class="text-muted mt-2">Nenhuma análise</p>
-                </div>
+                <div class="empty-state py-4"><i class="bi bi-inbox"></i><p>Nenhuma análise registrada</p></div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-tools me-2"></i>Últimos manejos</h6>
+                <a href="{{ url_for('manejo.visao_geral') }}" class="small fw-medium">Ver todos</a>
             </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="card-body p-0 panel-scroll">
                 {% if ultimos_manejos %}
                 <div class="list-group list-group-flush">
                     {% for m in ultimos_manejos %}
-                    <a href="{{ m.url }}" class="list-group-item list-group-item-action border-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>{{ m.talhao }}</strong>
-                                <div class="small text-muted">{{ m.data }} - {{ m.tipo }}</div>
-                            </div>
+                    <a href="{{ m.url }}" class="list-group-item list-group-item-action">
+                        <div class="min-w-0">
+                            <div class="fw-semibold text-truncate">{{ m.talhao }}</div>
+                            <div class="small text-muted">{{ m.data }} &middot; {{ m.tipo }}</div>
                         </div>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-inbox display-4 text-muted"></i>
-                    <p class="text-muted mt-2">Nenhum manejo</p>
-                </div>
+                <div class="empty-state py-4"><i class="bi bi-inbox"></i><p>Nenhum manejo registrado</p></div>
                 {% endif %}
             </div>
         </div>
@@ -465,116 +370,104 @@
 {% endblock %}
 
 {% block scripts %}
-{% if resumo %}
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico de Tendência
-    const ctxTendencia = document.getElementById('graficoTendencia').getContext('2d');
-    new Chart(ctxTendencia, {
-        type: 'line',
-        data: {
-            labels: {{ grafico_tendencia.labels|tojson }},
-            datasets: [{
-                label: 'Número de Aplicações',
-                data: {{ grafico_tendencia.dados|tojson }},
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: 'rgb(75, 192, 192)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                x: { grid: { display: false } }
+(function () {
+    const el = document.getElementById('saudacao');
+    if (!el) return;
+    const h = new Date().getHours();
+    el.textContent = h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite');
+})();
+</script>
+{% if resumo %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof Chart === 'undefined') return;
+
+    // Paleta categórica da marca (ordem fixa, validada para daltonismo)
+    const SERIES = ['#2E7D4F', '#2F6FB0', '#C47A3A', '#8A5CC2', '#E0A526', '#D0566C'];
+    const TEXTO = '#4A544D', TEXTO_FRACO = '#7B857E', GRADE = '#EEF0EB', SUPERFICIE = '#FFFFFF';
+
+    Chart.defaults.font.family = "'Inter', -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = TEXTO_FRACO;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#17201A';
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { weight: '600' };
+    Chart.defaults.plugins.tooltip.boxPadding = 4;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+    Chart.defaults.plugins.legend.labels.boxHeight = 8;
+    Chart.defaults.plugins.legend.labels.padding = 14;
+    Chart.defaults.plugins.legend.labels.color = TEXTO;
+    Chart.defaults.maintainAspectRatio = false;
+
+    function semDados(dados) {
+        return !dados || !dados.length || dados.every(function (v) { return !Number(v); });
+    }
+    function vazio(id, msg) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return true;
+        canvas.parentElement.innerHTML = '<div class="empty-state py-5"><i class="bi bi-bar-chart"></i><p>' + msg + '</p></div>';
+        return true;
+    }
+    const eixoY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: GRADE }, border: { display: false } };
+    const eixoX = { grid: { display: false }, border: { color: '#E5E7E1' } };
+
+    // Tendência (linha)
+    const tLabels = {{ grafico_tendencia.labels|tojson }}, tDados = {{ grafico_tendencia.dados|tojson }};
+    if (semDados(tDados)) { vazio('graficoTendencia', 'Nenhuma aplicação nos últimos 6 meses'); }
+    else {
+        const ctx = document.getElementById('graficoTendencia').getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 260);
+        grad.addColorStop(0, 'rgba(46, 125, 79, 0.18)');
+        grad.addColorStop(1, 'rgba(46, 125, 79, 0)');
+        new Chart(ctx, {
+            type: 'line',
+            data: { labels: tLabels, datasets: [{
+                label: 'Aplicações', data: tDados, borderColor: SERIES[0], backgroundColor: grad,
+                borderWidth: 2, tension: 0.35, fill: true,
+                pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: SERIES[0],
+                pointBorderColor: SUPERFICIE, pointBorderWidth: 2
+            }]},
+            options: {
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false } },
+                scales: { y: eixoY, x: eixoX }
             }
-        }
-    });
+        });
+    }
 
-    // Gráfico de Períodos
-    const ctxPeriodo = document.getElementById('graficoPeriodo').getContext('2d');
-    new Chart(ctxPeriodo, {
-        type: 'doughnut',
-        data: {
-            labels: {{ grafico_aplicacoes_periodo.labels|tojson }},
-            datasets: [{
-                data: {{ grafico_aplicacoes_periodo.dados|tojson }},
-                backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF'
-                ],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
-            },
-            cutout: '60%'
-        }
-    });
+    function rosca(id, labels, dados, msg) {
+        if (semDados(dados)) { vazio(id, msg); return; }
+        new Chart(document.getElementById(id), {
+            type: 'doughnut',
+            data: { labels: labels, datasets: [{
+                data: dados, backgroundColor: SERIES.slice(0, dados.length),
+                borderColor: SUPERFICIE, borderWidth: 2, hoverOffset: 4
+            }]},
+            options: { cutout: '68%', plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+    rosca('graficoPeriodo', {{ grafico_aplicacoes_periodo.labels|tojson }}, {{ grafico_aplicacoes_periodo.dados|tojson }}, 'Nenhuma aplicação registrada');
+    rosca('graficoTiposPragas', {{ grafico_tipos_pragas.labels|tojson }}, {{ grafico_tipos_pragas.dados|tojson }}, 'Nenhuma ocorrência registrada');
 
-    // Gráfico de Pragas por Talhão
-    const ctxPragas = document.getElementById('graficoPragasTalhao').getContext('2d');
-    new Chart(ctxPragas, {
-        type: 'bar',
-        data: {
-            labels: {{ grafico_pragas_talhao.labels|tojson }},
-            datasets: [{
-                label: 'Ocorrências',
-                data: {{ grafico_pragas_talhao.dados|tojson }},
-                backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                borderRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: { beginAtZero: true, stepSize: 1, grid: { color: 'rgba(0,0,0,0.05)' } },
-                x: { grid: { display: false } }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
-
-    // Gráfico de Tipos de Pragas
-    const ctxTipos = document.getElementById('graficoTiposPragas').getContext('2d');
-    new Chart(ctxTipos, {
-        type: 'doughnut',
-        data: {
-            labels: {{ grafico_tipos_pragas.labels|tojson }},
-            datasets: [{
-                data: {{ grafico_tipos_pragas.dados|tojson }},
-                backgroundColor: ['#FF6384', '#36A2EB'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
-            },
-            cutout: '60%'
-        }
-    });
+    // Pragas por talhão (barras)
+    const pDados = {{ grafico_pragas_talhao.dados|tojson }};
+    if (semDados(pDados)) { vazio('graficoPragasTalhao', 'Nenhuma ocorrência de praga registrada'); }
+    else {
+        new Chart(document.getElementById('graficoPragasTalhao'), {
+            type: 'bar',
+            data: { labels: {{ grafico_pragas_talhao.labels|tojson }}, datasets: [{
+                label: 'Ocorrências', data: pDados, backgroundColor: SERIES[2],
+                hoverBackgroundColor: '#A8652C', borderRadius: 4, borderSkipped: 'bottom',
+                maxBarThickness: 36
+            }]},
+            options: { plugins: { legend: { display: false } }, scales: { y: eixoY, x: eixoX } }
+        });
+    }
 });
 </script>
 {% endif %}

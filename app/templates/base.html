@@ -96,13 +96,21 @@
     </header>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            {% for category, message in messages %}
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                showToast('{{ 'error' if category == 'error' else category }}', '{{ category|title }}', '{{ message|replace("'", "\\'") }}');
+                const titulos = { success: 'Sucesso', error: 'Erro', danger: 'Erro', warning: 'Atenção', info: 'Informação', message: 'Aviso' };
+                const mensagens = {{ messages|tojson }};
+                // Se a própria tela já exibe a mensagem num alerta, não repete como aviso flutuante
+                const exibidas = Array.from(document.querySelectorAll('.page-content .alert'))
+                    .map(function(a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
+                mensagens.forEach(function(item) {
+                    const categoria = item[0], texto = item[1];
+                    const normalizado = String(texto).replace(/\s+/g, ' ').trim();
+                    if (exibidas.some(function(t) { return t.indexOf(normalizado) !== -1; })) return;
+                    showToast(categoria === 'danger' ? 'error' : categoria, titulos[categoria] || 'Aviso', texto);
+                });
             });
             </script>
-            {% endfor %}
         {% endif %}
     {% endwith %}
     <main class="page-content">
@@ -202,11 +210,13 @@ function showToast(tipo, titulo, mensagem) {
     toast.innerHTML = `
         <i class="bi ${icones[tipo] || icones.info} toast-icon"></i>
         <div class="toast-content">
-            <div class="toast-title">${titulo}</div>
-            <div class="toast-message">${mensagem}</div>
+            <div class="toast-title"></div>
+            <div class="toast-message"></div>
         </div>
-        <button class="toast-close" onclick="fecharToast(this.parentElement)">&times;</button>
+        <button class="toast-close" onclick="fecharToast(this.parentElement)" aria-label="Fechar">&times;</button>
     `;
+    toast.querySelector('.toast-title').textContent = titulo;
+    toast.querySelector('.toast-message').textContent = mensagem;
     document.getElementById('toastContainer').appendChild(toast);
     setTimeout(() => fecharToast(toast), 5000);
 }

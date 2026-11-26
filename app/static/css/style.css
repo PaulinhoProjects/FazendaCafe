@@ -1353,6 +1353,154 @@ textarea.form-control { min-height: 80px; }
 .timeline-text { font-size: 0.8rem; color: var(--text-2); }
 
 /* -------------------------------------------------------------------------
+   15b. DASHBOARD E PAINÉIS
+   ------------------------------------------------------------------------- */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+.kpi-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+@media (min-width: 1200px) {
+    /* 7 indicadores: 4 na primeira linha, 3 mais largos na segunda */
+    .kpi-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .kpi-grid > * { grid-column: span 3; }
+    .kpi-grid > :nth-child(n + 5) { grid-column: span 4; }
+    .kpi-grid > :last-child:nth-child(3n + 1) { grid-column: span 4; }
+}
+
+a.stat-card-link { color: inherit; text-decoration: none; }
+a.stat-card-link:hover { color: inherit; border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+a.stat-card-link::after {
+    content: '\F138'; /* bi-arrow-right */
+    font-family: 'bootstrap-icons';
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-3);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+a.stat-card-link:hover::after { opacity: 1; transform: translateX(0); }
+
+.card-header-split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+.card-header-split h6 { margin: 0; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; }
+.card-header-split small { display: block; font-size: 0.75rem; margin-top: 0.1rem; }
+
+.chart-box { position: relative; height: 260px; }
+
+.panel-scroll { max-height: 320px; overflow-y: auto; }
+.panel-scroll .list-group-item { border-left: 0; border-right: 0; }
+.panel-scroll .list-group-item:first-child { border-top: 0; }
+.panel-scroll .empty-state i { width: 44px; height: 44px; font-size: 1.2rem; border-radius: 12px; margin-bottom: 0.6rem; }
+.panel-scroll .empty-state p { margin: 0; font-size: 0.82rem; }
+
+.min-w-0 { min-width: 0; }
+
+.alert-banner-danger { border-left-color: var(--danger); }
+.alert-banner-danger .alert-banner-icon { background: var(--danger-50); color: var(--danger); }
+
+/* Card de clima */
+.weather-card .card-body { padding: 1.35rem 1.5rem; }
+.weather-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.1fr) 1.4fr 1.3fr;
+    gap: 1.5rem;
+    align-items: center;
+}
+.weather-now { display: flex; align-items: center; gap: 1rem; }
+.weather-icon {
+    font-size: 2.6rem;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--info-50);
+    color: var(--info);
+    flex-shrink: 0;
+}
+.weather-temp { font-size: 2.1rem; font-weight: 650; letter-spacing: -0.04em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.weather-temp span { font-size: 1rem; font-weight: 500; color: var(--text-3); margin-left: 0.1rem; vertical-align: top; }
+.weather-desc { font-size: 0.85rem; font-weight: 500; color: var(--text-2); margin-top: 0.3rem; }
+.weather-desc::first-letter { text-transform: uppercase; }
+.weather-feel { font-size: 0.75rem; color: var(--text-3); }
+
+.weather-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    padding: 0 1.5rem;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+.weather-metric {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.5rem;
+    align-items: center;
+    padding: 0.3rem 0;
+}
+.weather-metric i { grid-row: span 2; color: var(--text-3); font-size: 1rem; }
+.weather-metric span { font-size: 0.72rem; color: var(--text-3); }
+.weather-metric strong { font-size: 0.875rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.weather-alerts { display: flex; flex-direction: column; gap: 0.4rem; }
+.weather-alerts-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+.weather-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-md);
+    background: var(--warning-50);
+    color: #7A4F10;
+    border: 1px solid #F1DDB0;
+}
+.weather-alert i { margin-top: 0.05rem; }
+.weather-alert.is-high { background: var(--danger-50); color: #9B2A21; border-color: #F3C9C4; }
+.weather-alert.is-ok { background: var(--success-50); color: #22603C; border-color: #C5E2D0; }
+
+.weather-forecast {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+.weather-day { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; font-size: 0.78rem; flex: 1; }
+.weather-day span { font-weight: 600; color: var(--text-2); }
+.weather-day i { font-size: 1.15rem; color: var(--info); }
+.weather-day small { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1199.98px) {
+    .weather-grid { grid-template-columns: 1fr 1fr; }
+    .weather-metrics { border-right: 0; padding-right: 0; }
+    .weather-alerts { grid-column: 1 / -1; }
+}
+@media (max-width: 767.98px) {
+    .weather-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .weather-metrics { border: 0; padding: 0.75rem 0 0; border-top: 1px solid var(--border); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .kpi-grid > :last-child:nth-child(3n + 1) { grid-column: auto; }
+    .kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .kpi-grid .stat-card { padding: 0.9rem; gap: 0.65rem; flex-direction: column; }
+    .kpi-grid .stat-card .stat-icon { width: 34px; height: 34px; font-size: 0.95rem; }
+    .chart-box { height: 220px; }
+}
+
+/* -------------------------------------------------------------------------
    16. LOGIN
    ------------------------------------------------------------------------- */
 .login-page {
@@ -1443,6 +1591,121 @@ textarea.form-control { min-height: 80px; }
     color: var(--text-3);
     background: var(--surface-2);
     border-top: 1px solid var(--border);
+}
+
+/* Login em duas colunas (login.html) */
+.auth-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(380px, 1fr) minmax(420px, 1.1fr);
+    background: var(--surface);
+}
+
+.auth-brand {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2.5rem 3rem;
+    color: #E9F2EC;
+    background:
+        radial-gradient(800px 420px at 0% 0%, rgba(63, 138, 99, 0.55), transparent 60%),
+        radial-gradient(700px 500px at 100% 100%, rgba(169, 113, 59, 0.35), transparent 60%),
+        #10291D;
+}
+.auth-brand::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+            mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+    pointer-events: none;
+}
+.auth-brand > * { position: relative; }
+.auth-brand-top { display: flex; align-items: center; gap: 0.75rem; }
+.auth-brand-name { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+.auth-brand-body { max-width: 440px; }
+.auth-brand-body h2 { color: #fff; font-size: 2rem; font-weight: 650; letter-spacing: -0.035em; line-height: 1.15; margin-bottom: 0.75rem; }
+.auth-brand-body p { color: rgba(233, 242, 236, 0.72); font-size: 0.95rem; margin-bottom: 1.75rem; }
+.auth-features { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; }
+.auth-features li { display: flex; align-items: center; gap: 0.75rem; font-size: 0.88rem; color: rgba(233, 242, 236, 0.9); }
+.auth-features i {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    color: #BFE0CB;
+    flex-shrink: 0;
+}
+.auth-brand-foot { font-size: 0.78rem; color: rgba(233, 242, 236, 0.55); }
+
+.logo-mark-lg { width: 40px; height: 40px; border-radius: 11px; font-size: 1.2rem; }
+.auth-brand .logo-mark { background: rgba(255,255,255,0.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18); }
+
+.auth-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem 1.5rem;
+}
+.auth-form { width: 100%; max-width: 360px; margin: auto 0; }
+.auth-form-head { margin-bottom: 1.75rem; }
+.auth-form-head h1 { font-size: 1.6rem; font-weight: 650; letter-spacing: -0.03em; margin: 0 0 0.3rem; }
+.auth-form-head p { color: var(--text-3); margin: 0; font-size: 0.9rem; }
+.auth-form .form-control-lg { font-size: 0.92rem; min-height: 44px; }
+.auth-form .btn-lg { min-height: 44px; }
+.auth-main-foot { font-size: 0.75rem; color: var(--text-3); margin-top: 2rem; }
+
+/* Campo com ícone à esquerda e ação opcional à direita */
+.input-icon { position: relative; }
+.input-icon > i {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-3);
+    pointer-events: none;
+}
+.input-icon > .form-control { padding-left: 2.4rem; }
+.input-icon > .form-control:has(~ .input-icon-action) { padding-right: 2.75rem; }
+.input-icon-action {
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border: 0;
+    background: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.input-icon-action:hover { background: var(--surface-3); color: var(--text); }
+
+@media (max-width: 991.98px) {
+    .auth-shell { grid-template-columns: 1fr; background: var(--bg); }
+    .auth-brand { display: none; }
+    .auth-form {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        padding: 2rem 1.75rem;
+        box-shadow: var(--shadow-md);
+        max-width: 400px;
+    }
 }
 
 /* -------------------------------------------------------------------------
