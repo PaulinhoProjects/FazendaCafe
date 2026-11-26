@@ -69,6 +69,35 @@
 <div class="alert alert-danger">Não foi possível carregar o monitor de integridade.</div>
 {% endif %}
 
+<div class="card mb-4">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-database-check me-2"></i><strong>Última coleta gravada</strong></div>
+        <span class="text-muted small">{{ ultima_coleta|length }} valores{% if ultima_coleta %} · {{ ultima_coleta[0].coletado_em.strftime('%d/%m/%Y %H:%M') }}{% endif %} · {{ total_coletas }} registros guardados</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle">
+            <thead><tr><th>Cotação</th><th>Fonte</th><th>Papel</th><th class="text-end">Valor</th><th>Data origem</th></tr></thead>
+            <tbody>
+            {% set nomes = {'kc': 'Café Nova York', 'icf': 'Café B3', 'dolcooxupe': 'Dólar Cooxupé', 'ptax': 'PTAX', 'awesome': 'Dólar comercial'} %}
+            {% for item in ultima_coleta %}
+            <tr>
+                <td>{{ nomes.get(item.chave, item.chave) }}</td>
+                <td>{{ item.fonte }}</td>
+                <td>{{ item.papel or '—' }}</td>
+                <td class="text-end text-nowrap tabular">{{ '%.4f'|format(item.valor|float) }} {{ item.unidade or '' }}</td>
+                <td>{{ item.data_origem or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Nenhuma coleta gravada ainda.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer small text-muted">
+        Só os registros mais recentes ficam guardados (limite em Configurações &rsaquo; Sistema). O histórico completo das cotações continua disponível nas próprias fontes.
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header card-header-split">
         <div><i class="bi bi-clock-history me-2"></i><strong>Histórico de verificações</strong></div>

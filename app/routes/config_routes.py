@@ -23,8 +23,8 @@ GRUPOS = {
         ('nome_sistema', 'Nome do sistema', 'Nome exibido em telas de configuração.', 'text', 'Kaldi'),
         ('slogan', 'Slogan', 'Frase exibida no login e nos rodapés.', 'text', 'Tecnologia que Colhe Resultados'),
         ('itens_por_pagina', 'Itens por página', 'Quantidade de linhas nas listagens.', 'number', '20'),
-        ('cotacoes_historico_max', 'Máx. de coletas de cotações', 'Snapshots ativos mantidos no histórico (padrão 2000).', 'number', '2000'),
-        ('cotacoes_saude_max', 'Máx. de eventos de integridade', 'Eventos ativos mantidos no monitor das fontes (padrão 500).', 'number', '500'),
+        ('cotacoes_historico_max', 'Máx. de coletas de cotações', 'Registros recentes guardados para monitoramento (padrão 300 ≈ 10 coletas).', 'number', '300'),
+        ('cotacoes_saude_max', 'Máx. de eventos de integridade', 'Eventos recentes mantidos no monitor das fontes (padrão 200).', 'number', '200'),
     ],
     'seguranca': [
         ('seguranca_sessao_horas', 'Sessão expira após (horas sem uso)', 'Entre 1 e 720 horas.', 'number', '12'),

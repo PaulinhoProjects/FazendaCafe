@@ -58,14 +58,14 @@ _SAUDE = {"valor": None, "timestamp": None}
 SAUDE_CACHE_MINUTOS = 5
 
 try:
-    HISTORICO_MAX = max(50, int(os.getenv("COTACOES_HISTORICO_MAX", "2000")))
+    HISTORICO_MAX = max(50, int(os.getenv("COTACOES_HISTORICO_MAX", "300")))
 except (TypeError, ValueError):
-    HISTORICO_MAX = 2000
+    HISTORICO_MAX = 300
 
 try:
-    SAUDE_MAX = max(20, int(os.getenv("COTACOES_SAUDE_MAX", "500")))
+    SAUDE_MAX = max(20, int(os.getenv("COTACOES_SAUDE_MAX", "200")))
 except (TypeError, ValueError):
-    SAUDE_MAX = 500
+    SAUDE_MAX = 200
 
 FONTES = [
     {
@@ -787,6 +787,23 @@ def listar_historico(limite=20, offset=0):
         """, (limite, offset), fetch_all=True, dict_cursor=True) or []
     except Exception as e:
         logger.error(f"cotacoes.listar_historico: {e}")
+        return []
+
+
+def listar_ultima_coleta():
+    """Valores gravados na coleta mais recente (para o monitor das fontes)."""
+    try:
+        return executar_query("""
+            SELECT chave, fonte, papel, valor, unidade, data_origem, coletado_em
+            FROM cotacoes_snapshots
+            WHERE ativo = TRUE AND coletado_em >= (
+                SELECT MAX(coletado_em) - INTERVAL '1 minute'
+                FROM cotacoes_snapshots WHERE ativo = TRUE
+            )
+            ORDER BY fonte, chave
+        """, fetch_all=True, dict_cursor=True) or []
+    except Exception as e:
+        logger.error(f"cotacoes.listar_ultima_coleta: {e}")
         return []
 
 

@@ -137,52 +137,6 @@
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header card-header-split">
-        <div><i class="bi bi-clock-history me-2"></i><strong>Histórico de coletas</strong></div>
-        <span class="text-muted small">{{ total_registros }} registros · página {{ pagina }} de {{ total_paginas }} · {{ por_pagina }} por página</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0">
-            <thead><tr><th>Cotação</th><th>Fonte</th><th>Papel</th><th class="text-end">Valor</th><th>Data origem</th><th>Coletado em</th></tr></thead>
-            <tbody>
-                {% set rotulos = {'kc': 'Café Nova York', 'icf': 'Café B3', 'dolcooxupe': 'Dólar Cooxupé', 'ptax': 'PTAX', 'awesome': 'Dólar comercial'} %}
-                {% for item in historico %}
-                <tr>
-                    <td>{{ rotulos.get(item.chave, item.chave) }}</td>
-                    <td>{{ item.fonte }}</td>
-                    <td>{{ item.papel or '—' }}</td>
-                    <td class="text-end">{{ '%.4f'|format(item.valor|float) }} {{ item.unidade or '' }}</td>
-                    <td>{{ item.data_origem or '—' }}</td>
-                    <td>{{ item.coletado_em }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma coleta registrada ainda.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if total_paginas > 1 %}
-    <div class="card-footer">
-        <nav aria-label="Paginação do histórico de coletas">
-            <ul class="pagination pagination-sm justify-content-center mb-0">
-                <li class="page-item {% if pagina <= 1 %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=pagina - 1) }}">Anterior</a>
-                </li>
-                {% for p in range(1, total_paginas + 1) %}
-                <li class="page-item {% if p == pagina %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=p) }}">{{ p }}</a>
-                </li>
-                {% endfor %}
-                <li class="page-item {% if pagina >= total_paginas %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=pagina + 1) }}">Próxima</a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
-</div>
-
 <div class="card">
     <div class="card-header"><i class="bi bi-link-45deg me-2"></i><strong>Fontes consultadas</strong></div>
     <div class="card-body">

@@ -30,23 +30,11 @@ def _total_paginas(total, por_pagina):
 def index():
     try:
         dados = cotacoes.obter_cotacoes()
-        pagina, por_pagina = _paginacao()
-        total = cotacoes.contar_historico()
-        total_paginas = _total_paginas(total, por_pagina)
-        pagina = min(pagina, total_paginas)
-        historico = cotacoes.listar_historico(por_pagina, (pagina - 1) * por_pagina)
-        return render_template(
-            'cotacoes/index.html', cotacoes=dados, historico=historico,
-            pagina=pagina, total_paginas=total_paginas, total_registros=total,
-            por_pagina=por_pagina,
-        )
+        return render_template('cotacoes/index.html', cotacoes=dados)
     except Exception as e:
         logger.error(f"cotacoes_routes.index: {e}")
         flash('Erro ao carregar as cotações.', 'error')
-        return render_template(
-            'cotacoes/index.html', cotacoes=None, historico=[],
-            pagina=1, total_paginas=1, total_registros=0, por_pagina=20,
-        )
+        return render_template('cotacoes/index.html', cotacoes=None)
 
 
 @cotacoes_bp.route('/atualizar', methods=['POST'])
@@ -84,6 +72,8 @@ def saude():
     return render_template(
         'cotacoes/saude.html', saude=estado,
         eventos=cotacoes.listar_saude_eventos(por_pagina, (pagina - 1) * por_pagina),
+        ultima_coleta=cotacoes.listar_ultima_coleta(),
+        total_coletas=cotacoes.contar_historico(),
         pagina=pagina, total_paginas=total_paginas, total_registros=total,
         por_pagina=por_pagina,
     )
