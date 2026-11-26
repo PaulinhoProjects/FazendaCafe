@@ -1,37 +1,86 @@
 {% extends "base.html" %}
 {% block titulo %}Notas Fiscais{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Notas Fiscais</li>
+{% endblock %}
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="page-header">
+<div class="page-header mb-4">
+    <div>
         <h1 class="page-title"><i class="bi bi-receipt me-2"></i>Notas Fiscais</h1>
-        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Nota</a>
+        <p class="page-subtitle">Compras de insumos registradas e seus fornecedores</p>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-3"><div class="card text-white bg-success"><div class="card-body"><h6>Total de Notas</h6><h2>{{ resumo.total_notas if resumo else 0 }}</h2></div></div></div>
-        <div class="col-md-3"><div class="card text-white bg-info"><div class="card-body"><h6>Fornecedores</h6><h2>{{ resumo.total_fornecedores if resumo else 0 }}</h2></div></div></div>
-        <div class="col-md-3"><div class="card text-white bg-primary"><div class="card-body"><h6>Valor Total</h6><h2>{{ resumo.valor_total|format_moeda if resumo else 'R$ 0,00' }}</h2></div></div></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('notas_fiscais.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Todas as notas</a>
+        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova Nota</a>
     </div>
-    <div class="card shadow-sm">
-        <div class="card-header"><h5 class="mb-0">Últimas Notas</h5></div>
-        <div class="card-body">
-            {% if notas %}
-            <table class="table table-hover">
-                <thead><tr><th>Número</th><th>Fornecedor</th><th>Data Recebimento</th><th>Valor</th><th>Produtos</th><th>Ações</th></tr></thead>
-                <tbody>
-                    {% for n in notas %}
-                    <tr>
-                        <td>{{ n.numero_nota }}</td>
-                        <td>{{ n.fornecedor }}</td>
-                        <td>{{ n.data_recebimento|format_data if n.data_recebimento else '-' }}</td>
-                        <td>{{ n.valor_total|format_moeda if n.valor_total else '-' }}</td>
-                        <td>{{ n.total_produtos if n.total_produtos else 0 }}</td>
-                        <td><a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}<p class="text-center text-muted py-3">Nenhuma nota cadastrada.</p>{% endif %}
+</div>
+
+{% include '_abas_compras.html' %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <a class="stat-card stat-card-link" href="{{ url_for('notas_fiscais.listar') }}">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Notas registradas</div>
+                <div class="stat-value">{{ resumo.total_notas if resumo else 0 }}</div>
+                <div class="stat-meta">Notas ativas no sistema</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a class="stat-card stat-card-link" href="{{ url_for('fornecedores.listar') }}">
+            <div class="stat-icon bg-info-soft"><i class="bi bi-truck"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Fornecedores</div>
+                <div class="stat-value">{{ resumo.total_fornecedores if resumo else 0 }}</div>
+                <div class="stat-meta">Com notas registradas</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Valor total</div>
+                <div class="stat-value">{{ resumo.valor_total|format_moeda if resumo else 'R$ 0,00' }}</div>
+                <div class="stat-meta">Soma das notas</div>
+            </div>
         </div>
     </div>
+</div>
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-clock-history me-2"></i>Últimas notas</h6>
+        <a href="{{ url_for('notas_fiscais.listar') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+    </div>
+    {% if notas %}
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Número</th><th>Fornecedor</th><th>Recebimento</th><th class="text-end">Valor</th><th class="text-end">Produtos</th><th class="text-end">Ações</th></tr></thead>
+            <tbody>
+                {% for n in notas %}
+                <tr>
+                    <td class="fw-semibold tabular">{{ n.numero_nota }}</td>
+                    <td>{{ n.fornecedor or '—' }}</td>
+                    <td class="tabular">{{ n.data_recebimento|format_data if n.data_recebimento else '—' }}</td>
+                    <td class="text-end text-nowrap tabular">{{ n.valor_total|format_moeda if n.valor_total else '—' }}</td>
+                    <td class="text-end tabular">{{ n.total_produtos if n.total_produtos else 0 }}</td>
+                    <td class="text-end"><a href="{{ url_for('notas_fiscais.detalhe', id=n.id) }}" class="btn btn-sm btn-outline-primary" title="Ver nota" aria-label="Ver nota"><i class="bi bi-eye"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-receipt"></i>
+        <h6 class="mb-1">Nenhuma nota cadastrada</h6>
+        <p>Registre as notas de compra para alimentar o estoque e o histórico de preços.</p>
+        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Cadastrar nota</a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -55,6 +55,12 @@ CATEGORIAS_GASTO = [
 # ---------------------------------------------------------------------------
 # Auxiliares
 # ---------------------------------------------------------------------------
+def _numero_br(valor, casas=2):
+    """Formata número no padrão brasileiro (1.234,56) para textos exibidos."""
+    texto = f"{float(valor or 0):,.{casas}f}"
+    return texto.replace(",", "#").replace(".", ",").replace("#", ".")
+
+
 def _texto(valor):
     if valor is None:
         return None
@@ -266,7 +272,7 @@ def registrar_movimentacao(dados):
         if tipo == "saida" and quantidade > float(produto["quantidade_atual"]):
             raise ValueError(
                 f"Saldo insuficiente para {produto['nome']}. "
-                f"Disponível: {float(produto['quantidade_atual']):,.2f}."
+                f"Disponível: {_numero_br(produto['quantidade_atual'])}."
             )
         delta = quantidade if tipo == "entrada" else -quantidade
         cursor.execute("""
@@ -1140,7 +1146,7 @@ def listar_alertas():
                 alertas.append({
                     "tipo": "warning",
                     "titulo": f"Horímetro de {nome}",
-                    "detalhe": f"Passou de {float(proximas_horas):,.0f} h previstas.",
+                    "detalhe": f"Passou de {_numero_br(proximas_horas, 0)} h previstas.",
                     "url": "maquinario.manutencoes",
                 })
         for abastecimento in listar_abastecimentos(pendentes=True):
@@ -1151,7 +1157,7 @@ def listar_alertas():
                 alertas.append({
                     "tipo": "danger" if vencimento and vencimento < hoje else "warning",
                     "titulo": f"Boleto pendente — {abastecimento.get('fornecedor') or 'fornecedor não informado'}",
-                    "detalhe": f"Vencimento/lembrete em {alvo.strftime('%d/%m/%Y')} · R$ {float(abastecimento['valor_total']):,.2f}",
+                    "detalhe": f"Vencimento/lembrete em {alvo.strftime('%d/%m/%Y')} · R$ {_numero_br(abastecimento['valor_total'])}",
                     "url": "maquinario.abastecimentos",
                 })
         baixos = [
