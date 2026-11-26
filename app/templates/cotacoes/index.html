@@ -73,8 +73,65 @@
 <div class="alert alert-light border small">
     <i class="bi bi-info-circle me-1"></i>
     Conversão: saca de <strong>60 kg</strong> (132,277 lb), sem desconto. A PTAX do Banco Central é usada por padrão; o dólar comercial aparece como comparação.
-    A Cooxupé publica as cotações após o fechamento do mercado — valores de referência, não negociação da cooperativa. Cache de 30 minutos.
+    A Cooxupé publica as cotações após o fechamento do mercado — valores de referência, não negociação da cooperativa.
+    As tabelas da Coopercam e da Cocatrel são preços publicados pelas cooperativas e podem estar um dia defasados. Cache de 30 minutos.
     <span class="text-muted">Consultado em {{ cotacoes.atualizado_em }}.</span>
+</div>
+
+<!-- Preços físicos das cooperativas -->
+<div class="card mb-4">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-cup-hot me-2"></i><strong>Preços físicos das cooperativas</strong> <span class="text-muted small">· principais classificações</span></div>
+        <span class="text-muted small">valores em R$/saca</span>
+    </div>
+    <div class="card-body">
+        {% if cotacoes.cooperativas %}
+        <div class="row g-4">
+            {% for coop in cotacoes.cooperativas %}
+            <div class="col-lg-6">
+                <div class="border rounded h-100">
+                    <div class="d-flex justify-content-between align-items-center gap-2 border-bottom p-3">
+                        <div><strong>{{ coop.nome }}</strong> <span class="text-muted small">· {{ coop.data or '—' }}</span></div>
+                        <a href="{{ coop.url }}" target="_blank" rel="noopener noreferrer" class="small text-decoration-none">Tabela original <i class="bi bi-box-arrow-up-right"></i></a>
+                    </div>
+                    <div class="p-3">
+                        <div class="row g-3">
+                            {% for item in coop.destaques %}
+                            <div class="col-4">
+                                <div class="text-muted small">{{ item.papel }}</div>
+                                <div class="fs-5 fw-semibold">{{ '%.2f'|format(item.valor) if item.valor is not none else '—' }}</div>
+                                {% if coop.com_icms and item.valor_com_icms is not none %}
+                                <div class="small text-muted">c/ICMS {{ '%.2f'|format(item.valor_com_icms) }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <details class="mt-3">
+                            <summary class="small fw-medium">Ver todas as {{ coop.itens|length }} classificações</summary>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm mb-0">
+                                    <thead><tr><th>Classificação</th><th class="text-end">R$/saca</th>{% if coop.com_icms %}<th class="text-end">c/ICMS</th>{% endif %}</tr></thead>
+                                    <tbody>
+                                    {% for item in coop.itens %}
+                                    <tr>
+                                        <td>{{ item.papel }}</td>
+                                        <td class="text-end">{{ '%.2f'|format(item.valor) if item.valor is not none else '—' }}</td>
+                                        {% if coop.com_icms %}<td class="text-end">{{ '%.2f'|format(item.valor_com_icms) if item.valor_com_icms is not none else '—' }}</td>{% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Sem cotações de cooperativas disponíveis no momento.</p>
+        {% endif %}
+    </div>
 </div>
 
 <div class="card mb-4">

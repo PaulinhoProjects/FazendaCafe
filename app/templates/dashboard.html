@@ -195,6 +195,21 @@
                 </div>
             </div>
         </div>
+        {% if cotacoes_atuais.cooperativas %}
+        <div class="row g-3 mt-1 border-top pt-3">
+            {% for coop in cotacoes_atuais.cooperativas %}
+            <div class="col-md-6">
+                <div class="small text-muted">{{ coop.nome }} · {{ coop.data or '—' }}</div>
+                {% set destaque = coop.destaques[0] if coop.destaques else none %}
+                <div class="small"><strong>{{ destaque.papel if destaque else '—' }}</strong>
+                    <span class="fs-6 fw-bold ms-1">{{ '%.2f'|format(destaque.valor) if destaque and destaque.valor is not none else '—' }}</span>
+                    <span class="text-muted">R$/saca</span>
+                    {% if coop.com_icms and destaque and destaque.valor_com_icms is not none %}<span class="text-muted">· c/ICMS {{ '%.2f'|format(destaque.valor_com_icms) }}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     <div class="card-footer"><small class="text-muted">Atualizado em {{ cotacoes_atuais.atualizado_em }} · saca de 60 kg, sem desconto</small></div>
 </div>

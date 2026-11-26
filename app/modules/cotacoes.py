@@ -3,6 +3,8 @@ Cotações de café e dólar de fontes públicas, sem login e sem chave de API.
 
 Fontes:
 - Cooxupé / Hub do Café: API JSON pública /api/cotacao-cafe
+- Coopercam: tabela diária pública de café físico (HTML)
+- Cocatrel: API JSON pública de café físico (COC 01 a 16)
 - Banco Central do Brasil: PTAX (dados abertos, OData)
 - AwesomeAPI: dólar comercial USD/BRL
 
@@ -26,6 +28,9 @@ COOXUPE_URL = "https://hubdocafe.cooxupe.com.br/api/cotacao-cafe"
 BCB_URL = ("https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
            "CotacaoDolarPeriodo(dataInicial=@d1,dataFinalCotacao=@d2)")
 AWESOME_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
+COOPERCAM_URL = "https://coopercam.com.br/cotacoes/"
+COCATREL_URL = "https://portal.cocatrel.com.br/DPmercadoCafe.aspx"
+COCATREL_API = "https://portal.cocatrel.com.br/api/v1/loadpagina/cafe/mercado"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -34,6 +39,10 @@ HEADERS = {
 }
 TIMEOUT = 15
 LIBRAS_POR_SACA = 132.27736  # 60 kg (saca de café) convertidos para libras
+ORDEM_COOPERCAM = [
+    'Gourmet', 'APM', 'Duro Limpo', 'Duro Riado', 'Duro Riado Rio', 'Rio de Pano',
+]
+ORDEM_COCATREL = [f'COC {i:02d}' for i in range(1, 17)]
 
 try:
     CACHE_MINUTOS = max(1, int(os.getenv("COTACOES_CACHE_MINUTOS", "30")))
@@ -47,6 +56,16 @@ FONTES = [
         'nome': 'Cooxupé / Hub do Café',
         'url': 'https://hubdocafe.cooxupe.com.br/cotacoes',
         'descricao': 'Café Nova York, B3 e dólar comercial divulgados pela cooperativa (após o fechamento).',
+    },
+    {
+        'nome': 'Coopercam',
+        'url': COOPERCAM_URL,
+        'descricao': 'Tabela diária de café físico de Campos Gerais/MG, em R$/saca.',
+    },
+    {
+        'nome': 'Cocatrel',
+        'url': COCATREL_URL,
+        'descricao': 'Café físico COC 01 a 16, com e sem ICMS, e evolução recente (API pública).',
     },
     {
         'nome': 'Banco Central do Brasil',
@@ -83,6 +102,16 @@ def _numero(valor):
         return float(encontrado.group(0).replace(',', '.'))
     except (TypeError, ValueError):
         return None
+
+
+def _numero_br(valor):
+    """Converte valores brasileiros como '1.735,00' para float."""
+    texto = str(valor).strip().replace(' ', '')
+    if '.' in texto and ',' in texto:
+        texto = texto.replace('.', '').replace(',', '.')
+    elif ',' in texto:
+        texto = texto.replace(',', '.')
+    return _numero(texto)
 
 
 def _chave(fonte, papel):
@@ -188,6 +217,66 @@ def _coletar_awesome():
     }
 
 
+def _coletar_coopercam():
+    """Lê a tabela diária da Coopercam (HTML público)."""
+    resposta = requests.get(COOPERCAM_URL, headers=HEADERS, timeout=TIMEOUT)
+    resposta.raise_for_status()
+    resposta.encoding = 'utf-8'
+    html = resposta.text
+    data = re.search(r'COTAÇÃO:\s*(\d{2}/\d{2}/\d{4})', html, re.I)
+    if not data:
+        raise ValueError('Coopercam sem data da cotação')
+    bloco = html[data.end():data.end() + 4000]
+    padrao = r'<a[^>]*>\s*([^<:]+?):\s*<b>\s*R\$\s*([\d.]+,\d{2})\s*</b>\s*</a>'
+    registros = {}
+    for papel, texto_valor in re.findall(padrao, bloco, re.I):
+        papel = papel.strip()
+        if papel not in ORDEM_COOPERCAM:
+            continue
+        valor = _numero_br(texto_valor)
+        if valor is None:
+            continue
+        chave = 'coopercam_' + re.sub(r'[^a-z0-9]+', '_', papel.lower()).strip('_')
+        registros[chave] = _registro(
+            chave, 'Coopercam', papel, f'Cotação {papel} publicada pela Coopercam',
+            valor, 'R$/saca', data_origem=data.group(1),
+        )
+    if not registros:
+        raise ValueError('Coopercam sem classificações reconhecidas')
+    return registros
+
+
+def _coletar_cocatrel():
+    """Lê a API pública da Cocatrel (café físico COC 01 a 16)."""
+    headers = dict(HEADERS)
+    headers['Referer'] = COCATREL_URL
+    resposta = requests.get(COCATREL_API, headers=headers, timeout=TIMEOUT)
+    resposta.raise_for_status()
+    payload = resposta.json()
+    data = payload.get('DataCotacao')
+    if isinstance(data, str) and len(data) >= 10:
+        try:
+            data = datetime.strptime(data[:10], '%Y-%m-%d').strftime('%d/%m/%Y')
+        except ValueError:
+            pass
+    registros = {}
+    for item in payload.get('CotacaoCafe') or []:
+        papel = str(item.get('Classificacao') or '').strip()
+        valor = _numero(item.get('ValorCotacao'))
+        if not papel or valor is None:
+            continue
+        chave = 'cocatrel_' + re.sub(r'[^a-z0-9]+', '_', papel.lower()).strip('_')
+        # valor_compra é o campo genérico do snapshot; aqui guarda o preço com ICMS.
+        registros[chave] = _registro(
+            chave, 'Cocatrel', papel, f'Cotação {papel} publicada pela Cocatrel',
+            valor, 'R$/saca', valor_compra=_numero(item.get('ValorCotacaoComICMS')),
+            data_origem=data,
+        )
+    if not registros:
+        raise ValueError('Cocatrel sem classificações reconhecidas')
+    return registros
+
+
 def _salvar_snapshots(registros):
     def operacao(cursor):
         for r in registros.values():
@@ -223,6 +312,23 @@ def _carregar_ultimos():
         return {}
 
 
+def _carregar_prefixo(prefixo):
+    """Último snapshot salvo de um grupo (ex.: coopercam_) para fallback."""
+    try:
+        linhas = executar_query("""
+            SELECT DISTINCT ON (chave) chave, fonte, papel, descricao, valor,
+                   valor_compra, unidade, variacao, variacao_percentual,
+                   data_origem, coletado_em
+            FROM cotacoes_snapshots
+            WHERE chave LIKE %s
+            ORDER BY chave, coletado_em DESC
+        """, (prefixo + '%',), fetch_all=True, dict_cursor=True) or []
+        return {r['chave']: r for r in linhas}
+    except Exception as e:
+        logger.error(f"cotacoes._carregar_prefixo ({prefixo}): {e}")
+        return {}
+
+
 def _val(registro, campo='valor'):
     if not registro or registro.get(campo) is None:
         return None
@@ -238,6 +344,41 @@ def _arredondar(valor):
 
 def _arredondar_cambio(valor):
     return round(valor, 4) if valor is not None else None
+
+
+def _grupos_cooperativas(registros):
+    """Agrupa as classificações das cooperativas para a exibição em destaque."""
+    configuracoes = [
+        ('coopercam', 'Coopercam', COOPERCAM_URL, ORDEM_COOPERCAM),
+        ('cocatrel', 'Cocatrel', COCATREL_URL, ORDEM_COCATREL),
+    ]
+    grupos = []
+    for prefixo, nome, url, ordem in configuracoes:
+        itens = []
+        for r in registros.values():
+            if not str(r.get('chave') or '').startswith(prefixo + '_'):
+                continue
+            papel = str(r.get('papel') or '')
+            itens.append({
+                'chave': r.get('chave'),
+                'papel': papel,
+                'descricao': r.get('descricao'),
+                'valor': _val(r),
+                'valor_com_icms': _val(r, 'valor_compra'),
+                'data_origem': r.get('data_origem'),
+            })
+        if not itens:
+            continue
+        itens.sort(key=lambda x: ordem.index(x['papel']) if x['papel'] in ordem else len(ordem))
+        grupos.append({
+            'nome': nome,
+            'url': url,
+            'data': itens[0]['data_origem'],
+            'itens': itens,
+            'destaques': itens[:3],
+            'com_icms': prefixo == 'cocatrel',
+        })
+    return grupos
 
 
 def _montar(registros, atualizado_em=None, stale=False, erro=None):
@@ -302,6 +443,7 @@ def _montar(registros, atualizado_em=None, stale=False, erro=None):
         },
         'taxa_conversao': _arredondar_cambio(taxa),
         'taxa_fonte': 'PTAX (venda)' if ptax_venda else comercial_fonte,
+        'cooperativas': _grupos_cooperativas(registros),
         'fontes': FONTES,
     }
 
@@ -314,15 +456,25 @@ def obter_cotacoes(force=False):
     try:
         registros = _coletar_cooxupe()
         registros.update(_coletar_ptax())
-        try:
-            registros.update(_coletar_awesome())
-        except Exception as e:
-            logger.error(f"cotacoes.obter_cotacoes (AwesomeAPI): {e}")
+        reaproveitados = set()
+        for coletor, prefixo in (
+            (_coletar_awesome, None),
+            (_coletar_coopercam, 'coopercam_'),
+            (_coletar_cocatrel, 'cocatrel_'),
+        ):
+            try:
+                registros.update(coletor())
+            except Exception as e:
+                logger.error(f"cotacoes.obter_cotacoes ({coletor.__name__}): {e}")
+                if prefixo:
+                    for chave, registro in _carregar_prefixo(prefixo).items():
+                        registros[chave] = registro
+                        reaproveitados.add(chave)
 
         if not registros.get('kc') and not registros.get('ptax'):
             raise ValueError('nenhuma cotação principal foi obtida')
 
-        _salvar_snapshots(registros)
+        _salvar_snapshots({k: v for k, v in registros.items() if k not in reaproveitados})
         dados = _montar(registros)
         _DADOS.update(valor=dados, timestamp=datetime.now())
         return dados
