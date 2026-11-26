@@ -45,6 +45,7 @@
     <ul class="sidebar-nav">
         <li class="sidebar-item"><a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span class="sidebar-text">Dashboard</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/talhoes' in request.path %}active{% endif %}" href="{{ url_for('talhoes.listar') }}" title="Talhões"><i class="bi bi-pin-map"></i><span class="sidebar-text">Talhões</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/cotacoes') %}active{% endif %}" href="{{ url_for('cotacoes.index') }}" title="Cotações"><i class="bi bi-graph-up-arrow"></i><span class="sidebar-text">Cotações</span></a></li>
         <li class="sidebar-section-label">Manejo do Cafezal</li>
         <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/manejo/') %}active{% endif %}" href="{{ url_for('manejo.visao_geral') }}" title="Visão Geral"><i class="bi bi-kanban"></i><span class="sidebar-text">Visão Geral</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/pulverizacao' in request.path %}active{% endif %}" href="{{ url_for('pulverizacao.dashboard') }}" title="Pulverização"><i class="bi bi-droplet-half"></i><span class="sidebar-text">Pulverização</span></a></li>
@@ -59,7 +60,6 @@
         <li class="sidebar-item"><a class="sidebar-link {% if request.path.startswith('/maquinario') %}active{% endif %}" href="{{ url_for('maquinario.dashboard') }}" title="Maquinário"><i class="bi bi-wrench-adjustable"></i><span class="sidebar-text">Maquinário</span></a></li>
         <li class="sidebar-section-label">Ambiente</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}" title="Clima"><i class="bi bi-cloud-sun"></i><span class="sidebar-text">Clima</span></a></li>
-        <li class="sidebar-item"><a class="sidebar-link {% if '/cotacoes' in request.path %}active{% endif %}" href="{{ url_for('cotacoes.index') }}" title="Cotações"><i class="bi bi-graph-up-arrow"></i><span class="sidebar-text">Cotações</span></a></li>
         <li class="sidebar-section-label">Relatórios</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/relatorios' in request.path %}active{% endif %}" href="{{ url_for('relatorios.index') }}" title="Relatórios PDF"><i class="bi bi-file-earmark-text"></i><span class="sidebar-text">Relatórios PDF</span></a></li>
         {% if tipo_usuario == 'admin' %}
