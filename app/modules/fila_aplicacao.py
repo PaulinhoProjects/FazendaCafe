@@ -143,8 +143,8 @@ def _consulta_base():
     """
 
 
-def listar_tarefas(status=None, talhao_id=None):
-    """Tarefas da fila, pendentes primeiro."""
+def listar_tarefas(status=None, talhao_id=None, receita_id=None):
+    """Tarefas da fila, agrupáveis por receita; pendentes primeiro."""
     query = _consulta_base()
     condicoes = ['at.ativo = TRUE']
     params = []
@@ -154,8 +154,12 @@ def listar_tarefas(status=None, talhao_id=None):
     if talhao_id:
         condicoes.append('at.talhao_id = %s')
         params.append(talhao_id)
+    if receita_id:
+        condicoes.append('at.receita_id = %s')
+        params.append(receita_id)
     query += ' WHERE ' + ' AND '.join(condicoes)
-    query += " ORDER BY CASE WHEN at.status = 'pendente' THEN 0 ELSE 1 END, t.nome, at.id"
+    query += (" ORDER BY r.nome, at.receita_id,"
+              " CASE WHEN at.status = 'pendente' THEN 0 ELSE 1 END, t.nome, at.id")
 
     try:
         registros = executar_query(query, tuple(params) if params else None,
@@ -243,6 +247,40 @@ def listar_itens_tarefa(tarefa_id):
     except Exception as e:
         logger.error(f"fila_aplicacao.listar_itens_tarefa: {e}")
         return []
+
+
+def opcoes_filtro_fila():
+    """Receitas e talhões que têm tarefas na fila, com a contagem por situação."""
+    vazio = {'receitas': [], 'talhoes': []}
+    try:
+        receitas = executar_query("""
+            SELECT r.id, r.nome, r.data_cadastro,
+                   SUM(CASE WHEN at.status = %s THEN 1 ELSE 0 END) AS pendentes,
+                   SUM(CASE WHEN at.status = %s THEN 1 ELSE 0 END) AS aplicadas
+            FROM aplicacao_tarefas at
+            JOIN receitas r ON r.id = at.receita_id
+            WHERE at.ativo = TRUE
+            GROUP BY r.id, r.nome, r.data_cadastro
+            ORDER BY SUM(CASE WHEN at.status = %s THEN 1 ELSE 0 END) > 0 DESC, r.nome
+        """, (STATUS_PENDENTE, STATUS_APLICADA, STATUS_PENDENTE),
+            fetch_all=True, dict_cursor=True) or []
+        talhoes = executar_query("""
+            SELECT DISTINCT t.id, t.nome
+            FROM aplicacao_tarefas at
+            JOIN talhoes t ON t.id = at.talhao_id
+            WHERE at.ativo = TRUE
+            ORDER BY t.nome
+        """, fetch_all=True, dict_cursor=True) or []
+        return {
+            'receitas': [{
+                'id': r['id'], 'nome': r['nome'], 'data_cadastro': r['data_cadastro'],
+                'pendentes': int(r['pendentes'] or 0), 'aplicadas': int(r['aplicadas'] or 0),
+            } for r in receitas],
+            'talhoes': [{'id': t['id'], 'nome': t['nome']} for t in talhoes],
+        }
+    except Exception as e:
+        logger.error(f"fila_aplicacao.opcoes_filtro_fila: {e}")
+        return vazio
 
 
 def contar_tarefas():

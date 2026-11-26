@@ -1,84 +1,235 @@
 {% extends "base.html" %}
 {% block titulo %}Fila de Aplicação{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('pulverizacao.dashboard') }}">Pulverização</a></li>
+<li class="breadcrumb-item active">Fila de Aplicação</li>
+{% endblock %}
 {% block styles %}
 <style>
     .tarefa-card { border-left: 4px solid var(--info); }
     .tarefa-card.aplicada { border-left-color: var(--success); opacity: .85; }
-    .btn-apliquei { min-height: 52px; font-size: 1.1rem; font-weight: 600; }
+    .fila-filtros .form-label { font-size: .75rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; }
+    .fila-status { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-md); background: var(--surface-3); }
+    .fila-status a { padding: .35rem .8rem; border-radius: calc(var(--radius-md) - 2px); font-size: .85rem; font-weight: 500; color: var(--text-2); text-decoration: none; white-space: nowrap; }
+    .fila-status a.ativo { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+    .fila-status .contagem { font-size: .72rem; color: var(--text-3); margin-left: .3rem; font-variant-numeric: tabular-nums; }
+    .fila-grupo + .fila-grupo { margin-top: 2rem; }
+    .fila-grupo-cabecalho { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding-bottom: .65rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .fila-grupo-cabecalho h2 { font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: .5rem; }
+    .fila-grupo-cabecalho h2 i { color: var(--primary-text); }
+    .fila-progresso { flex: 1 1 160px; max-width: 260px; display: flex; align-items: center; gap: .6rem; font-size: .78rem; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .fila-progresso .barra { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+    .fila-progresso .barra span { display: block; height: 100%; background: var(--success); border-radius: 999px; }
+    .fila-ativos .badge { font-weight: 500; }
 </style>
 {% endblock %}
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title"><i class="bi bi-list-check me-2"></i>Fila de Aplicação</h1>
-            <p class="page-subtitle">Abra a indicação e marque o talhão quando terminar. Data, hora e clima entram sozinhos.</p>
-        </div>
-        <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-journal-text me-1"></i>Receitas
+{% set receita_sel = (opcoes.receitas|selectattr('id', 'equalto', receita_id)|first) if receita_id else none %}
+{% set talhao_sel = (opcoes.talhoes|selectattr('id', 'equalto', talhao_id)|first) if talhao_id else none %}
+{% set filtros = {'receita': receita_id, 'talhao': talhao_id} %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-list-check me-2"></i>Fila de Aplicação</h1>
+        <p class="page-subtitle">Abra a indicação e marque o talhão quando terminar. Data, hora e clima entram sozinhos.</p>
+    </div>
+    <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-journal-text me-1"></i>Receitas
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <a class="stat-card stat-card-link" href="{{ url_for('pulverizacao.fila_aplicacao', status='pendente') }}">
+            <div class="stat-icon bg-warning-soft"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Pendentes</div>
+                <div class="stat-value">{{ contagem.pendente }}</div>
+                <div class="stat-meta">Em todas as receitas</div>
+            </div>
         </a>
     </div>
-
-
-    <div class="row g-2 mb-3">
-        <div class="col-6 col-md-3">
-            <div class="card text-white bg-primary shadow-sm border-0">
-                <div class="card-body py-2"><div class="fs-4 fw-bold">{{ contagem.pendente }}</div><div class="small">Pendentes</div></div>
+    <div class="col-6 col-md-4">
+        <a class="stat-card stat-card-link" href="{{ url_for('pulverizacao.fila_aplicacao', status='aplicada') }}">
+            <div class="stat-icon bg-success-soft"><i class="bi bi-check2-circle"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Aplicadas</div>
+                <div class="stat-value">{{ contagem.aplicada }}</div>
+                <div class="stat-meta">Talhões concluídos</div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card text-white bg-success shadow-sm border-0">
-                <div class="card-body py-2"><div class="fs-4 fw-bold">{{ contagem.aplicada }}</div><div class="small">Aplicadas</div></div>
+        </a>
+    </div>
+    <div class="col-md-4 d-none d-md-block">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-journal-text"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Receitas na fila</div>
+                <div class="stat-value">{{ opcoes.receitas|selectattr('pendentes')|list|length }}</div>
+                <div class="stat-meta">Com talhões pendentes</div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="btn-group mb-3" role="group">
-        <a href="{{ url_for('pulverizacao.fila_aplicacao', status='pendente') }}" class="btn btn-sm {{ 'btn-primary' if filtro == 'pendente' else 'btn-outline-primary' }}">Pendentes</a>
-        <a href="{{ url_for('pulverizacao.fila_aplicacao', status='aplicada') }}" class="btn btn-sm {{ 'btn-success' if filtro == 'aplicada' else 'btn-outline-success' }}">Aplicadas</a>
-        <a href="{{ url_for('pulverizacao.fila_aplicacao', status='todas') }}" class="btn btn-sm {{ 'btn-secondary' if filtro == 'todas' else 'btn-outline-secondary' }}">Todas</a>
+<!-- Filtros -->
+<div class="card mb-4 fila-filtros">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('pulverizacao.fila_aplicacao') }}" id="formFiltrosFila" class="row g-3 align-items-end">
+            <input type="hidden" name="status" value="{{ filtro }}">
+            <div class="col-md-5">
+                <label for="filtroReceita" class="form-label">Receita</label>
+                <select class="form-select" id="filtroReceita" name="receita" onchange="this.form.submit()">
+                    <option value="">Todas as receitas</option>
+                    {% for r in opcoes.receitas %}
+                    <option value="{{ r.id }}" {% if r.id == receita_id %}selected{% endif %}>
+                        {{ r.nome }} — {% if r.pendentes %}{{ r.pendentes }} pendente(s){% else %}concluída{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filtroTalhao" class="form-label">Talhão</label>
+                <select class="form-select" id="filtroTalhao" name="talhao" onchange="this.form.submit()">
+                    <option value="">Todos os talhões</option>
+                    {% for t in opcoes.talhoes %}
+                    <option value="{{ t.id }}" {% if t.id == talhao_id %}selected{% endif %}>{{ t.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="buscaFila" class="form-label">Buscar na lista</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-control" id="buscaFila" placeholder="Talhão, responsável..." autocomplete="off">
+                </div>
+            </div>
+            <noscript><div class="col-12"><button type="submit" class="btn btn-primary btn-sm">Filtrar</button></div></noscript>
+        </form>
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <div class="fila-status" role="group" aria-label="Situação">
+                <a href="{{ url_for('pulverizacao.fila_aplicacao', status='pendente', **filtros) }}" class="{{ 'ativo' if filtro == 'pendente' }}">Pendentes</a>
+                <a href="{{ url_for('pulverizacao.fila_aplicacao', status='aplicada', **filtros) }}" class="{{ 'ativo' if filtro == 'aplicada' }}">Aplicadas</a>
+                <a href="{{ url_for('pulverizacao.fila_aplicacao', status='todas', **filtros) }}" class="{{ 'ativo' if filtro == 'todas' }}">Todas</a>
+            </div>
+            {% if receita_sel or talhao_sel %}
+            <div class="fila-ativos d-flex flex-wrap align-items-center gap-2 small">
+                <span class="text-body-secondary">Filtrando:</span>
+                {% if receita_sel %}<span class="badge bg-primary-soft"><i class="bi bi-journal-text me-1"></i>{{ receita_sel.nome }}</span>{% endif %}
+                {% if talhao_sel %}<span class="badge bg-info-soft"><i class="bi bi-pin-map me-1"></i>{{ talhao_sel.nome }}</span>{% endif %}
+                <a href="{{ url_for('pulverizacao.fila_aplicacao', status=filtro) }}" class="small"><i class="bi bi-x-circle me-1"></i>Limpar filtros</a>
+            </div>
+            {% endif %}
+        </div>
     </div>
+</div>
 
-    {% if tarefas %}
-    <div class="row g-3">
-        {% for t in tarefas %}
-        <div class="col-12 col-lg-6 col-xl-4">
-            <div class="card tarefa-card shadow-sm h-100 {{ 'aplicada' if t.status == 'aplicada' else '' }}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <h5 class="card-title mb-1"><i class="bi bi-geo-alt me-1"></i>{{ t.talhao_nome }}</h5>
-                            <div class="text-muted small">{{ '%.2f'|format(t.area) }} ha · {{ t.total_itens }} produto(s)</div>
+{% if tarefas %}
+<div id="listaFila">
+    {% for grupo in tarefas|groupby('receita_id') %}
+    {% set info = opcoes.receitas|selectattr('id', 'equalto', grupo.grouper)|first %}
+    {% set total_receita = (info.pendentes + info.aplicadas) if info else grupo.list|length %}
+    {% set feitas = info.aplicadas if info else 0 %}
+    <section class="fila-grupo" data-grupo>
+        <div class="fila-grupo-cabecalho">
+            <h2><i class="bi bi-journal-text"></i>{{ grupo.list[0].receita_nome }}</h2>
+            <span class="badge bg-light text-dark border">{{ grupo.list|length }} nesta lista</span>
+            <div class="fila-progresso" title="{{ feitas }} de {{ total_receita }} talhões aplicados">
+                <div class="barra"><span style="width: {{ (feitas / total_receita * 100) if total_receita else 0 }}%"></span></div>
+                <span>{{ feitas }}/{{ total_receita }} aplicados</span>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                {% if not receita_id %}
+                <a href="{{ url_for('pulverizacao.fila_aplicacao', status=filtro, receita=grupo.grouper, talhao=talhao_id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-funnel me-1"></i>Só esta receita</a>
+                {% endif %}
+                <a href="{{ url_for('pulverizacao.detalhe_receita', id=grupo.grouper) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>Receita</a>
+            </div>
+        </div>
+        <div class="row g-3">
+            {% for t in grupo.list %}
+            <div class="col-12 col-lg-6 col-xl-4" data-tarefa data-busca="{{ (t.talhao_nome ~ ' ' ~ t.responsavel ~ ' ' ~ t.concluido_por ~ ' ' ~ t.receita_nome)|lower }}">
+                <div class="card tarefa-card h-100 {{ 'aplicada' if t.status == 'aplicada' else '' }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <h5 class="card-title mb-1"><i class="bi bi-geo-alt me-1"></i>{{ t.talhao_nome }}</h5>
+                                <div class="text-body-secondary small">{{ '%.2f'|format(t.area)|replace('.', ',') }} ha · {{ t.total_itens }} produto(s)</div>
+                            </div>
+                            <span class="badge {{ 'bg-success' if t.status == 'aplicada' else 'bg-warning text-dark' }}">
+                                {{ 'Aplicada' if t.status == 'aplicada' else 'Pendente' }}
+                            </span>
                         </div>
-                        <span class="badge {{ 'bg-success' if t.status == 'aplicada' else 'bg-warning text-dark' }}">
-                            {{ 'Aplicada' if t.status == 'aplicada' else 'Pendente' }}
-                        </span>
-                    </div>
-                    <hr class="my-2">
-                    <div class="mb-2"><strong>Receita:</strong> {{ t.receita_nome }}</div>
-                    {% if t.status == 'aplicada' %}
-                    <div class="text-success small mb-2">
-                        <i class="bi bi-check-circle me-1"></i>{{ t.data_aplicacao }} às {{ t.hora_aplicacao }}
-                        {% if t.concluido_por %} · {{ t.concluido_por }}{% endif %}
-                    </div>
-                    {% elif t.responsavel %}
-                    <div class="text-muted small mb-2">Responsável: {{ t.responsavel }}</div>
-                    {% endif %}
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('pulverizacao.detalhe_tarefa', id=t.id) }}" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-eye me-1"></i>Ver indicação
-                        </a>
+                        <hr class="my-2">
+                        {% if t.status == 'aplicada' %}
+                        <div class="text-success small mb-2">
+                            <i class="bi bi-check-circle me-1"></i>{{ t.data_aplicacao|format_data }} às {{ t.hora_aplicacao }}
+                            {% if t.concluido_por %} · {{ t.concluido_por }}{% endif %}
+                        </div>
+                        {% elif t.responsavel %}
+                        <div class="text-body-secondary small mb-2"><i class="bi bi-person me-1"></i>Responsável: {{ t.responsavel }}</div>
+                        {% else %}
+                        <div class="text-body-secondary small mb-2"><i class="bi bi-person me-1"></i>Sem responsável definido</div>
+                        {% endif %}
+                        <div class="d-grid">
+                            <a href="{{ url_for('pulverizacao.detalhe_tarefa', id=t.id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye me-1"></i>Ver indicação
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="card shadow-sm"><div class="card-body text-center text-muted py-5">
-        <i class="bi bi-check2-circle d-block mb-2" style="font-size:2.5rem"></i>
-        Nenhuma tarefa nesta lista. Crie uma receita com talhões para gerar a fila.
-    </div></div>
-    {% endif %}
+    </section>
+    {% endfor %}
 </div>
+<div class="card d-none" id="buscaVazia">
+    <div class="empty-state">
+        <i class="bi bi-search"></i>
+        <h6 class="mb-1">Nada encontrado na busca</h6>
+        <p>Confira o nome do talhão ou do responsável.</p>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <i class="bi bi-check2-circle"></i>
+        {% if receita_sel or talhao_sel %}
+        <h6 class="mb-1">Nenhuma tarefa {{ {'pendente': 'pendente', 'aplicada': 'aplicada', 'todas': ''}[filtro] }} com esses filtros</h6>
+        <p>Troque a situação ou limpe os filtros para ver as outras tarefas.</p>
+        <a href="{{ url_for('pulverizacao.fila_aplicacao', status=filtro) }}" class="btn btn-outline-secondary btn-sm">Limpar filtros</a>
+        {% else %}
+        <h6 class="mb-1">Nenhuma tarefa nesta lista</h6>
+        <p>Crie uma receita com talhões para gerar a fila de aplicação.</p>
+        <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-primary btn-sm"><i class="bi bi-journal-text me-1"></i>Ir para receitas</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    var campo = document.getElementById('buscaFila');
+    var lista = document.getElementById('listaFila');
+    if (!campo || !lista) { if (campo) campo.disabled = true; return; }
+    var vazio = document.getElementById('buscaVazia');
+    campo.addEventListener('input', function () {
+        var termo = campo.value.trim().toLowerCase();
+        var algum = false;
+        lista.querySelectorAll('[data-grupo]').forEach(function (grupo) {
+            var visiveis = 0;
+            grupo.querySelectorAll('[data-tarefa]').forEach(function (card) {
+                var mostra = !termo || card.dataset.busca.indexOf(termo) >= 0;
+                card.classList.toggle('d-none', !mostra);
+                if (mostra) visiveis++;
+            });
+            grupo.classList.toggle('d-none', visiveis === 0);
+            if (visiveis) algum = true;
+        });
+        vazio.classList.toggle('d-none', algum);
+    });
+})();
+</script>
 {% endblock %}

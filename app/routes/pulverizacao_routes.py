@@ -395,18 +395,25 @@ def excluir_receita(id):
 def fila_aplicacao():
     try:
         filtro = request.args.get('status', 'pendente')
-        status = None if filtro in ('', 'todas') else filtro
-        tarefas = fila.listar_tarefas(status=status)
+        if filtro not in ('pendente', 'aplicada', 'todas'):
+            filtro = 'pendente'
+        status = None if filtro == 'todas' else filtro
+        receita_id = request.args.get('receita', type=int)
+        talhao_id = request.args.get('talhao', type=int)
+        tarefas = fila.listar_tarefas(status=status, talhao_id=talhao_id, receita_id=receita_id)
         contagem = fila.contar_tarefas()
         return render_template('pulverizacao/fila/lista.html',
-                               tarefas=tarefas, filtro=filtro or 'pendente',
-                               contagem=contagem)
+                               tarefas=tarefas, filtro=filtro, contagem=contagem,
+                               opcoes=fila.opcoes_filtro_fila(),
+                               receita_id=receita_id, talhao_id=talhao_id)
     except Exception as e:
         logger.error(f"pulverizacao_routes.fila_aplicacao: {e}")
         flash('Erro ao carregar a fila de aplicação.', 'error')
         return render_template('pulverizacao/fila/lista.html',
                                tarefas=[], filtro='pendente',
-                               contagem={'pendente': 0, 'aplicada': 0})
+                               contagem={'pendente': 0, 'aplicada': 0},
+                               opcoes={'receitas': [], 'talhoes': []},
+                               receita_id=None, talhao_id=None)
 
 
 @pulverizacao_bp.route('/fila/<int:id>')
