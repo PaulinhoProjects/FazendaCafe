@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block titulo %}Tarefa #{{ tarefa.id }}{% endblock %}
+{% block styles %}
+<style>
+    .btn-apliquei { min-height: 64px; font-size: 1.25rem; font-weight: 700; }
+    .clima-linha { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #eee; }
+    .clima-linha:last-child { border-bottom: 0; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="container-fluid" style="max-width: 960px;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <a href="{{ url_for('pulverizacao.fila_aplicacao', status=tarefa.status) }}" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Fila de aplicação
+            </a>
+            <h2 class="mb-0"><i class="bi bi-geo-alt me-2"></i>{{ tarefa.talhao_nome }}</h2>
+            <p class="text-muted mb-0">
+                {{ '%.2f'|format(tarefa.area) }} ha ·
+                {% if tarefa.status == 'aplicada' %}
+                    Aplicada em {{ tarefa.data_aplicacao }} às {{ tarefa.hora_aplicacao }}
+                {% else %}
+                    Aguardando aplicação
+                {% endif %}
+            </p>
+        </div>
+        <span class="badge {{ 'bg-success' if tarefa.status == 'aplicada' else 'bg-warning text-dark' }} fs-6">
+            {{ 'Aplicada' if tarefa.status == 'aplicada' else 'Pendente' }}
+        </span>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Receita: {{ tarefa.receita_nome }}</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Produto</th><th>Dose/ha</th><th>Un.</th><th>Para este talhão</th>{% if tarefa.status == 'aplicada' %}<th>Saldo antes → depois</th>{% endif %}</tr></thead>
+                <tbody>
+                    {% for i in itens %}
+                    <tr>
+                        <td>{{ i.nome }}</td>
+                        <td>{{ '%.3f'|format(i.dose) }}</td>
+                        <td>{{ i.unidade }}</td>
+                        <td><strong>{{ '%.3f'|format(i.quantidade) }} {{ i.unidade }}</strong></td>
+                        {% if tarefa.status == 'aplicada' %}
+                        <td>
+                            {% if i.saldo_anterior is not none %}
+                                {{ '%.2f'|format(i.saldo_anterior) }} → {{ '%.2f'|format(i.saldo_posterior) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">Sem produtos nesta tarefa.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if tarefa.status == 'pendente' %}
+    <div class="row g-3">
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong><i class="bi bi-cloud-sun me-1"></i>Clima agora (automático)</strong></div>
+                <div class="card-body">
+                    {% if clima_atual %}
+                    <div class="clima-linha"><span>Condição</span><strong>{{ clima_atual.descricao or '—' }}</strong></div>
+                    <div class="clima-linha"><span>Temperatura</span><strong>{{ clima_atual.temperatura }} °C</strong></div>
+                    <div class="clima-linha"><span>Umidade</span><strong>{{ clima_atual.umidade }}%</strong></div>
+                    <div class="clima-linha"><span>Vento</span><strong>{{ clima_atual.vento_velocidade }} km/h</strong></div>
+                    <div class="clima-linha"><span>Fonte</span><span class="small">{{ clima_atual.fonte }} · {{ clima_atual.atualizacao }}</span></div>
+                    {% else %}
+                    <p class="text-muted mb-0">Clima indisponível no momento. A aplicação será registrada sem dados climáticos.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><strong>Confirmar aplicação</strong></div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('pulverizacao.marcar_tarefa_aplicada', id=tarefa.id) }}">
+                        <div class="mb-2">
+                            <label class="form-label small">Responsável (opcional)</label>
+                            <input type="text" name="responsavel" class="form-control" value="{{ session.get('usuario') or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Algo a acrescentar? (opcional)</label>
+                            <textarea name="observacoes" class="form-control" rows="2" placeholder="Ex: vento forte no fim da tarde"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 btn-apliquei">
+                            <i class="bi bi-check2-circle me-2"></i>Apliquei
+                        </button>
+                        <div class="form-text text-center">Ao confirmar, a data, a hora e o clima são gravados e o estoque é baixado.</div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Registro da aplicação</strong></div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-6 col-md-3"><span class="text-muted small d-block">Data</span><strong>{{ tarefa.data_aplicacao }}</strong></div>
+                <div class="col-6 col-md-3"><span class="text-muted small d-block">Hora</span><strong>{{ tarefa.hora_aplicacao }}</strong></div>
+                <div class="col-6 col-md-3"><span class="text-muted small d-block">Responsável</span><strong>{{ tarefa.responsavel or '—' }}</strong></div>
+                <div class="col-6 col-md-3"><span class="text-muted small d-block">Concluída por</span><strong>{{ tarefa.concluido_por or '—' }}</strong></div>
+                <div class="col-12"><span class="text-muted small d-block">Clima capturado</span>
+                    <strong>
+                        {% if tarefa.descricao_clima or tarefa.temperatura is not none %}
+                            {{ tarefa.descricao_clima or '—' }} ·
+                            {{ tarefa.temperatura if tarefa.temperatura is not none else '—' }} °C ·
+                            umidade {{ tarefa.umidade if tarefa.umidade is not none else '—' }}% ·
+                            vento {{ tarefa.vento if tarefa.vento is not none else '—' }} km/h
+                        {% else %}Não registrado{% endif %}
+                    </strong>
+                    {% if tarefa.fonte_clima %}<div class="small text-muted">{{ tarefa.fonte_clima }} · atualizado às {{ tarefa.atualizacao_clima }}</div>{% endif %}
+                </div>
+                {% if tarefa.observacoes %}<div class="col-12"><span class="text-muted small d-block">Observações</span>{{ tarefa.observacoes }}</div>{% endif %}
+            </div>
+            {% if pode_editar %}
+            <hr>
+            <a href="{{ url_for('pulverizacao.editar_tarefa', id=tarefa.id) }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-pencil me-1"></i>Corrigir registro
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Histório da tarefa</strong></div>
+        <div class="card-body">
+            {% for l in log %}
+            <div class="d-flex gap-2 small mb-1">
+                <span class="badge bg-light text-dark border">{{ l.acao }}</span>
+                <span>{{ l.detalhes }}</span>
+                <span class="text-muted ms-auto text-nowrap">{{ l.data_hora }} · {{ l.usuario }}</span>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">Sem movimentações registradas.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <a href="{{ url_for('pulverizacao.detalhe_receita', id=tarefa.receita_id) }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-journal-text me-1"></i>Ver receita completa e compras
+    </a>
+</div>
+{% endblock %}

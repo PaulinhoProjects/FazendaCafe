@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
-from app.modules import pulverizacao, receitas, estoque, talhoes
+from app.modules import (pulverizacao, receitas, estoque, talhoes,
+                         clima, fila_aplicacao as fila)
 from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
@@ -22,18 +23,22 @@ def dashboard():
         receitas = pulverizacao.listar_receitas()
         periodos = pulverizacao.listar_periodos()
         pragas = pulverizacao.listar_pragas_doencas()
+        contagem_fila = fila.contar_tarefas()
         return render_template('pulverizacao/dashboard.html',
                              aplicacoes=aplicacoes[:10],
                              total_aplicacoes=len(aplicacoes),
                              total_receitas=len(receitas),
                              periodos=periodos,
-                             pragas=pragas)
+                             pragas=pragas,
+                             tarefas_pendentes=contagem_fila['pendente'],
+                             tarefas_aplicadas=contagem_fila['aplicada'])
     except Exception as e:
         logger.error(f"pulverizacao_routes.dashboard: {e}")
-        flash('Erro ao carregar painel de pulverizacao.', 'error')
+        flash('Erro ao carregar painel de pulverização.', 'error')
         return render_template('pulverizacao/dashboard.html',
                              aplicacoes=[], total_aplicacoes=0,
-                             total_receitas=0, periodos=[], pragas=[])
+                             total_receitas=0, periodos=[], pragas=[],
+                             tarefas_pendentes=0, tarefas_aplicadas=0)
 
 # =====================================================
 # APLICACOES
@@ -261,6 +266,7 @@ def _cabecalho_do_formulario():
         'periodo_id': request.form.get('periodo_id'),
         'descricao': request.form.get('descricao'),
         'observacoes': request.form.get('observacoes'),
+        '_usuario': session.get('usuario'),
     }
 
 
@@ -387,6 +393,120 @@ def excluir_receita(id):
         logger.error(f"pulverizacao_routes.excluir_receita: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('pulverizacao.listar_receitas'))
+
+# =====================================================
+# FILA DE APLICACAO (CAMPO)
+# =====================================================
+
+@pulverizacao_bp.route('/fila')
+@login_required
+def fila_aplicacao():
+    try:
+        filtro = request.args.get('status', 'pendente')
+        status = None if filtro in ('', 'todas') else filtro
+        tarefas = fila.listar_tarefas(status=status)
+        contagem = fila.contar_tarefas()
+        return render_template('pulverizacao/fila/lista.html',
+                               tarefas=tarefas, filtro=filtro or 'pendente',
+                               contagem=contagem)
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.fila_aplicacao: {e}")
+        flash('Erro ao carregar a fila de aplicação.', 'error')
+        return render_template('pulverizacao/fila/lista.html',
+                               tarefas=[], filtro='pendente',
+                               contagem={'pendente': 0, 'aplicada': 0})
+
+
+@pulverizacao_bp.route('/fila/<int:id>')
+@login_required
+def detalhe_tarefa(id):
+    try:
+        tarefa = fila.buscar_tarefa(id)
+        if not tarefa:
+            flash('Tarefa não encontrada.', 'warning')
+            return redirect(url_for('pulverizacao.fila_aplicacao'))
+        pendente = tarefa['status'] == 'pendente'
+        clima_atual = clima.get_clima_atual() if pendente else None
+        pode_editar = (pendente or
+                       session.get('tipo') in ('admin', 'agronomista'))
+        return render_template(
+            'pulverizacao/fila/detalhe.html',
+            tarefa=tarefa,
+            itens=fila.listar_itens_tarefa(id),
+            clima_atual=clima_atual,
+            pode_editar=pode_editar,
+            log=fila.listar_log(id),
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.detalhe_tarefa: {e}")
+        flash('Erro ao carregar a tarefa.', 'error')
+        return redirect(url_for('pulverizacao.fila_aplicacao'))
+
+
+@pulverizacao_bp.route('/fila/<int:id>/aplicar', methods=['POST'])
+@login_required
+def marcar_tarefa_aplicada(id):
+    tarefa = fila.buscar_tarefa(id)
+    if not tarefa:
+        flash('Tarefa não encontrada.', 'warning')
+        return redirect(url_for('pulverizacao.fila_aplicacao'))
+    if tarefa['status'] != 'pendente':
+        flash('Esta tarefa já foi marcada como aplicada.', 'warning')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+    try:
+        clima_atual = clima.get_clima_atual()
+        fila.marcar_aplicada(
+            id,
+            request.form.get('responsavel') or session.get('usuario'),
+            request.form.get('observacoes'),
+            session.get('usuario'),
+            clima_atual,
+        )
+        flash('Aplicação registrada: data, hora e clima capturados; estoque baixado.', 'success')
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.marcar_tarefa_aplicada: {e}")
+        flash(str(e), 'error')
+    return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+
+@pulverizacao_bp.route('/fila/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_tarefa(id):
+    tarefa = fila.buscar_tarefa(id)
+    if not tarefa:
+        flash('Tarefa não encontrada.', 'warning')
+        return redirect(url_for('pulverizacao.fila_aplicacao'))
+
+    if tarefa['status'] == 'aplicada' and session.get('tipo') not in ('admin', 'agronomista'):
+        logger.warning(
+            f"pulverizacao_routes.editar_tarefa: edição negada ao usuário {session.get('usuario')} "
+            f"(nível {session.get('tipo')}) na tarefa {id}"
+        )
+        flash('Depois de aplicada, só agronomista ou administrador pode editar.', 'error')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+    if request.method == 'POST':
+        try:
+            fila.atualizar_tarefa(id, {
+                'responsavel': request.form.get('responsavel'),
+                'observacoes': request.form.get('observacoes'),
+                'data_aplicacao': request.form.get('data_aplicacao'),
+                'hora_aplicacao': request.form.get('hora_aplicacao'),
+                'clima_temperatura': request.form.get('clima_temperatura'),
+                'clima_umidade': request.form.get('clima_umidade'),
+                'clima_descricao': request.form.get('clima_descricao'),
+                'clima_vento': request.form.get('clima_vento'),
+            }, session.get('usuario'))
+            flash('Tarefa atualizada. Alteração registrada no histórico.', 'success')
+            return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+        except Exception as e:
+            logger.error(f"pulverizacao_routes.editar_tarefa: {e}")
+            flash(str(e), 'error')
+
+    return render_template('pulverizacao/fila/editar.html',
+                           tarefa=tarefa, log=fila.listar_log(id))
+
 
 # =====================================================
 # OCORRENCIAS DE PRAGAS

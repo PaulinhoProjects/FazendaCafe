@@ -335,3 +335,54 @@ CREATE TABLE IF NOT EXISTS receita_talhoes (
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (receita_id, talhao_id)
 );
+
+-- Fila de aplicacao: uma tarefa por talhao da receita
+CREATE TABLE IF NOT EXISTS aplicacao_tarefas (
+    id SERIAL PRIMARY KEY,
+    receita_id INTEGER NOT NULL REFERENCES receitas(id),
+    talhao_id INTEGER NOT NULL REFERENCES talhoes(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    responsavel VARCHAR(100),
+    area_hectares NUMERIC(10,2) NOT NULL DEFAULT 0,
+    data_aplicacao DATE,
+    hora_aplicacao VARCHAR(5),
+    clima_temperatura NUMERIC(6,1),
+    clima_umidade INTEGER,
+    clima_descricao VARCHAR(100),
+    clima_vento NUMERIC(6,1),
+    clima_fonte VARCHAR(100),
+    clima_atualizado VARCHAR(10),
+    observacoes TEXT,
+    criado_por VARCHAR(100),
+    concluido_por VARCHAR(100),
+    data_conclusao TIMESTAMP,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (receita_id, talhao_id)
+);
+
+-- Produtos de cada tarefa: dosagem e consumo ja calculado para o talhao
+CREATE TABLE IF NOT EXISTS aplicacao_tarefa_itens (
+    id SERIAL PRIMARY KEY,
+    tarefa_id INTEGER NOT NULL REFERENCES aplicacao_tarefas(id),
+    produto_id INTEGER REFERENCES produtos_estoque(id),
+    produto_nome VARCHAR(150),
+    dose NUMERIC(12,3) NOT NULL,
+    unidade VARCHAR(20) NOT NULL,
+    observacoes TEXT,
+    quantidade NUMERIC(12,3) NOT NULL DEFAULT 0,
+    saldo_anterior NUMERIC(12,3),
+    saldo_posterior NUMERIC(12,3),
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Registro de alteracoes das tarefas (quem mudou o que e quando)
+CREATE TABLE IF NOT EXISTS aplicacao_tarefa_log (
+    id SERIAL PRIMARY KEY,
+    tarefa_id INTEGER NOT NULL REFERENCES aplicacao_tarefas(id),
+    acao VARCHAR(40) NOT NULL,
+    detalhes TEXT,
+    usuario VARCHAR(100),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

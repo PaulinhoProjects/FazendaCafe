@@ -12,6 +12,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query, transacao
+from app.modules import fila_aplicacao
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +259,11 @@ def salvar_receita(dados, itens, talhao_ids, receita_id=None):
                 DO UPDATE SET area_hectares = EXCLUDED.area_hectares, ativo = TRUE
             """, (rid, talhao['id'], talhao['area']))
 
+        # Cada talhão vira uma tarefa da fila, na mesma transação da receita.
+        fila_aplicacao.sincronizar_tarefas(
+            cursor, rid, resolvidos, talhoes, dados.get('_usuario')
+        )
+
         return rid
 
     try:
@@ -276,6 +282,7 @@ def desativar_detalhes(receita_id):
         with transacao() as cursor:
             cursor.execute("UPDATE receita_itens SET ativo = FALSE WHERE receita_id = %s", (receita_id,))
             cursor.execute("UPDATE receita_talhoes SET ativo = FALSE WHERE receita_id = %s", (receita_id,))
+            fila_aplicacao.desativar_pendentes(cursor, receita_id)
         return True
     except Exception as e:
         logger.error(f"receitas.desativar_detalhes: {e}")

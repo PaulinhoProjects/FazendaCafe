@@ -13,6 +13,10 @@
             <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-primary">
                 <i class="bi bi-journal-text me-1"></i>Receitas
             </a>
+            <a href="{{ url_for('pulverizacao.fila_aplicacao') }}" class="btn btn-outline-success">
+                <i class="bi bi-list-check me-1"></i>Fila de Aplicação
+                {% if tarefas_pendentes %}<span class="badge bg-success ms-1">{{ tarefas_pendentes }}</span>{% endif %}
+            </a>
         </div>
     </div>
 
