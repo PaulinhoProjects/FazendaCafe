@@ -808,7 +808,15 @@ kbd {
     font-size: 0.85rem;
     color: var(--text-3);
     margin: 0.2rem 0 0;
+    max-width: 75ch;
 }
+/* Cabeçalho só com título + subtítulo (sem bloco de botões): empilha */
+.page-header:has(> .page-title + .page-subtitle) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+}
+.page-header .page-subtitle i { color: inherit; }
 
 /* Rodapé */
 .app-footer {

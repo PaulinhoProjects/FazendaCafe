@@ -26,11 +26,6 @@
     </div>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-{% for category, message in messages %}
-<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-{% endfor %}{% endif %}{% endwith %}
 
 <div class="row g-4 mb-4">
     <div class="col-md-3">
@@ -53,7 +48,7 @@
     </div>
     <div class="col-md-3">
         <div class="stat-card">
-            <div class="stat-icon bg-warning-soft"><i class="bi bi-mountain"></i></div>
+            <div class="stat-icon bg-warning-soft"><i class="bi bi-triangle"></i></div>
             <div class="stat-info">
                 <div class="stat-label">Altitude (m)</div>
                 <div class="stat-value">{{ "%.0f"|format(talhao.altitude) if talhao.altitude else '—' }}</div>
@@ -140,7 +135,7 @@
             {% for h in historico %}
             <div class="timeline-item">
                 <div class="timeline-icon {% if h.tipo == 'Pulverização' %}bg-info{% elif h.tipo == 'Análise' %}bg-primary{% else %}bg-success{% endif %} text-white">
-                    {% if h.tipo == 'Pulverização' %}<i class="bi bi-spray"></i>
+                    {% if h.tipo == 'Pulverização' %}<i class="bi bi-droplet-half"></i>
                     {% elif h.tipo == 'Análise' %}<i class="bi bi-clipboard-data"></i>
                     {% else %}<i class="bi bi-tree"></i>{% endif %}
                 </div>

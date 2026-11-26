@@ -11,10 +11,10 @@
 
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header">
         <div>
-            <h1 class="h3 mb-0">{{ produto.nome }}</h1>
-            <p class="text-muted">ID: {{ produto.id }} | {{ produto.categoria or 'Sem categoria' }}</p>
+            <h1 class="page-title">{{ produto.nome }}</h1>
+            <p class="page-subtitle">ID: {{ produto.id }} | {{ produto.categoria or 'Sem categoria' }}</p>
         </div>
         <div class="btn-group">
             <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">

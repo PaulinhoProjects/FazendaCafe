@@ -2,8 +2,8 @@
 {% block titulo %}Detalhe da Adubação{% endblock %}
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-droplet me-2"></i>Adubação #{{ adubacao.id }}</h2>
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-droplet me-2"></i>Adubação #{{ adubacao.id }}</h1>
         <a href="{{ url_for('adubacao.listar_adubacoes') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
     </div>
 

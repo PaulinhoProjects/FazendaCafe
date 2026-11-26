@@ -2,8 +2,8 @@
 {% block titulo %}Adubação{% endblock %}
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-droplet me-2"></i>Adubação</h2>
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-droplet me-2"></i>Adubação</h1>
         <div class="btn-group">
             <a href="{{ url_for('adubacao.nova_recomendacao') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Recomendação</a>
             <a href="{{ url_for('adubacao.nova_adubacao') }}" class="btn btn-primary btn-sm"><i class="bi bi-droplet me-1"></i>Registrar Adubação</a>

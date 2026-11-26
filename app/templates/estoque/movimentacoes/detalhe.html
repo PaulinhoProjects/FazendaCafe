@@ -11,10 +11,10 @@
 
 {% block conteudo %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header">
         <div>
-            <h1 class="h3 mb-0">Movimentação #{{ movimentacao.id }}</h1>
-            <p class="text-muted">Registrada em {{ movimentacao.data_movimento | format_data if movimentacao.data_movimento else '-' }}</p>
+            <h1 class="page-title">Movimentação #{{ movimentacao.id }}</h1>
+            <p class="page-subtitle">Registrada em {{ movimentacao.data_movimento | format_data if movimentacao.data_movimento else '-' }}</p>
         </div>
         <div class="btn-group">
             <a href="{{ url_for('estoque.listar_movimentacoes') }}" class="btn btn-outline-secondary">

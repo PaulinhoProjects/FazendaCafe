@@ -12,7 +12,7 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('pulverizacao.dashboard') }}" class="btn btn-primary">
-            <i class="bi bi-spray me-1"></i>Pulverização
+            <i class="bi bi-droplet-half me-1"></i>Pulverização
         </a>
         <a href="{{ url_for('adubacao.nova_adubacao') }}" class="btn btn-success">
             <i class="bi bi-flower1 me-1"></i>Adubação
@@ -20,16 +20,11 @@
     </div>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-{% for category, message in messages %}
-<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-{% endfor %}{% endif %}{% endwith %}
 
 <div class="row g-4 mb-4">
     <div class="col-md-4">
         <div class="stat-card">
-            <div class="stat-icon bg-primary-soft"><i class="bi bi-spray"></i></div>
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-droplet-half"></i></div>
             <div class="stat-info">
                 <div class="stat-label">Pulverizações no Ano</div>
                 <div class="stat-value">{{ resumo.pulverizacoes_ano|default(0) }}</div>

@@ -275,7 +275,9 @@ function showToast(tipo, titulo, mensagem) {
     toast.querySelector('.toast-title').textContent = titulo;
     toast.querySelector('.toast-message').textContent = mensagem;
     document.getElementById('toastContainer').appendChild(toast);
-    setTimeout(() => fecharToast(toast), 5000);
+    // Erros e avisos ficam mais tempo na tela (são o único lugar onde a mensagem aparece)
+    const duracao = (tipo === 'error' || tipo === 'warning') ? 9000 : 5000;
+    setTimeout(() => fecharToast(toast), duracao);
 }
 
 function fecharToast(el) {
