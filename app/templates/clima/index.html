@@ -12,9 +12,12 @@
     </div>
     <div class="d-flex gap-2">
         {% if session.get('tipo') == 'admin' %}
-        <form method="POST" action="{{ url_for('clima.atualizar') }}" class="d-inline">
-            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar dados novos do Climatempo"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
-        </form>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('cotacoes.saude') }}" class="btn btn-outline-secondary btn-sm" title="Verificar se as integrações estão funcionando"><i class="bi bi-shield-check me-1"></i>Integrações</a>
+            <form method="POST" action="{{ url_for('clima.atualizar') }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar dados novos do Climatempo"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
+            </form>
+        </div>
         {% endif %}
         <a href="{{ url_for('clima.previsao') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week me-1"></i>Previsão 15 dias</a>
     </div>

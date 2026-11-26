@@ -3,7 +3,7 @@
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('cotacoes.index') }}">Cotações</a></li>
-<li class="breadcrumb-item active">Integridade</li>
+<li class="breadcrumb-item active">Integrações</li>
 {% endblock %}
 {% block conteudo %}
 {% set rotulos = {
@@ -14,8 +14,8 @@
 } %}
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-shield-check me-2"></i>Integridade das fontes de cotação</h1>
-        <p class="page-subtitle">Monitor das APIs e tabelas públicas consultadas pelo sistema</p>
+        <h1 class="page-title"><i class="bi bi-shield-check me-2"></i>Integridade das integrações</h1>
+        <p class="page-subtitle">Fontes externas consultadas pelo sistema — cotações, câmbio e clima</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('cotacoes.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Cotações</a>
@@ -62,7 +62,7 @@
         </table>
     </div>
     <div class="card-footer small text-muted">
-        "Falha" = a fonte não respondeu ou mudou o formato; "Aviso" = respondeu, mas os dados podem estar defasados. Os dois casos disparam log no sistema.
+        "Falha" = a fonte não respondeu, mudou o formato ou a cidade configurada; "Aviso" = respondeu, mas os dados podem estar defasados. Os dois casos disparam log no sistema.
     </div>
 </div>
 {% else %}

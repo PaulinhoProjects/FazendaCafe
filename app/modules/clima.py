@@ -33,7 +33,7 @@ try:
 except (TypeError, ValueError):
     CACHE_HORAS = 3
 
-_DADOS = {"metas": None, "dias": None, "timestamp": None}
+_DADOS = {"metas": None, "dias": None, "titulo": None, "timestamp": None}
 
 _METAS = (
     "tmomento", "tmin", "tmax", "cmomento", "iconoi", "chuvamm",
@@ -49,7 +49,43 @@ def _cache_valido():
 
 def limpar_cache():
     """Força a próxima leitura a buscar dados novos do Climatempo."""
-    _DADOS.update(metas=None, dias=None, timestamp=None)
+    _DADOS.update(metas=None, dias=None, titulo=None, timestamp=None)
+
+
+def verificar_fonte():
+    """
+    Consulta o Climatempo agora e devolve um registro ao monitor de integrações.
+
+    Detecta mudança no HTML (sem metas/bloco de previsão), falha de atualização
+    com reaproveitamento de cache e mudança do código da cidade configurada.
+    """
+    timestamp_anterior = _DADOS["timestamp"]
+    atual = get_clima_atual(force=True)
+    if not atual:
+        raise ValueError("Climatempo não trouxe dados de previsão")
+    if _DADOS["timestamp"] == timestamp_anterior:
+        raise ValueError("Climatempo falhou ao atualizar; exibindo dados em cache")
+
+    titulo = (_DADOS["titulo"] or "").lower()
+    cidade_esperada = CIDADE_NOME.split("/")[0].strip().lower()
+    if titulo and cidade_esperada and cidade_esperada not in titulo:
+        raise ValueError(
+            f"Climatempo respondeu com outra cidade: {(_DADOS['titulo'] or '')[:80]}"
+        )
+    if not _DADOS["dias"]:
+        raise ValueError("Climatempo não trouxe a previsão de 15 dias")
+
+    return {
+        "climatempo": {
+            "chave": "climatempo",
+            "fonte": FONTE,
+            "papel": CIDADE_NOME,
+            "descricao": f"Previsão para {CIDADE_NOME}",
+            "valor": atual.get("temperatura"),
+            "unidade": "°C",
+            "data_origem": _DADOS["timestamp"].strftime("%d/%m/%Y %H:%M"),
+        }
+    }
 
 
 def _buscar_pagina(url):
@@ -67,6 +103,11 @@ def _meta(pagina, nome):
     return htmlmod.unescape(encontrado.group(1)).strip()
 
 
+def _titulo(pagina):
+    encontrado = re.search(r'<title[^>]*>(.*?)</title>', pagina, re.IGNORECASE | re.DOTALL)
+    return htmlmod.unescape(encontrado.group(1)).strip() if encontrado else ""
+
+
 def _numero(valor):
     if valor is None or valor == "":
         return None
@@ -82,6 +123,7 @@ def _carregar(force=False):
         return _DADOS["metas"], _DADOS["dias"]
     try:
         pagina_hoje = _buscar_pagina(f"{BASE_URL}/cidade/{CIDADE_ID}/{CIDADE_SLUG}")
+        titulo = _titulo(pagina_hoje)
         pagina_15_dias = _buscar_pagina(
             f"{BASE_URL}/15-dias/cidade/{CIDADE_ID}/{CIDADE_SLUG}"
         )
@@ -94,7 +136,7 @@ def _carregar(force=False):
         if not isinstance(dias, list) or not dias:
             raise ValueError("previsão do Climatempo veio vazia")
 
-        _DADOS.update(metas=metas, dias=dias, timestamp=datetime.now())
+        _DADOS.update(metas=metas, dias=dias, titulo=titulo, timestamp=datetime.now())
         return metas, dias
     except Exception as e:
         logger.error(f"clima._carregar: {e}")

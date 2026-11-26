@@ -7,6 +7,7 @@ Fontes:
 - Cocatrel: API JSON pública de café físico (COC 01 a 16)
 - Banco Central do Brasil: PTAX (dados abertos, OData)
 - AwesomeAPI: dólar comercial USD/BRL
+- Climatempo: previsão pública (incluído apenas no monitor de integrações)
 
 Atualização preguiçosa com cache de 30 minutos (COTACOES_CACHE_MINUTOS) e botão
 para forçar no painel admin. Cada coleta grava um snapshot no banco para histórico.
@@ -18,6 +19,8 @@ import sys
 from datetime import datetime, timedelta
 
 import requests
+
+from app.modules import clima
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query, executar_transacao, get_config
@@ -315,6 +318,11 @@ MONITORAMENTO = {
         'url': COCATREL_URL,
         'coletor': _coletar_cocatrel,
     },
+    'climatempo': {
+        'fonte': 'Climatempo',
+        'url': f"{clima.BASE_URL}/cidade/{clima.CIDADE_ID}/{clima.CIDADE_SLUG}",
+        'coletor': clima.verificar_fonte,
+    },
 }
 
 
@@ -358,7 +366,7 @@ def _avaliar_datas(registros):
     if dias > 2:
         return 'aviso', (f'Última data publicada: {mais_recente.strftime("%d/%m/%Y")} '
                          f'({dias} dias atrás).')
-    return 'ok', (f'{len(registros)} cotação(ões) recebida(s) · '
+    return 'ok', (f'{len(registros)} registro(s) recebido(s) · '
                   f'{mais_recente.strftime("%d/%m/%Y")}.')
 
 
