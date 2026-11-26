@@ -7,6 +7,7 @@ em uma única transação, com rollback se qualquer passo falhar.
 """
 
 import logging
+import math
 import os
 import sys
 
@@ -17,19 +18,29 @@ from app.modules import fila_aplicacao
 logger = logging.getLogger(__name__)
 
 UNIDADES_PERMITIDAS = ('L', 'kg', 'g', 'ml', 'sc', 'un')
+NOME_MAX = 150                 # varchar(150) de receitas e produtos_estoque
+PRODUTO_NOME_MAX = 150
+DECIMAIS_DOSE = 3              # numeric(12,3) de receita_itens
+DOSE_MAX = 999999999.999
 
 
 def _numero(valor, nome):
     try:
-        return float(str(valor).strip().replace(',', '.'))
+        numero = float(str(valor).strip().replace(',', '.'))
     except (TypeError, ValueError):
-        raise ValueError(f'{nome} inválido')
+        raise ValueError(f'{nome} inválida')
+    if not math.isfinite(numero):
+        raise ValueError(f'{nome} inválida')
+    return numero
 
 
-def _inteiro_opcional(valor):
+def _inteiro_opcional(valor, nome):
     if valor is None or str(valor).strip() == '':
         return None
-    return int(valor)
+    try:
+        return int(str(valor).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f'{nome} inválido')
 
 
 def listar_itens(receita_id):
@@ -135,28 +146,42 @@ def _validar(dados, itens, talhao_ids):
     nome = str(dados.get('nome') or '').strip()
     if not nome:
         raise ValueError('Informe o nome da receita.')
+    if len(nome) > NOME_MAX:
+        raise ValueError(f'O nome da receita deve ter no máximo {NOME_MAX} caracteres.')
 
     itens_validos = []
     for item in itens or []:
-        produto_id = _inteiro_opcional(item.get('produto_id'))
+        produto_id = _inteiro_opcional(item.get('produto_id'), 'Produto')
         produto_nome = str(item.get('produto_nome') or '').strip()
         dose = _numero(item.get('dose'), 'Dose')
         unidade = str(item.get('unidade') or 'L').strip()
         if not produto_id and not produto_nome:
             raise ValueError('Informe o nome do produto de cada item.')
-        if dose <= 0:
-            raise ValueError('A dose deve ser maior que zero.')
+        if len(produto_nome) > PRODUTO_NOME_MAX:
+            raise ValueError(f'O nome do produto deve ter no máximo {PRODUTO_NOME_MAX} caracteres.')
+        if dose <= 0 or dose > DOSE_MAX:
+            raise ValueError(f'A dose deve estar entre 0,001 e {str(DOSE_MAX).replace(".", ",")}.')
+        if abs(dose - round(dose, DECIMAIS_DOSE)) > 1e-9:
+            raise ValueError(f'A dose deve ter no máximo {DECIMAIS_DOSE} casas decimais.')
         if unidade not in UNIDADES_PERMITIDAS:
-            raise ValueError(f'Unidade inválida: {unidade}')
+            raise ValueError('Unidade inválida. Escolha uma das unidades listadas.')
         itens_validos.append({
             'produto_id': produto_id,
             'produto_nome': produto_nome,
-            'dose': round(dose, 3),
+            'dose': round(dose, DECIMAIS_DOSE),
             'unidade': unidade,
             'observacoes': str(item.get('observacoes') or '').strip(),
         })
     if not itens_validos:
         raise ValueError('Adicione pelo menos um produto à receita.')
+
+    ids_produtos = sorted({i['produto_id'] for i in itens_validos if i['produto_id']})
+    if ids_produtos:
+        encontrados_produtos = executar_query(
+            "SELECT id FROM produtos_estoque WHERE id = ANY(%s)",
+            (ids_produtos,), fetch_all=True, dict_cursor=True) or []
+        if len(encontrados_produtos) != len(ids_produtos):
+            raise ValueError('Um ou mais produtos selecionados não estão cadastrados.')
 
     if not talhao_ids:
         raise ValueError('Selecione pelo menos um talhão.')
@@ -187,7 +212,13 @@ def salvar_receita(dados, itens, talhao_ids, receita_id=None):
     Retorna (receita_id, resumo).
     """
     nome, itens_validos, talhoes = _validar(dados, itens, talhao_ids)
-    periodo_id = _inteiro_opcional(dados.get('periodo_id'))
+    periodo_id = _inteiro_opcional(dados.get('periodo_id'), 'Período')
+    if periodo_id is not None:
+        periodo = executar_query(
+            "SELECT id FROM periodos_lavoura WHERE ativo = TRUE AND id = %s",
+            (periodo_id,), fetch_one=True, dict_cursor=True)
+        if not periodo:
+            raise ValueError('Período inválido.')
     descricao = str(dados.get('descricao') or '').strip()
     observacoes = str(dados.get('observacoes') or '').strip()
     area_total = sum(t['area'] for t in talhoes)
