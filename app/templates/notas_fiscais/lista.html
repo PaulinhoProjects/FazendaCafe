@@ -14,6 +14,8 @@
         <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova Nota</a>
     </div>
 </div>
+
+{% include '_abas_compras.html' %}
 {% if not notas %}
 <div class="empty-state">
     <i class="bi bi-receipt"></i>

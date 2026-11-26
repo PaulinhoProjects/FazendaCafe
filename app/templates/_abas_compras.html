@@ -1,0 +1,18 @@
+{# Abas da área "Insumos e Compras": substituem itens que saíram do menu lateral #}
+{% set caminho = request.path %}
+{% set abas = [
+    ('estoque.dashboard', 'bi-box-seam', 'Estoque', caminho.startswith('/estoque')),
+    ('notas_fiscais.listar', 'bi-receipt', 'Notas Fiscais', caminho.startswith('/notas-fiscais')),
+    ('fornecedores.listar', 'bi-truck', 'Fornecedores', caminho.startswith('/fornecedores')),
+    ('devolucao.listar', 'bi-recycle', 'Devolução de Embalagens', caminho.startswith('/devolucoes')),
+] %}
+<nav class="maq-abas mb-4" aria-label="Insumos e compras">
+    <ul class="nav nav-tabs flex-nowrap">
+        {% for endpoint, icone, rotulo, ativa in abas %}
+        <li class="nav-item">
+            <a class="nav-link text-nowrap {% if ativa %}active{% endif %}" href="{{ url_for(endpoint) }}"
+               {% if ativa %}aria-current="page"{% endif %}><i class="bi {{ icone }} me-1"></i>{{ rotulo }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
