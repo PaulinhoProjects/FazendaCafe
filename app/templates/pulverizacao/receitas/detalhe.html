@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 {% block titulo %}{{ receita.nome }}{% endblock %}
+{% block styles %}
+{{ super() }}
+<style>
+    @media print {
+        body * { visibility: hidden !important; }
+        #listaCompras, #listaCompras * { visibility: visible !important; }
+        #listaCompras {
+            position: absolute; left: 0; top: 0; width: 100%;
+            box-shadow: none !important; border: 0 !important;
+        }
+        #listaCompras .nao-imprimir { display: none !important; }
+    }
+</style>
+{% endblock %}
 {% block conteudo %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -55,7 +69,7 @@
                             {% for i in itens %}
                             <tr>
                                 <td>{{ i.nome }}</td>
-                                <td>{{ '%.3f'|format(i.dose) }}</td>
+                                <td>{{ i.dose_txt }}</td>
                                 <td>{{ i.unidade }}</td>
                                 <td>{{ i.observacoes or '—' }}</td>
                             </tr>
@@ -84,17 +98,40 @@
                         {% for i in resumo.itens %}
                         <tr>
                             <td>{{ i.nome }}</td>
-                            <td>{{ '%.3f'|format(i.dose) }}</td>
+                            <td>{{ i.dose_txt }}</td>
                             <td>{{ '%.2f'|format(i.area_total) }}</td>
-                            <td>{{ '%.3f'|format(i.necessario) }} {{ i.unidade }}</td>
-                            <td>{{ '%.3f'|format(i.saldo) }} {{ i.unidade }}</td>
-                            <td><strong class="{{ 'text-danger' if i.faltante > 0 else 'text-success' }}">{{ '%.3f'|format(i.faltante) }} {{ i.unidade }}</strong></td>
+                            <td>{{ i.necessario_txt }} {{ i.unidade }}</td>
+                            <td>{{ i.saldo_txt }} {{ i.unidade }}</td>
+                            <td><strong class="{{ 'text-danger' if i.faltante > 0 else 'text-success' }}">{{ i.faltante_txt }} {{ i.unidade }}</strong></td>
                         </tr>
                         {% else %}
                         <tr><td colspan="6" class="text-center text-muted py-3">Nenhum item para calcular.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3" id="listaCompras">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Lista para comprar / cooperativa</strong>
+            <span class="nao-imprimir text-muted small">Quantidades em ml exibidas em litros (L)</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small nao-imprimir">Copie o texto, envie no WhatsApp ou imprima para levar à cooperativa.</p>
+            <textarea id="listaComprasTexto" class="form-control nao-imprimir" rows="8" readonly></textarea>
+            <pre id="listaComprasImpressao" class="d-none d-print-block mb-0"></pre>
+            <div class="d-flex gap-2 flex-wrap mt-3 nao-imprimir">
+                <button type="button" class="btn btn-primary btn-sm" id="btnCopiarLista">
+                    <i class="bi bi-clipboard me-1"></i>Copiar texto
+                </button>
+                <button type="button" class="btn btn-success btn-sm" id="btnWhatsLista">
+                    <i class="bi bi-whatsapp me-1"></i>Abrir no WhatsApp
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImprimirLista">
+                    <i class="bi bi-printer me-1"></i>Imprimir lista
+                </button>
             </div>
         </div>
     </div>
@@ -123,4 +160,47 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    const dados = {{ {'nome': receita.nome, 'area': resumo.area_total, 'itens': resumo.itens} | tojson }};
+    const faltantes = (dados.itens || []).filter(i => Number(i.faltante) > 0);
+    const linhas = [
+        'LISTA DE COMPRAS',
+        'Receita: ' + dados.nome,
+        'Area total: ' + Number(dados.area).toFixed(2).replace('.', ',') + ' ha',
+        ''
+    ];
+    if (faltantes.length) {
+        faltantes.forEach(i => linhas.push('- ' + i.nome + ': ' + i.faltante_txt + ' ' + i.unidade));
+    } else {
+        linhas.push('Nenhum produto a comprar.');
+    }
+    const texto = linhas.join('\n');
+
+    document.getElementById('listaComprasTexto').value = texto;
+    document.getElementById('listaComprasImpressao').textContent = texto;
+
+    document.getElementById('btnCopiarLista').addEventListener('click', async function () {
+        try {
+            await navigator.clipboard.writeText(texto);
+        } catch (e) {
+            const caixa = document.getElementById('listaComprasTexto');
+            caixa.removeAttribute('readonly');
+            caixa.select();
+            document.execCommand('copy');
+            caixa.setAttribute('readonly', 'readonly');
+        }
+        const original = this.innerHTML;
+        this.textContent = 'Copiado!';
+        setTimeout(() => { this.innerHTML = original; }, 2000);
+    });
+    document.getElementById('btnWhatsLista').addEventListener('click', function () {
+        window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+    });
+    document.getElementById('btnImprimirLista').addEventListener('click', function () { window.print(); });
+})();
+</script>
 {% endblock %}

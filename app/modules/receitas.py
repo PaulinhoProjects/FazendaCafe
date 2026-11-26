@@ -24,6 +24,12 @@ DECIMAIS_DOSE = 3              # numeric(12,3) de receita_itens
 DOSE_MAX = 999999999.999
 
 
+def _formatar_numero(valor, casas=3):
+    """Número para exibição, sem zeros à direita e com vírgula decimal."""
+    texto = f'{float(valor or 0):.{casas}f}'.rstrip('0').rstrip('.')
+    return (texto or '0').replace('.', ',')
+
+
 def _numero(valor, nome):
     try:
         numero = float(str(valor).strip().replace(',', '.'))
@@ -47,7 +53,7 @@ def listar_itens(receita_id):
     """Itens de uma receita com saldo atual do produto no estoque."""
     query = """
     SELECT ri.id, ri.produto_id, ri.produto_nome, ri.dose, ri.unidade,
-           ri.observacoes, p.nome AS produto_cadastrado,
+           ri.observacoes, p.nome AS produto_cadastrado, p.unidade AS unidade_produto,
            p.quantidade_atual AS saldo
     FROM receita_itens ri
     LEFT JOIN produtos_estoque p ON p.id = ri.produto_id
@@ -63,7 +69,9 @@ def listar_itens(receita_id):
                 'produto_id': r['produto_id'],
                 'nome': r['produto_cadastrado'] or r['produto_nome'] or 'Sem nome',
                 'dose': float(r['dose']),
+                'dose_txt': _formatar_numero(r['dose']),
                 'unidade': r['unidade'],
+                'unidade_produto': r['unidade_produto'] or r['unidade'],
                 'observacoes': r['observacoes'] or '',
                 'saldo': float(r['saldo'] or 0),
                 'cadastrado': r['produto_id'] is not None,
@@ -105,16 +113,36 @@ def resumo_compras(receita_id):
 
     resumo = []
     for item in itens:
-        necessario = item['dose'] * area_total
-        falta = max(0.0, necessario - item['saldo'])
+        unidade_item = item['unidade']
+        unidade_produto = item.get('unidade_produto') or unidade_item
+        # ml é apresentado em litros, que é como o produto costuma ser comprado.
+        em_litros = unidade_item == 'ml'
+        fator = 0.001 if em_litros else 1.0
+        unidade_exibicao = 'L' if em_litros else unidade_item
+
+        necessario = item['dose'] * area_total * fator
+        saldo = item['saldo']
+        if unidade_produto == 'ml' and unidade_item != 'ml':
+            saldo = saldo * 0.001
+        elif unidade_produto == 'L' and em_litros:
+            saldo = saldo  # já está em litros
+        elif em_litros:
+            saldo = saldo * fator
+        falta = max(0.0, necessario - saldo)
+
         resumo.append({
             'nome': item['nome'],
-            'unidade': item['unidade'],
+            'unidade': unidade_exibicao,
+            'unidade_original': unidade_item,
             'dose': item['dose'],
+            'dose_txt': _formatar_numero(item['dose']),
             'area_total': area_total,
             'necessario': round(necessario, 3),
-            'saldo': round(item['saldo'], 3),
+            'saldo': round(saldo, 3),
             'faltante': round(falta, 3),
+            'necessario_txt': _formatar_numero(necessario, 3),
+            'saldo_txt': _formatar_numero(saldo, 3),
+            'faltante_txt': _formatar_numero(falta, 3),
             'cadastrado': item['cadastrado'],
         })
     return {

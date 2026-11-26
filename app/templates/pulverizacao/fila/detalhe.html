@@ -41,11 +41,16 @@
                 <thead><tr><th>Produto</th><th>Dose/ha</th><th>Un.</th><th>Para este talhão</th>{% if tarefa.status == 'aplicada' %}<th>Saldo antes → depois</th>{% endif %}</tr></thead>
                 <tbody>
                     {% for i in itens %}
+                    {% set dose_fmt = '%.3f'|format(i.dose)|replace('.', ',') %}
+                    {% set em_litros = i.unidade == 'ml' %}
+                    {% set qtd_valor = i.quantidade / 1000 if em_litros else i.quantidade %}
+                    {% set qtd_unidade = 'L' if em_litros else i.unidade %}
+                    {% set qtd_fmt = '%.3f'|format(qtd_valor)|replace('.', ',') %}
                     <tr>
                         <td>{{ i.nome }}</td>
-                        <td>{{ '%.3f'|format(i.dose) }}</td>
+                        <td>{{ dose_fmt.rstrip('0').rstrip(',') }}</td>
                         <td>{{ i.unidade }}</td>
-                        <td><strong>{{ '%.3f'|format(i.quantidade) }} {{ i.unidade }}</strong></td>
+                        <td><strong>{{ qtd_fmt.rstrip('0').rstrip(',') }} {{ qtd_unidade }}</strong></td>
                         {% if tarefa.status == 'aplicada' %}
                         <td>
                             {% if i.saldo_anterior is not none %}

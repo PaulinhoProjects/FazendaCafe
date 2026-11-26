@@ -184,6 +184,10 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function formatarNumero(valor, casas = 3) {
+        return Number(valor || 0).toLocaleString('pt-BR', { maximumFractionDigits: casas });
+    }
+
     function campoNome() { return document.querySelector('input[name="nome"]'); }
 
     function validarAte(numero) {
@@ -232,11 +236,11 @@
                 nome.appendChild(badge);
             }
             const dose = document.createElement('td');
-            dose.textContent = Number(item.dose).toFixed(3).replace('.', ',');
+            dose.textContent = formatarNumero(item.dose);
             const unidade = document.createElement('td');
             unidade.textContent = item.unidade;
             const saldo = document.createElement('td');
-            saldo.textContent = Number(item.saldo || 0).toFixed(2).replace('.', ',');
+            saldo.textContent = formatarNumero(item.saldo || 0, 2);
             const obs = document.createElement('td');
             obs.textContent = item.observacoes || '—';
             const acao = document.createElement('td');
@@ -326,18 +330,26 @@
         corpo.innerHTML = '';
         let faltantes = 0;
         itens.forEach(item => {
-            const necessario = item.dose * area;
-            const saldo = Number(item.saldo || 0);
+            const emLitros = item.unidade === 'ml';
+            const fator = emLitros ? 0.001 : 1;
+            const unidade = emLitros ? 'L' : item.unidade;
+            const produto = produtoPorNome(item.nome || item.produto_nome);
+            const unidadeProduto = (produto && produto.unidade) || item.unidade;
+            let saldo = Number(item.saldo || 0);
+            if (emLitros && unidadeProduto !== 'L') saldo *= fator;
+            if (!emLitros && unidadeProduto === 'ml') saldo *= 0.001;
+
+            const necessario = item.dose * area * fator;
             const comprar = Math.max(0, necessario - saldo);
             if (comprar > 0) faltantes++;
             const tr = document.createElement('tr');
             [
                 item.nome || item.produto_nome,
-                Number(item.dose).toFixed(3).replace('.', ','),
-                area.toFixed(2).replace('.', ','),
-                necessario.toFixed(2).replace('.', ','),
-                saldo.toFixed(2).replace('.', ','),
-                comprar.toFixed(2).replace('.', ',')
+                formatarNumero(item.dose),
+                formatarNumero(area, 2),
+                formatarNumero(necessario) + ' ' + unidade,
+                formatarNumero(saldo) + ' ' + unidade,
+                formatarNumero(comprar) + ' ' + unidade
             ].forEach(texto => { const td = document.createElement('td'); td.textContent = texto; tr.appendChild(td); });
             corpo.appendChild(tr);
         });
