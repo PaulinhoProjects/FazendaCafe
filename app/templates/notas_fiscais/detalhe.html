@@ -34,7 +34,7 @@
 
 
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt"></i></div>
             <div class="stat-info">
@@ -43,16 +43,34 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack"></i></div>
             <div class="stat-info">
-                <div class="stat-label">Valor Total</div>
+                <div class="stat-label">Valor da nota</div>
                 <div class="stat-value">R$ {{ "%.2f"|format(nota.valor_total or 0) }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
+        <div class="stat-card">
+            <div class="stat-icon bg-accent-soft"><i class="bi bi-list-check"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Valor dos itens</div>
+                <div class="stat-value">R$ {{ "%.2f"|format(nota.valor_itens or 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card">
+            <div class="stat-icon bg-{{ 'danger' if (nota.diferenca_valor or 0) != 0 else 'success' }}-soft"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Diferença (nota - itens)</div>
+                <div class="stat-value {{ 'text-danger' if (nota.diferenca_valor or 0) != 0 else 'text-success' }}">R$ {{ "%.2f"|format(nota.diferenca_valor or 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-info-soft"><i class="bi bi-box-seam"></i></div>
             <div class="stat-info">
@@ -61,7 +79,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-warning-soft"><i class="bi bi-calendar"></i></div>
             <div class="stat-info">
@@ -199,8 +217,18 @@
                     </tr>
                     {% endfor %}
                     <tr class="table-light">
-                        <td colspan="5" class="text-end fw-semibold">Total:</td>
+                        <td colspan="5" class="text-end fw-semibold">Total dos itens:</td>
+                        <td class="fw-semibold">R$ {{ "%.2f"|format(nota.valor_itens or 0) }}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td colspan="5" class="text-end fw-semibold">Valor da nota (conferência):</td>
                         <td class="fw-semibold">R$ {{ "%.2f"|format(nota.valor_total or 0) }}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td colspan="5" class="text-end fw-semibold">Diferença:</td>
+                        <td class="fw-semibold {{ 'text-danger' if (nota.diferenca_valor or 0) != 0 else 'text-success' }}">R$ {{ "%.2f"|format(nota.diferenca_valor or 0) }}</td>
                         <td></td>
                     </tr>
                 </tbody>

@@ -53,6 +53,25 @@ CREATE TABLE IF NOT EXISTS notas_fiscais (
     ativo BOOLEAN DEFAULT TRUE
 );
 
+-- Fornecedores pré-cadastrados: a NF escolhe na lista e guarda nome/CNPJ como snapshot
+CREATE TABLE IF NOT EXISTS fornecedores (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL UNIQUE,
+    cnpj VARCHAR(20),
+    telefone VARCHAR(30),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS fornecedor_id INTEGER REFERENCES fornecedores(id);
+
+-- Migra fornecedores já usados nas notas para a nova lista (idempotente)
+INSERT INTO fornecedores (nome, cnpj)
+SELECT DISTINCT BTRIM(n.fornecedor), NULLIF(BTRIM(n.cnpj_fornecedor), '')
+FROM notas_fiscais n
+WHERE n.fornecedor IS NOT NULL AND BTRIM(n.fornecedor) <> ''
+ON CONFLICT (nome) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
     id SERIAL PRIMARY KEY,
     produto_id INTEGER REFERENCES produtos_estoque(id),

@@ -19,9 +19,38 @@
                     <div class="col-md-3 mb-3"><label class="form-label">Data Recebimento</label><input type="date" name="data_recebimento" class="form-control"></div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6 mb-3"><label class="form-label">Fornecedor *</label><input type="text" name="fornecedor" class="form-control" required></div>
-                    <div class="col-md-3 mb-3"><label class="form-label">CNPJ</label><input type="text" name="cnpj_fornecedor" class="form-control"></div>
-                    <div class="col-md-3 mb-3"><label class="form-label">Valor Total</label><input type="number" step="0.01" name="valor_total" class="form-control"></div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fornecedor *</label>
+                        <select name="fornecedor_id" id="fornecedor_id" class="form-select" required>
+                            <option value="">— Selecione o fornecedor —</option>
+                            {% for f in fornecedores %}
+                            <option value="{{ f.id }}" data-cnpj="{{ f.cnpj or '' }}">{{ f.nome }}</option>
+                            {% endfor %}
+                            <option value="novo">+ Cadastrar novo fornecedor</option>
+                        </select>
+                        <div class="form-text">
+                            <a href="{{ url_for('fornecedores.listar') }}" target="_blank">Gerenciar fornecedores</a>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">CNPJ</label>
+                        <input type="text" id="cnpj_selecionado" class="form-control" value="" readonly disabled>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Valor Total da Nota</label>
+                        <input type="number" step="0.01" name="valor_total" class="form-control">
+                        <div class="form-text">Valor da nota para conferência; não muda ao adicionar itens.</div>
+                    </div>
+                </div>
+                <div class="row d-none" id="novoFornecedor">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome do novo fornecedor *</label>
+                        <input type="text" name="novo_fornecedor" id="novo_fornecedor" class="form-control" placeholder="Ex: Agro Insumos Ltda">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">CNPJ do novo fornecedor</label>
+                        <input type="text" name="novo_cnpj" class="form-control" placeholder="00.000.000/0001-00">
+                    </div>
                 </div>
                 <div class="mb-3"><label class="form-label">PDF da Nota</label><input type="file" name="arquivo_pdf" class="form-control" accept=".pdf"></div>
                 <div class="mb-3"><label class="form-label">Observações</label><textarea name="observacoes" class="form-control" rows="2"></textarea></div>
@@ -31,4 +60,25 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    const sel = document.getElementById('fornecedor_id');
+    const cnpj = document.getElementById('cnpj_selecionado');
+    const bloco = document.getElementById('novoFornecedor');
+    const nome = document.getElementById('novo_fornecedor');
+    function atualizar() {
+        const opcao = sel.selectedOptions[0];
+        const novo = sel.value === 'novo';
+        bloco.classList.toggle('d-none', !novo);
+        nome.required = novo;
+        cnpj.value = (!novo && opcao) ? (opcao.dataset.cnpj || '') : '';
+    }
+    sel.addEventListener('change', atualizar);
+    atualizar();
+})();
+</script>
 {% endblock %}

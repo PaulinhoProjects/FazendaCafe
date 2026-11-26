@@ -53,6 +53,7 @@
         <li class="sidebar-section-label">Insumos</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/estoque' in request.path %}active{% endif %}" href="{{ url_for('estoque.dashboard') }}" title="Estoque"><i class="bi bi-box-seam"></i><span class="sidebar-text">Estoque</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/notas-fiscais' in request.path %}active{% endif %}" href="{{ url_for('notas_fiscais.listar') }}" title="Notas Fiscais"><i class="bi bi-receipt"></i><span class="sidebar-text">Notas Fiscais</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link {% if '/fornecedores' in request.path %}active{% endif %}" href="{{ url_for('fornecedores.listar') }}" title="Fornecedores"><i class="bi bi-truck"></i><span class="sidebar-text">Fornecedores</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/devolucoes' in request.path %}active{% endif %}" href="{{ url_for('devolucao.listar') }}" title="Devolução de Embalagens"><i class="bi bi-recycle"></i><span class="sidebar-text">Devolução de Embalagens</span></a></li>
         <li class="sidebar-section-label">Ambiente</li>
         <li class="sidebar-item"><a class="sidebar-link {% if '/clima' in request.path %}active{% endif %}" href="{{ url_for('clima.index') }}" title="Clima"><i class="bi bi-cloud-sun"></i><span class="sidebar-text">Clima</span></a></li>

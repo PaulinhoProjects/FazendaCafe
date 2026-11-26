@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block titulo %}Fornecedores{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('notas_fiscais.listar') }}">Notas Fiscais</a></li>
+<li class="breadcrumb-item active">Fornecedores</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-truck me-2"></i>Fornecedores</h1>
+        <p class="page-subtitle">Cadastre uma vez e escolha na próxima nota fiscal</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('notas_fiscais.nova') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <a href="{{ url_for('fornecedores.novo') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Novo Fornecedor
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        {% if fornecedores %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>CNPJ</th>
+                        <th>Telefone</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fornecedores %}
+                    <tr class="{% if not f.ativo %}text-muted{% endif %}">
+                        <td class="fw-semibold">{{ f.nome }}</td>
+                        <td>{{ f.cnpj or '—' }}</td>
+                        <td>{{ f.telefone or '—' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if f.ativo else 'secondary' }}">
+                                {{ 'Ativo' if f.ativo else 'Inativo' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('fornecedores.editar', id=f.id) }}"
+                                class="btn btn-sm btn-outline-warning" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if f.ativo and session.get('tipo') == 'admin' %}
+                            <form method="POST" action="{{ url_for('fornecedores.excluir', id=f.id) }}"
+                                class="d-inline" onsubmit="return confirm('Remover {{ f.nome }} da lista?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-center text-muted py-4">Nenhum fornecedor cadastrado.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

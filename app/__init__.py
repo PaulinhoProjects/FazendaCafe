@@ -119,6 +119,12 @@ def create_app(config_class=Config):
         print(f"Aviso: blueprint notas_fiscais nao carregado: {e}")
 
     try:
+        from app.routes.fornecedores_routes import fornecedores_bp
+        app.register_blueprint(fornecedores_bp)
+    except Exception as e:
+        print(f"Aviso: blueprint fornecedores nao carregado: {e}")
+
+    try:
         from app.routes.devolucao_embalagens_routes import devolucao_bp
         app.register_blueprint(devolucao_bp)
     except Exception as e:

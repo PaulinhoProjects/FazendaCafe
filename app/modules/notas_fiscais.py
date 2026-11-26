@@ -63,11 +63,25 @@ def listar_notas(data_inicio=None, data_fim=None, fornecedor=None):
         print(f"Erro ao listar notas fiscais: {e}")
         return []
 
+def valor_itens_nota(nota_id):
+    """Soma dos itens da nota, usada apenas como conferência."""
+    try:
+        r = executar_query("""
+            SELECT COALESCE(SUM(quantidade * COALESCE(preco_unitario_base, valor_unitario, 0)), 0) AS total
+            FROM movimentacoes_estoque
+            WHERE nota_fiscal_id = %s AND tipo = 'entrada' AND ativo = TRUE
+        """, (nota_id,), fetch_one=True, dict_cursor=True)
+        return round(float(r['total'] or 0), 2) if r else 0
+    except Exception as e:
+        print(f"Erro ao calcular valor dos itens da nota: {e}")
+        return 0
+
+
 def buscar_nota_por_id(id):
     """Busca uma nota fiscal específica pelo ID"""
     query = """
     SELECT n.id, n.numero_nota, n.serie, n.data_emissao, n.data_recebimento,
-           n.fornecedor, n.cnpj_fornecedor, n.valor_total, n.arquivo_pdf,
+           n.fornecedor, n.cnpj_fornecedor, n.fornecedor_id, n.valor_total, n.arquivo_pdf,
            n.observacoes, n.data_cadastro
     FROM notas_fiscais n
     WHERE n.id = %s AND n.ativo = TRUE
@@ -75,6 +89,8 @@ def buscar_nota_por_id(id):
     try:
         r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
+            valor_nota = float(r['valor_total']) if r['valor_total'] else 0
+            itens = valor_itens_nota(id)
             return {
                 'id': r['id'],
                 'numero_nota': r['numero_nota'],
@@ -83,7 +99,10 @@ def buscar_nota_por_id(id):
                 'data_recebimento': r['data_recebimento'],
                 'fornecedor': r['fornecedor'],
                 'cnpj_fornecedor': r['cnpj_fornecedor'],
-                'valor_total': float(r['valor_total']) if r['valor_total'] else None,
+                'fornecedor_id': r['fornecedor_id'],
+                'valor_total': valor_nota or None,
+                'valor_itens': itens,
+                'diferenca_valor': round(valor_nota - itens, 2),
                 'arquivo_pdf': r['arquivo_pdf'],
                 'observacoes': r['observacoes'],
                 'data_cadastro': r['data_cadastro']
@@ -101,15 +120,16 @@ def inserir_nota_fiscal(dados, arquivo_pdf=None):
     query = """
     INSERT INTO notas_fiscais 
         (numero_nota, serie, data_emissao, data_recebimento, fornecedor,
-         cnpj_fornecedor, valor_total, arquivo_pdf, observacoes)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+         cnpj_fornecedor, fornecedor_id, valor_total, arquivo_pdf, observacoes)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     RETURNING id
     """
     try:
         resultado = executar_query(query,
             (dados['numero_nota'], dados.get('serie'), dados['data_emissao'],
              dados['data_recebimento'], dados['fornecedor'], dados.get('cnpj_fornecedor'),
-             dados.get('valor_total'), arquivo_pdf, dados.get('observacoes')),
+             dados.get('fornecedor_id'), dados.get('valor_total'), arquivo_pdf,
+             dados.get('observacoes')),
             fetch_one=True, dict_cursor=True)
         return resultado['id'] if resultado else None
     except Exception as e:
@@ -432,9 +452,7 @@ def adicionar_item_nota(nota_id, dados):
         cursor.execute(
             "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
             (quantidade_final, produto_id_final))
-        cursor.execute(
-            "UPDATE notas_fiscais SET valor_total = COALESCE(valor_total, 0) + %s WHERE id = %s",
-            (quantidade_final * preco_base, nota_id))
+        # O valor_total da nota é a conferência informada no cadastro e não é alterado aqui.
         return mov_id, quantidade_final, unidade_final
 
     try:
@@ -451,7 +469,7 @@ def remover_item_nota(movimentacao_id):
     Tudo em UMA transação: ou estorna tudo, ou não estorna nada."""
     def _operacao(cursor):
         cursor.execute(
-            """SELECT m.produto_id, m.quantidade, m.nota_fiscal_id, m.valor_unitario
+            """SELECT m.produto_id, m.quantidade
                FROM movimentacoes_estoque m WHERE m.id = %s AND m.tipo = 'entrada'""",
             (movimentacao_id,)
         )
@@ -461,8 +479,6 @@ def remover_item_nota(movimentacao_id):
 
         produto_id = r['produto_id']
         quantidade = float(r['quantidade']) if r['quantidade'] else 0
-        nota_id = r['nota_fiscal_id']
-        valor_unit = float(r['valor_unitario']) if r['valor_unitario'] else 0
 
         cursor.execute("SELECT quantidade_atual FROM produtos_estoque WHERE id = %s FOR UPDATE", (produto_id,))
         produto = cursor.fetchone()
@@ -476,17 +492,7 @@ def remover_item_nota(movimentacao_id):
             (quantidade, produto_id)
         )
 
-        # Reverter valor total da NF pelo preço efetivo por unidade base
-        cursor.execute("""
-            SELECT preco_unitario_base FROM movimentacoes_estoque WHERE id = %s
-        """, (movimentacao_id,))
-        preco = cursor.fetchone()
-        preco_base = float(preco['preco_unitario_base'] or valor_unit or 0)
-        if preco_base:
-            cursor.execute(
-                "UPDATE notas_fiscais SET valor_total = GREATEST(COALESCE(valor_total, 0) - (%s * %s), 0) WHERE id = %s",
-                (quantidade, preco_base, nota_id)
-            )
+        # O valor_total da nota é a conferência informada no cadastro e não é alterado aqui.
         cursor.execute("UPDATE produto_embalagens SET ativo = FALSE WHERE id IN (SELECT embalagem_id FROM movimentacoes_estoque WHERE id = %s)", (movimentacao_id,))
 
         # Excluir logicamente a movimentacao

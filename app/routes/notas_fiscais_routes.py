@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 from app.modules import notas_fiscais
 from app.modules import estoque
+from app.modules import fornecedores
 from app.modules.login_manager import login_required, admin_required
 import os
 from app.models import get_logger
@@ -36,13 +37,44 @@ def listar():
 def nova():
     if request.method == 'POST':
         try:
+            fornecedor_id = request.form.get('fornecedor_id')
+            nome_fornecedor = ''
+            cnpj_fornecedor = ''
+            if fornecedor_id == 'novo':
+                nome_fornecedor = (request.form.get('novo_fornecedor') or '').strip()
+                cnpj_fornecedor = (request.form.get('novo_cnpj') or '').strip()
+                fornecedor_id, msg = fornecedores.inserir_fornecedor({
+                    'nome': nome_fornecedor, 'cnpj': cnpj_fornecedor})
+                if not fornecedor_id:
+                    flash(msg, 'error')
+                    return render_template('notas_fiscais/nova.html',
+                                           fornecedores=fornecedores.listar_fornecedores())
+                # Snapshot da nota usa exatamente o que ficou cadastrado
+                f = fornecedores.buscar_fornecedor_por_id(fornecedor_id)
+                nome_fornecedor = f['nome']
+                cnpj_fornecedor = f['cnpj'] or ''
+            elif fornecedor_id:
+                f = fornecedores.buscar_fornecedor_por_id(int(fornecedor_id))
+                if not f or not f['ativo']:
+                    flash('Fornecedor inválido.', 'error')
+                    return render_template('notas_fiscais/nova.html',
+                                           fornecedores=fornecedores.listar_fornecedores())
+                fornecedor_id = f['id']
+                nome_fornecedor = f['nome']
+                cnpj_fornecedor = f['cnpj'] or ''
+            else:
+                # Compatibilidade com cadastro livre
+                nome_fornecedor = (request.form.get('fornecedor') or '').strip()
+                cnpj_fornecedor = (request.form.get('cnpj_fornecedor') or '').strip()
+
             dados = {
                 'numero_nota': request.form.get('numero_nota'),
                 'serie': request.form.get('serie'),
                 'data_emissao': request.form.get('data_emissao'),
                 'data_recebimento': request.form.get('data_recebimento'),
-                'fornecedor': request.form.get('fornecedor'),
-                'cnpj_fornecedor': request.form.get('cnpj_fornecedor'),
+                'fornecedor': nome_fornecedor,
+                'cnpj_fornecedor': cnpj_fornecedor,
+                'fornecedor_id': fornecedor_id,
                 'valor_total': request.form.get('valor_total'),
                 'observacoes': request.form.get('observacoes')
             }
@@ -64,7 +96,8 @@ def nova():
         except Exception as e:
             logger.error(f"notas_fiscais_routes.nova: {e}")
             flash(f'Erro: {e}', 'error')
-    return render_template('notas_fiscais/nova.html')
+    return render_template('notas_fiscais/nova.html',
+                           fornecedores=fornecedores.listar_fornecedores())
 
 @notas_fiscais_bp.route('/<int:id>')
 @login_required
@@ -195,16 +228,17 @@ def relatorio_pdf(id):
         elements.append(Paragraph(f"Fornecedor: {nota.get('fornecedor', '—')}", styles['Normal']))
         elements.append(Paragraph(f"CNPJ: {nota.get('cnpj_fornecedor', '—')}", styles['Normal']))
         elements.append(Paragraph(f"Data Emissao: {nota.get('data_emissao', '—')}", styles['Normal']))
-        elements.append(Paragraph(f"Valor Total: R$ {nota.get('valor_total') or 0:.2f}", styles['Normal']))
+        elements.append(Paragraph(f"Valor da nota (conferência): R$ {nota.get('valor_total') or 0:.2f}", styles['Normal']))
         elements.append(Spacer(1, 1*cm))
-        data_tabela = [['Produto', 'Qtd', 'Unidade', 'Valor Unit.', 'Valor Total']]
+        data_tabela = [['Produto', 'Qtd', 'Unidade', 'Preço na base', 'Valor Total']]
         for item in itens:
-            valor_total_item = (item.get('quantidade', 0) or 0) * (item.get('valor_unitario', 0) or 0)
+            preco_item = item.get('preco_base') or item.get('valor_unitario') or 0
+            valor_total_item = (item.get('quantidade', 0) or 0) * preco_item
             data_tabela.append([
                 item.get('produto_nome', '—'),
                 f"{item.get('quantidade', 0):.2f}",
                 item.get('unidade', '—'),
-                f"R$ {item.get('valor_unitario', 0):.2f}" if item.get('valor_unitario') else '—',
+                f"R$ {preco_item:.4f}" if preco_item else '—',
                 f"R$ {valor_total_item:.2f}"
             ])
         tabela = Table(data_tabela, colWidths=[6*cm, 2.5*cm, 2*cm, 3*cm, 3*cm])
@@ -218,6 +252,12 @@ def relatorio_pdf(id):
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
         ]))
         elements.append(tabela)
+        valor_itens = notas_fiscais.valor_itens_nota(id)
+        valor_nota = nota.get('valor_total') or 0
+        elements.append(Spacer(1, 0.4*cm))
+        elements.append(Paragraph(f"Valor dos itens: R$ {valor_itens:.2f}", styles['Normal']))
+        elements.append(Paragraph(f"Valor da nota: R$ {valor_nota:.2f}", styles['Normal']))
+        elements.append(Paragraph(f"Diferença (nota - itens): R$ {valor_nota - valor_itens:.2f}", styles['Normal']))
         from app.modules.relatorios import moldura_kaldi
         doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
         buffer.seek(0)
