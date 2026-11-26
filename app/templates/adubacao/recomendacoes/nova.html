@@ -34,8 +34,28 @@
                     </div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label">Análise de referência</label>
+                    <select name="analise_id" class="form-select">
+                        <option value="">Sem análise</option>
+                        {% for a in analises %}<option value="{{ a.id }}">{{ a.talhao_nome }} - {{ a.tipo_nome }} - {{ a.data_coleta|format_data if a.data_coleta else '-' }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Responsável</label>
                     <input type="text" name="responsavel" class="form-control">
+                </div>
+                <div class="card border mb-3">
+                    <div class="card-header py-2"><h6 class="mb-0">Item recomendado</h6></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-2"><label class="form-label">Nutriente</label><input type="text" name="nutriente" class="form-control" placeholder="Ex: N"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Quantidade</label><input type="number" step="any" name="quantidade" class="form-control" placeholder="Ex: 50"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Unidade</label><input type="text" name="unidade" class="form-control" placeholder="kg/ha"></div>
+                            <div class="col-md-5 mb-2"><label class="form-label">Fonte recomendada</label><input type="text" name="fonte" class="form-control" placeholder="Ex: Ureia"></div>
+                        </div>
+                        <div class="mb-2"><label class="form-label">Observações do item</label><input type="text" name="observacoes_item" class="form-control"></div>
+                        <small class="text-muted">Deixe o nutriente em branco se quiser criar a recomendação sem itens.</small>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Observações</label>

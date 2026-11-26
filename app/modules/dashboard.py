@@ -11,29 +11,29 @@ def get_resumo_geral():
     """Retorna resumo geral da fazenda"""
     resumo = {}
     try:
-        resultado = executar_query("SELECT COUNT(*) FROM talhoes WHERE ativo = TRUE", fetch_one=True)
-        resumo['total_talhoes'] = resultado[0] if resultado and resultado[0] else 0
+        resultado = executar_query("SELECT COUNT(*) AS total FROM talhoes WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        resumo['total_talhoes'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['total_talhoes'] = 0
 
     try:
-        resultado = executar_query("SELECT SUM(area_hectares) FROM talhoes WHERE ativo = TRUE", fetch_one=True)
-        resumo['area_total'] = float(resultado[0]) if resultado and resultado[0] else 0.0
+        resultado = executar_query("SELECT SUM(area_hectares) AS total FROM talhoes WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        resumo['area_total'] = float(resultado['total']) if resultado and resultado['total'] else 0.0
     except Exception:
         resumo['area_total'] = 0.0
 
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) FROM aplicacoes_pulverizacao
+            SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao
             WHERE EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
-        """, fetch_one=True)
-        resumo['pulverizacoes_ano'] = resultado[0] if resultado and resultado[0] else 0
+        """, fetch_one=True, dict_cursor=True)
+        resumo['pulverizacoes_ano'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['pulverizacoes_ano'] = 0
 
     try:
-        resultado = executar_query("SELECT COUNT(DISTINCT praga_doenca_id) FROM ocorrencias_pragas", fetch_one=True)
-        resumo['pragas_detectadas'] = resultado[0] if resultado and resultado[0] else 0
+        resultado = executar_query("SELECT COUNT(DISTINCT praga_doenca_id) AS total FROM ocorrencias_pragas", fetch_one=True, dict_cursor=True)
+        resumo['pragas_detectadas'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['pragas_detectadas'] = 0
 
@@ -193,21 +193,21 @@ def get_tipos_pragas():
 def get_resumo_estoque():
     """Retorna resumo do estoque"""
     try:
-        total_produtos = executar_query("SELECT COUNT(*) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)
-        total_produtos = total_produtos[0] if total_produtos else 0
+        total_produtos = executar_query("SELECT COUNT(*) AS total FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        total_produtos = total_produtos['total'] if total_produtos else 0
     except Exception:
         total_produtos = 0
     try:
         estoque_baixo = executar_query("""
-            SELECT COUNT(*) FROM produtos_estoque
+            SELECT COUNT(*) AS total FROM produtos_estoque
             WHERE ativo = TRUE AND quantidade_atual <= COALESCE(estoque_minimo, 0)
-        """, fetch_one=True)
-        estoque_baixo = estoque_baixo[0] if estoque_baixo else 0
+        """, fetch_one=True, dict_cursor=True)
+        estoque_baixo = estoque_baixo['total'] if estoque_baixo else 0
     except Exception:
         estoque_baixo = 0
     try:
-        total_itens = executar_query("SELECT SUM(quantidade_atual) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)
-        total_itens = total_itens[0] if total_itens else 0
+        total_itens = executar_query("SELECT SUM(quantidade_atual) AS total FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        total_itens = total_itens['total'] if total_itens else 0
     except Exception:
         total_itens = 0
     return {
@@ -220,19 +220,19 @@ def get_resumo_analises():
     """Retorna resumo das análises"""
     try:
         analises_ano = executar_query("""
-            SELECT COUNT(*) FROM analises
+            SELECT COUNT(*) AS total FROM analises
             WHERE EXTRACT(YEAR FROM data_coleta) = EXTRACT(YEAR FROM CURRENT_DATE)
             AND ativo = TRUE
-        """, fetch_one=True)
-        analises_ano = analises_ano[0] if analises_ano else 0
+        """, fetch_one=True, dict_cursor=True)
+        analises_ano = analises_ano['total'] if analises_ano else 0
     except Exception:
         analises_ano = 0
     try:
         pendentes = executar_query("""
-            SELECT COUNT(*) FROM analises
+            SELECT COUNT(*) AS total FROM analises
             WHERE data_resultado IS NULL AND ativo = TRUE
-        """, fetch_one=True)
-        pendentes = pendentes[0] if pendentes else 0
+        """, fetch_one=True, dict_cursor=True)
+        pendentes = pendentes['total'] if pendentes else 0
     except Exception:
         pendentes = 0
     return {

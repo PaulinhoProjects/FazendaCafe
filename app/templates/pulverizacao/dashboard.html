@@ -52,6 +52,51 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0">Períodos da Lavoura</h6><span class="badge bg-primary">{{ periodos|length if periodos else 0 }}</span></div>
+                <div class="card-body p-0">
+                    {% if periodos %}
+                    <ul class="list-group list-group-flush">
+                        {% for p in periodos %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>{{ p.nome }}</strong>{% if p.descricao %} <small class="text-muted">— {{ p.descricao }}</small>{% endif %}</span>
+                            {% if current_user.is_admin() %}
+                            <form method="POST" action="{{ url_for('pulverizacao.excluir_periodo', id=p.id) }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir período" onclick="return confirm('Excluir o período {{ p.nome }}?')"><i class="bi bi-trash"></i></button>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}<p class="text-muted p-3 mb-0">Nenhum período cadastrado.</p>{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0">Pragas e Doenças</h6><span class="badge bg-warning text-dark">{{ pragas|length if pragas else 0 }}</span></div>
+                <div class="card-body p-0">
+                    {% if pragas %}
+                    <ul class="list-group list-group-flush">
+                        {% for p in pragas %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>{{ p.nome }}</strong> <span class="badge bg-secondary">{{ p.tipo }}</span>{% if p.nome_cientifico %} <small class="text-muted">{{ p.nome_cientifico }}</small>{% endif %}</span>
+                            {% if current_user.is_admin() %}
+                            <form method="POST" action="{{ url_for('pulverizacao.excluir_praga', id=p.id) }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir praga" onclick="return confirm('Excluir {{ p.nome }}?')"><i class="bi bi-trash"></i></button>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}<p class="text-muted p-3 mb-0">Nenhuma praga/doença cadastrada.</p>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-header">
             <h5 class="mb-0">Últimas Aplicações</h5>

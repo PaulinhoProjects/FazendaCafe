@@ -55,8 +55,8 @@ def inserir_receita(dados):
         resultado = executar_query(query, 
             (dados['nome'], dados['periodo_id'], dados['descricao'], 
              dados['formula'], dados['produtos'], dados['observacoes']),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir receita: {e}")
         return None
@@ -162,8 +162,8 @@ def inserir_aplicacao(dados):
              dados['data_aplicacao'], dados.get('data_retorno'), dados['responsavel'],
              dados['condicoes'], dados['observacoes'],
              dados.get('tipo_aplicacao', 'Foliar')),  # <-- novo campo
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir aplicação: {e}")
         return None
@@ -254,8 +254,8 @@ def registrar_ocorrencia(dados):
             (dados['talhao_id'], dados['praga_id'], dados.get('aplicacao_id'),
              dados['data_deteccao'], dados['nivel'], 
              dados.get('tratado', False), dados['observacoes']),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao registrar ocorrência: {e}")
         return None
@@ -365,7 +365,8 @@ def excluir_receita(id):
     """Exclui uma receita (verifica se não está em uso)"""
     try:
         # Verificar se há aplicações vinculadas
-        count = executar_query("SELECT COUNT(*) FROM aplicacoes_pulverizacao WHERE receita_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao WHERE receita_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: receita usada em {count} aplicação(ões)"
         
@@ -379,7 +380,8 @@ def excluir_periodo(id):
     """Exclui um período da lavoura (verifica se não está em uso)"""
     try:
         # Verificar se há aplicações vinculadas
-        count = executar_query("SELECT COUNT(*) FROM aplicacoes_pulverizacao WHERE periodo_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao WHERE periodo_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: período usado em {count} aplicação(ões)"
         
@@ -393,7 +395,8 @@ def excluir_praga(id):
     """Exclui uma praga/doença (verifica se não está em uso)"""
     try:
         # Verificar se há ocorrências vinculadas
-        count = executar_query("SELECT COUNT(*) FROM ocorrencias_pragas WHERE praga_doenca_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM ocorrencias_pragas WHERE praga_doenca_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: praga registrada em {count} ocorrência(s)"
         

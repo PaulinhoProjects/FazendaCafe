@@ -109,8 +109,8 @@ def inserir_nota_fiscal(dados, arquivo_pdf=None):
             (dados['numero_nota'], dados.get('serie'), dados['data_emissao'],
              dados['data_recebimento'], dados['fornecedor'], dados.get('cnpj_fornecedor'),
              dados.get('valor_total'), arquivo_pdf, dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir nota fiscal: {e}")
         return None
@@ -180,34 +180,34 @@ def excluir_nota_fiscal(id):
 def get_resumo_notas():
     """Retorna resumo das notas fiscais."""
     try:
-        total_notas = executar_query("SELECT COUNT(*) FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True)
-        total_notas = total_notas[0] if total_notas else 0
+        total_notas = executar_query("SELECT COUNT(*) AS total FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        total_notas = total_notas['total'] if total_notas else 0
     except Exception:
         total_notas = 0
     try:
-        valor_total = executar_query("SELECT COALESCE(SUM(valor_total), 0) FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True)
-        valor_total = float(valor_total[0]) if valor_total and valor_total[0] else 0
+        valor_total = executar_query("SELECT COALESCE(SUM(valor_total), 0) AS total FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        valor_total = float(valor_total['total']) if valor_total and valor_total['total'] else 0
     except Exception:
         valor_total = 0
     try:
         notas_mes = executar_query("""
-            SELECT COUNT(*) FROM notas_fiscais
+            SELECT COUNT(*) AS total FROM notas_fiscais
             WHERE ativo = TRUE AND EXTRACT(MONTH FROM data_recebimento) = EXTRACT(MONTH FROM CURRENT_DATE)
-        """, fetch_one=True)
-        notas_mes = notas_mes[0] if notas_mes else 0
+        """, fetch_one=True, dict_cursor=True)
+        notas_mes = notas_mes['total'] if notas_mes else 0
     except Exception:
         notas_mes = 0
     try:
         total_itens = executar_query("""
-            SELECT COUNT(*) FROM movimentacoes_estoque
+            SELECT COUNT(*) AS total FROM movimentacoes_estoque
             WHERE tipo = 'entrada' AND nota_fiscal_id IS NOT NULL
-        """, fetch_one=True)
-        total_itens = total_itens[0] if total_itens else 0
+        """, fetch_one=True, dict_cursor=True)
+        total_itens = total_itens['total'] if total_itens else 0
     except Exception:
         total_itens = 0
     try:
-        total_fornecedores = executar_query("SELECT COUNT(DISTINCT fornecedor) FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True)
-        total_fornecedores = total_fornecedores[0] if total_fornecedores else 0
+        total_fornecedores = executar_query("SELECT COUNT(DISTINCT fornecedor) AS total FROM notas_fiscais WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        total_fornecedores = total_fornecedores['total'] if total_fornecedores else 0
     except Exception:
         total_fornecedores = 0
     return {
@@ -226,9 +226,9 @@ def buscar_ou_criar_produto(nome, unidade='L', categoria='Outros'):
     # Buscar produto existente (case insensitive)
     query_busca = "SELECT id FROM produtos_estoque WHERE LOWER(nome) = LOWER(%s) AND ativo = TRUE"
     try:
-        resultado = executar_query(query_busca, (nome,), fetch_one=True)
+        resultado = executar_query(query_busca, (nome,), fetch_one=True, dict_cursor=True)
         if resultado:
-            return resultado[0]
+            return resultado['id']
     except Exception:
         pass
     # Se nao existe, criar
@@ -237,8 +237,8 @@ def buscar_ou_criar_produto(nome, unidade='L', categoria='Outros'):
     VALUES (%s, %s, %s, 0, 0, TRUE) RETURNING id
     """
     try:
-        resultado = executar_query(query_insert, (nome, unidade, categoria), fetch_one=True)
-        return resultado[0] if resultado else None
+        resultado = executar_query(query_insert, (nome, unidade, categoria), fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao criar produto automatico: {e}")
         return None

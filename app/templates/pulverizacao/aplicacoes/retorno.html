@@ -29,7 +29,28 @@
                     <textarea name="observacoes_retorno" class="form-control" rows="3">{{ retorno.observacoes_retorno if retorno and retorno.observacoes_retorno else '' }}</textarea>
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar Retorno</button>
+                {% if retorno and retorno.status_retorno %}
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalLimparRetorno">
+                    <i class="bi bi-eraser me-1"></i>Limpar Retorno
+                </button>
+                {% endif %}
             </form>
+            {% if retorno and retorno.status_retorno %}
+            <div class="modal fade" id="modalLimparRetorno" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header"><h5 class="modal-title">Limpar retorno?</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">Os dados de retorno desta aplicação serão removidos e o status voltará para pendente.</div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <form method="POST" action="{{ url_for('pulverizacao.limpar_retorno', id=aplicacao.id) }}">
+                                <button type="submit" class="btn btn-danger"><i class="bi bi-eraser me-1"></i>Confirmar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

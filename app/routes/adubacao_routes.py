@@ -54,6 +54,23 @@ def nova_recomendacao():
             }
             rec_id = adubacao.inserir_recomendacao(dados)
             if rec_id:
+                # Itens recomendados (campos repetiveis no formulario)
+                nutrientes = request.form.getlist('nutriente')
+                quantidades = request.form.getlist('quantidade')
+                unidades = request.form.getlist('unidade')
+                fontes = request.form.getlist('fonte')
+                observacoes_itens = request.form.getlist('observacoes_item')
+                for i, nutriente in enumerate(nutrientes):
+                    if not (nutriente or '').strip():
+                        continue
+                    adubacao.inserir_item_recomendacao({
+                        'recomendacao_id': rec_id,
+                        'nutriente': nutriente.strip(),
+                        'quantidade': quantidades[i] if i < len(quantidades) else None,
+                        'unidade': unidades[i] if i < len(unidades) else None,
+                        'fonte': fontes[i] if i < len(fontes) else None,
+                        'observacoes': observacoes_itens[i] if i < len(observacoes_itens) else None
+                    })
                 flash('Recomendacao criada com sucesso!', 'success')
                 return redirect(url_for('adubacao.detalhe_recomendacao', id=rec_id))
             else:
@@ -63,9 +80,11 @@ def nova_recomendacao():
             flash(f'Erro: {e}', 'error')
 
     try:
-        from app.modules import talhoes
+        from app.modules import talhoes, analises
         talhoes_lista = talhoes.listar_talhoes()
-        return render_template('adubacao/recomendacoes/nova.html', talhoes=talhoes_lista)
+        analises_lista = analises.listar_analises()
+        return render_template('adubacao/recomendacoes/nova.html',
+                               talhoes=talhoes_lista, analises=analises_lista)
     except Exception as e:
         logger.error(f"adubacao_routes.nova_recomendacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
@@ -138,6 +157,37 @@ def nova_adubacao():
             }
             adub_id = adubacao.inserir_adubacao(dados)
             if adub_id:
+                # Produtos utilizados (campos repetiveis no formulario)
+                produtos = request.form.getlist('produto_nome')
+                qtds_produto = request.form.getlist('produto_quantidade')
+                unidades_produto = request.form.getlist('produto_unidade')
+                custos = request.form.getlist('custo_unitario')
+                fornecedores = request.form.getlist('fornecedor')
+                for i, produto_nome in enumerate(produtos):
+                    if not (produto_nome or '').strip():
+                        continue
+                    adubacao.inserir_produto_adubacao({
+                        'adubacao_id': adub_id,
+                        'produto_nome': produto_nome.strip(),
+                        'quantidade': qtds_produto[i] if i < len(qtds_produto) else None,
+                        'unidade': unidades_produto[i] if i < len(unidades_produto) else None,
+                        'custo_unitario': custos[i] if i < len(custos) else None,
+                        'fornecedor': fornecedores[i] if i < len(fornecedores) else None
+                    })
+
+                # Nutrientes aplicados (campos repetiveis no formulario)
+                nutrientes = request.form.getlist('nutriente')
+                qtds_nutriente = request.form.getlist('quantidade_aplicada')
+                unidades_nutriente = request.form.getlist('unidade_nutriente')
+                for i, nutriente in enumerate(nutrientes):
+                    if not (nutriente or '').strip():
+                        continue
+                    adubacao.inserir_nutriente_aplicado({
+                        'adubacao_id': adub_id,
+                        'nutriente': nutriente.strip(),
+                        'quantidade_aplicada': qtds_nutriente[i] if i < len(qtds_nutriente) else None,
+                        'unidade': unidades_nutriente[i] if i < len(unidades_nutriente) else None
+                    })
                 flash('Adubacao registrada com sucesso!', 'success')
                 return redirect(url_for('adubacao.detalhe_adubacao', id=adub_id))
             else:

@@ -7,6 +7,7 @@
         <div class="btn-group">
             <a href="{{ url_for('analises.nova') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Análise</a>
             <a href="{{ url_for('analises.listar_laboratorios') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-building me-1"></i>Laboratórios</a>
+            <a href="{{ url_for('analises.listar_parametros') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list-check me-1"></i>Tipos e Parâmetros</a>
         </div>
     </div>
     <div class="row mb-4">
@@ -25,7 +26,7 @@
                         <td>{{ a.data_coleta|format_data if a.data_coleta else '-' }}</td>
                         <td>{{ a.talhao_nome }}</td>
                         <td><span class="badge bg-info">{{ a.tipo_nome }}</span></td>
-                        <td>{{ a.lab_nome or '-' }}</td>
+                        <td>{{ a.laboratorio_nome or '-' }}</td>
                         <td>{{ a.numero_protocolo or '-' }}</td>
                         <td><a href="{{ url_for('analises.detalhe', id=a.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
                     </tr>

@@ -259,6 +259,91 @@ def exportar_csv_produtos():
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
 
+@estoque_bp.route('/produtos/exportar-excel')
+@login_required
+def exportar_excel_produtos():
+    """Exporta lista de produtos para Excel."""
+    try:
+        produtos = estoque.listar_produtos(ativos=True)
+        arquivo = estoque.gerar_excel_produtos(produtos)
+        return Response(
+            arquivo.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment;filename=estoque_{datetime.now().strftime("%Y%m%d")}.xlsx'}
+        )
+    except Exception as e:
+        logger.error(f"estoque_routes.exportar_excel_produtos: {e}")
+        flash('Erro ao exportar Excel.', 'error')
+        return redirect(url_for('estoque.listar_produtos'))
+
+@estoque_bp.route('/produtos/exportar-pdf')
+@login_required
+def exportar_pdf_produtos():
+    """Exporta lista de produtos para PDF."""
+    try:
+        produtos = estoque.listar_produtos(ativos=True)
+        arquivo = estoque.gerar_pdf_produtos(produtos)
+        return Response(
+            arquivo.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'inline;filename=estoque_{datetime.now().strftime("%Y%m%d")}.pdf'}
+        )
+    except Exception as e:
+        logger.error(f"estoque_routes.exportar_pdf_produtos: {e}")
+        flash('Erro ao exportar PDF.', 'error')
+        return redirect(url_for('estoque.listar_produtos'))
+
+def _movimentacoes_do_periodo():
+    """Filtra as movimentações pelos parâmetros data_inicio/data_fim da requisição."""
+    movimentacoes = estoque.listar_movimentacoes()
+    inicio = request.args.get('data_inicio')
+    fim = request.args.get('data_fim')
+
+    def _data(m):
+        valor = m.get('data_movimento')
+        return valor.strftime('%Y-%m-%d') if hasattr(valor, 'strftime') else str(valor)[:10]
+
+    if inicio or fim:
+        movimentacoes = [
+            m for m in movimentacoes
+            if (not inicio or _data(m) >= inicio) and (not fim or _data(m) <= fim)
+        ]
+    return movimentacoes, inicio or '1900-01-01', fim or datetime.now().strftime('%Y-%m-%d')
+
+@estoque_bp.route('/movimentacoes/exportar-excel')
+@login_required
+def exportar_excel_movimentacoes():
+    """Exporta movimentações do período para Excel."""
+    try:
+        movimentacoes, inicio, fim = _movimentacoes_do_periodo()
+        arquivo = estoque.gerar_excel_movimentacoes(movimentacoes, inicio, fim)
+        return Response(
+            arquivo.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment;filename=movimentacoes_{datetime.now().strftime("%Y%m%d")}.xlsx'}
+        )
+    except Exception as e:
+        logger.error(f"estoque_routes.exportar_excel_movimentacoes: {e}")
+        flash('Erro ao exportar Excel.', 'error')
+        return redirect(url_for('estoque.listar_movimentacoes'))
+
+@estoque_bp.route('/movimentacoes/exportar-pdf')
+@login_required
+def exportar_pdf_movimentacoes():
+    """Exporta movimentações do período para PDF."""
+    try:
+        movimentacoes, inicio, fim = _movimentacoes_do_periodo()
+        arquivo = estoque.gerar_pdf_movimentacoes(movimentacoes, inicio, fim)
+        return Response(
+            arquivo.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'inline;filename=movimentacoes_{datetime.now().strftime("%Y%m%d")}.pdf'}
+        )
+    except Exception as e:
+        logger.error(f"estoque_routes.exportar_pdf_movimentacoes: {e}")
+        flash('Erro ao exportar PDF.', 'error')
+        return redirect(url_for('estoque.listar_movimentacoes'))
+
 @estoque_bp.route('/categorias')
 @login_required
 def listar_categorias():

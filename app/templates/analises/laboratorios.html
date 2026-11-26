@@ -23,6 +23,7 @@
                         <td>{{ l.telefone or '-' }}</td>
                         <td>{{ l.email or '-' }}</td>
                         <td>
+                            <a href="{{ url_for('analises.editar_laboratorio', id=l.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
                             <form method="POST" action="{{ url_for('analises.excluir_laboratorio', id=l.id) }}" class="d-inline" onsubmit="return confirm('Excluir?')"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>

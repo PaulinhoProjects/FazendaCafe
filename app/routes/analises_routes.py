@@ -164,3 +164,72 @@ def excluir_laboratorio(id):
         logger.error(f"analises_routes.excluir_laboratorio: {e}")
         flash('Erro.', 'error')
     return redirect(url_for('analises.listar_laboratorios'))
+
+@analises_bp.route('/laboratorios/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_laboratorio(id):
+    if request.method == 'POST':
+        try:
+            dados = {
+                'nome': request.form.get('nome'),
+                'responsavel': request.form.get('responsavel'),
+                'telefone': request.form.get('telefone'),
+                'email': request.form.get('email'),
+                'endereco': request.form.get('endereco'),
+                'observacoes': request.form.get('observacoes')
+            }
+            if analises.atualizar_laboratorio(id, dados):
+                flash('Laboratório atualizado!', 'success')
+                return redirect(url_for('analises.listar_laboratorios'))
+            else:
+                flash('Erro ao atualizar laboratório.', 'error')
+        except Exception as e:
+            logger.error(f"analises_routes.editar_laboratorio: {e}")
+            flash(f'Erro: {e}', 'error')
+
+    try:
+        laboratorio = analises.buscar_laboratorio_por_id(id)
+        if not laboratorio:
+            flash('Laboratório não encontrado.', 'warning')
+            return redirect(url_for('analises.listar_laboratorios'))
+        return render_template('analises/editar_laboratorio.html', laboratorio=laboratorio)
+    except Exception as e:
+        logger.error(f"analises_routes.editar_laboratorio: {e}")
+        flash('Erro ao carregar laboratório.', 'error')
+        return redirect(url_for('analises.listar_laboratorios'))
+
+@analises_bp.route('/parametros')
+@login_required
+def listar_parametros():
+    try:
+        tipos = analises.listar_tipos_analise()
+        grupos = [{'tipo': t, 'parametros': analises.listar_parametros_por_tipo(t['id'])} for t in tipos]
+        return render_template('analises/parametros.html', grupos=grupos)
+    except Exception as e:
+        logger.error(f"analises_routes.listar_parametros: {e}")
+        flash('Erro ao carregar parâmetros.', 'error')
+        return render_template('analises/parametros.html', grupos=[])
+
+@analises_bp.route('/parametros/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def excluir_parametro(id):
+    try:
+        sucesso, msg = analises.excluir_parametro(id)
+        flash(msg, 'success' if sucesso else 'warning')
+    except Exception as e:
+        logger.error(f"analises_routes.excluir_parametro: {e}")
+        flash('Erro ao excluir parâmetro.', 'error')
+    return redirect(url_for('analises.listar_parametros'))
+
+@analises_bp.route('/tipos/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def excluir_tipo(id):
+    try:
+        sucesso, msg = analises.excluir_tipo_analise(id)
+        flash(msg, 'success' if sucesso else 'warning')
+    except Exception as e:
+        logger.error(f"analises_routes.excluir_tipo: {e}")
+        flash('Erro ao excluir tipo de análise.', 'error')
+    return redirect(url_for('analises.listar_parametros'))

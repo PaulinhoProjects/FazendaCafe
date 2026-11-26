@@ -50,7 +50,7 @@
                     <td>{{ a.data_coleta|format_data if a.data_coleta else '-' }}</td>
                     <td>{{ a.talhao_nome }}</td>
                     <td>{{ a.tipo_nome }}</td>
-                    <td>{{ a.lab_nome or '-' }}</td>
+                    <td>{{ a.laboratorio_nome or '-' }}</td>
                     <td>{{ a.numero_protocolo or '-' }}</td>
                     <td>
                         <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>

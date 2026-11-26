@@ -49,8 +49,8 @@ def criar_tabela_usuarios():
     """
     try:
         executar_query(query)
-        count_res = executar_query("SELECT COUNT(*) FROM usuarios", fetch_one=True)
-        count = count_res[0] if count_res else 0
+        count_res = executar_query("SELECT COUNT(*) AS total FROM usuarios", fetch_one=True, dict_cursor=True)
+        count = count_res['total'] if count_res else 0
         if count == 0:
             criar_usuario("Administrador", "admin", "admin123", "admin")
             print("Usuario admin padrao criado: admin / admin123")
@@ -109,9 +109,9 @@ def criar_usuario(nome, login, senha, tipo='user'):
     VALUES (%s, %s, %s, %s, TRUE) RETURNING id
     """
     try:
-        resultado = executar_query(query, (nome, login, senha_hash, tipo), fetch_one=True)
+        resultado = executar_query(query, (nome, login, senha_hash, tipo), fetch_one=True, dict_cursor=True)
         if resultado:
-            return True, resultado[0]
+            return True, resultado['id']
         return False, "Erro ao criar usuario"
     except Exception as e:
         return False, str(e)

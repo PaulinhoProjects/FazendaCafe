@@ -184,8 +184,8 @@ def inserir_talhao(dados):
     RETURNING id
     """
     try:
-        resultado = executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento, latitude, longitude, foto_url), fetch_one=True)
-        return resultado[0] if resultado else None
+        resultado = executar_query(query, (nome, area, data_plantio, variedade, altitude, observacoes, espacamento, latitude, longitude, foto_url), fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir talhão: {e}")
         return None

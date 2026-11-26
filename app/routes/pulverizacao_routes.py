@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from app.modules import pulverizacao
-from app.modules.login_manager import login_required
+from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
 import csv
@@ -20,17 +20,19 @@ def dashboard():
         aplicacoes = pulverizacao.listar_aplicacoes()
         receitas = pulverizacao.listar_receitas()
         periodos = pulverizacao.listar_periodos()
+        pragas = pulverizacao.listar_pragas_doencas()
         return render_template('pulverizacao/dashboard.html',
                              aplicacoes=aplicacoes[:10],
                              total_aplicacoes=len(aplicacoes),
                              total_receitas=len(receitas),
-                             periodos=periodos)
+                             periodos=periodos,
+                             pragas=pragas)
     except Exception as e:
         logger.error(f"pulverizacao_routes.dashboard: {e}")
         flash('Erro ao carregar painel de pulverizacao.', 'error')
         return render_template('pulverizacao/dashboard.html',
                              aplicacoes=[], total_aplicacoes=0,
-                             total_receitas=0, periodos=[])
+                             total_receitas=0, periodos=[], pragas=[])
 
 # =====================================================
 # APLICACOES
@@ -158,6 +160,30 @@ def excluir_aplicacao(id):
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
+@pulverizacao_bp.route('/periodos/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def excluir_periodo(id):
+    try:
+        sucesso, msg = pulverizacao.excluir_periodo(id)
+        flash(msg, 'success' if sucesso else 'warning')
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.excluir_periodo: {e}")
+        flash('Erro ao excluir período.', 'error')
+    return redirect(url_for('pulverizacao.dashboard'))
+
+@pulverizacao_bp.route('/pragas/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def excluir_praga(id):
+    try:
+        sucesso, msg = pulverizacao.excluir_praga(id)
+        flash(msg, 'success' if sucesso else 'warning')
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.excluir_praga: {e}")
+        flash('Erro ao excluir praga/doença.', 'error')
+    return redirect(url_for('pulverizacao.dashboard'))
+
 # =====================================================
 # RETORNO (CONTROLE DE CARENCIA)
 # =====================================================
@@ -193,6 +219,18 @@ def retorno_aplicacao(id):
         logger.error(f"pulverizacao_routes.retorno_aplicacao: {e}")
         flash('Erro ao carregar retorno.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
+
+@pulverizacao_bp.route('/aplicacoes/<int:id>/retorno/limpar', methods=['POST'])
+@login_required
+@admin_required
+def limpar_retorno(id):
+    try:
+        sucesso, msg = pulverizacao.limpar_retorno(id)
+        flash(msg, 'success' if sucesso else 'warning')
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.limpar_retorno: {e}")
+        flash('Erro ao limpar retorno.', 'error')
+    return redirect(url_for('pulverizacao.retorno_aplicacao', id=id))
 
 # =====================================================
 # RECEITAS

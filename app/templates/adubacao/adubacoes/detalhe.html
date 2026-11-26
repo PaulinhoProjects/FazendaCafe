@@ -1,45 +1,68 @@
 {% extends "base.html" %}
 {% block titulo %}Detalhe da Adubação{% endblock %}
 {% block conteudo %}
-    
-        Adubação #{{ adubacao.id }}
-         Voltar
-    
-    
-        
-            
-                Dados da Adubação
-                
-                    Talhão{{ adubacao.talhao_nome }}Tipo{{ adubacao.tipo_nome or '-' }}Recomendação{{ adubacao.recomendacao_data|format_data if adubacao.recomendacao_data else 'Sem recomendação' }}Data Aplicação{{ adubacao.data_aplicacao|format_data if adubacao.data_aplicacao else '-' }}Responsável{{ adubacao.responsavel or '-' }}Observações{{ adubacao.observacoes or '-' }}
-                
-            
-            
-                Produtos Utilizados
-                
-                    {% if produtos %}
-                    
-                            {% for p in produtos %}
-                            
-                            {% endfor %}
-                        ProdutoQuantidadeUnidadeCusto Unit.Fornecedor{{ p.nome }}{{ p.quantidade }}{{ p.unidade or '-' }}{{ p.custo|format_moeda if p.custo else '-' }}{{ p.fornecedor or '-' }}
-                    {% else %}Nenhum produto registrado.{% endif %}
-                
-            
-        
-        
-            
-                Nutrientes Aplicados
-                
-                    {% if nutrientes %}
-                    
-                        {% for n in nutrientes %}
-                        {{ n.nutriente }} — {{ n.quantidade }} {{ n.unidade }}
-                        {% endfor %}
-                    
-                    {% else %}Nenhum nutriente registrado.{% endif %}
-                
-            
-        
-    
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-droplet me-2"></i>Adubação #{{ adubacao.id }}</h2>
+        <a href="{{ url_for('adubacao.listar_adubacoes') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+    </div>
 
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header"><h5 class="mb-0">Dados da Adubação</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr><th style="width:180px">Talhão</th><td>{{ adubacao.talhao_nome }}</td></tr>
+                        <tr><th>Tipo</th><td>{{ adubacao.tipo_nome or '-' }}</td></tr>
+                        <tr><th>Recomendação</th><td>{{ adubacao.recomendacao_data|format_data if adubacao.recomendacao_data else 'Sem recomendação' }}</td></tr>
+                        <tr><th>Data da aplicação</th><td>{{ adubacao.data_aplicacao|format_data if adubacao.data_aplicacao else '-' }}</td></tr>
+                        <tr><th>Responsável</th><td>{{ adubacao.responsavel or '-' }}</td></tr>
+                        <tr><th>Observações</th><td>{{ adubacao.observacoes or '-' }}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header"><h5 class="mb-0">Produtos Utilizados</h5></div>
+                <div class="card-body">
+                    {% if produtos %}
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Produto</th><th>Qtd</th><th>Unidade</th><th>Custo unit.</th><th>Fornecedor</th></tr></thead>
+                        <tbody>
+                            {% for p in produtos %}
+                            <tr>
+                                <td>{{ p.nome }}</td>
+                                <td>{{ p.quantidade }}</td>
+                                <td>{{ p.unidade or '-' }}</td>
+                                <td>{{ p.custo|format_moeda if p.custo else '-' }}</td>
+                                <td>{{ p.fornecedor or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-muted mb-0">Nenhum produto registrado.</p>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Nutrientes Aplicados</h5></div>
+                <div class="card-body">
+                    {% if nutrientes %}
+                    <ul class="list-group list-group-flush">
+                        {% for n in nutrientes %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ n.nutriente }}</span>
+                            <span class="text-muted">{{ n.quantidade }} {{ n.unidade }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}<p class="text-muted mb-0">Nenhum nutriente registrado.</p>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

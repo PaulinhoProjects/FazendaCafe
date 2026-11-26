@@ -76,8 +76,8 @@ def inserir_laboratorio(dados):
         resultado = executar_query(query,
             (dados['nome'], dados.get('responsavel'), dados.get('telefone'),
              dados.get('email'), dados.get('endereco'), dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir laboratório: {e}")
         return None
@@ -195,8 +195,8 @@ def inserir_analise(dados):
              dados['data_coleta'], dados.get('data_resultado'),
              dados.get('numero_protocolo'), dados.get('responsavel'),
              dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir análise: {e}")
         return None
@@ -214,8 +214,8 @@ def inserir_resultado(dados):
         resultado = executar_query(query,
             (dados['analise_id'], dados['parametro_id'], dados['valor'],
              dados.get('interpretacao'), dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir resultado: {e}")
         return None
@@ -258,8 +258,8 @@ def inserir_analise(dados):
              dados['data_coleta'], dados.get('data_resultado'),
              dados.get('numero_protocolo'), dados.get('responsavel'),
              dados.get('observacoes'), dados.get('arquivo_pdf')),  # <-- NOVO
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir análise: {e}")
         return None
@@ -288,7 +288,8 @@ def excluir_laboratorio(id):
     """Exclui um laboratório (verifica se não está em uso)"""
     try:
         # Verificar se há análises vinculadas
-        count = executar_query("SELECT COUNT(*) FROM analises WHERE laboratorio_id = %s AND ativo = TRUE", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM analises WHERE laboratorio_id = %s AND ativo = TRUE", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: laboratório vinculado a {count} análise(s) ativa(s)"
         
@@ -303,7 +304,8 @@ def excluir_parametro(id):
     """Exclui um parâmetro de análise (verifica se não está em uso)"""
     try:
         # Verificar se há resultados vinculados
-        count = executar_query("SELECT COUNT(*) FROM resultados_analise WHERE parametro_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM resultados_analise WHERE parametro_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: parâmetro usado em {count} resultado(s)"
         
@@ -317,12 +319,14 @@ def excluir_tipo_analise(id):
     """Exclui um tipo de análise (verifica se não está em uso)"""
     try:
         # Verificar se há parâmetros vinculados
-        count_param = executar_query("SELECT COUNT(*) FROM parametros_analise WHERE tipo_analise_id = %s AND ativo = TRUE", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM parametros_analise WHERE tipo_analise_id = %s AND ativo = TRUE", (id,), fetch_one=True, dict_cursor=True)
+        count_param = r['total']
         if count_param > 0:
             return False, f"Não é possível excluir: tipo possui {count_param} parâmetro(s) ativo(s)"
         
         # Verificar se há análises vinculadas
-        count_analise = executar_query("SELECT COUNT(*) FROM analises WHERE tipo_analise_id = %s AND ativo = TRUE", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM analises WHERE tipo_analise_id = %s AND ativo = TRUE", (id,), fetch_one=True, dict_cursor=True)
+        count_analise = r['total']
         if count_analise > 0:
             return False, f"Não é possível excluir: tipo usado em {count_analise} análise(s)"
         

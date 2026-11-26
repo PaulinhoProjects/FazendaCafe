@@ -18,6 +18,12 @@
         <a href="{{ url_for('estoque.exportar_csv_produtos') }}" class="btn btn-outline-secondary">
             <i class="bi bi-filetype-csv me-1"></i>CSV
         </a>
+        <a href="{{ url_for('estoque.exportar_excel_produtos') }}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ url_for('estoque.exportar_pdf_produtos') }}" class="btn btn-outline-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
         <a href="{{ url_for('estoque.novo_produto') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i>Novo Produto
         </a>

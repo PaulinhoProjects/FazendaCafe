@@ -110,8 +110,8 @@ def inserir_produto(dados):
             (dados['nome'], dados['unidade'], dados.get('estoque_minimo'),
              dados.get('quantidade_atual', 0), dados.get('observacoes'),
              dados.get('categoria')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir produto: {e}")
         return None
@@ -137,7 +137,8 @@ def excluir_produto(id):
     """Exclui um produto (verifica se não há movimentações)"""
     try:
         # Verificar se há movimentações vinculadas
-        count = executar_query("SELECT COUNT(*) FROM movimentacoes_estoque WHERE produto_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM movimentacoes_estoque WHERE produto_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             return False, f"Não é possível excluir: produto possui {count} movimentação(ões)"
         
@@ -337,7 +338,8 @@ def get_resumo_estoque():
     """Retorna resumo estatístico do estoque"""
     try:
         # Total de produtos
-        total_produtos = executar_query("SELECT COUNT(*) FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
+        total_produtos = r['total']
         
         # Valor total em estoque
         query_valor = """
@@ -345,23 +347,26 @@ def get_resumo_estoque():
             SELECT valor_unitario FROM movimentacoes_estoque 
             WHERE produto_id = p.id AND valor_unitario IS NOT NULL 
             ORDER BY data_movimento DESC LIMIT 1
-        ), 0)), 0)
+        ), 0)), 0) AS total
         FROM produtos_estoque p
         WHERE p.ativo = TRUE
         """
-        valor_total = executar_query(query_valor, fetch_one=True)[0]
+        r = executar_query(query_valor, fetch_one=True, dict_cursor=True)
+        valor_total = r['total']
         
         # Produtos com estoque baixo
-        estoque_baixo = executar_query("""
-            SELECT COUNT(*) FROM produtos_estoque 
+        r = executar_query("""
+            SELECT COUNT(*) AS total FROM produtos_estoque 
             WHERE ativo = TRUE AND quantidade_atual <= COALESCE(estoque_minimo, 0)
-        """, fetch_one=True)[0]
+        """, fetch_one=True, dict_cursor=True)
+        estoque_baixo = r['total']
         
         # Movimentações no mês
-        mov_mes = executar_query("""
-            SELECT COUNT(*) FROM movimentacoes_estoque 
+        r = executar_query("""
+            SELECT COUNT(*) AS total FROM movimentacoes_estoque 
             WHERE EXTRACT(MONTH FROM data_movimento) = EXTRACT(MONTH FROM CURRENT_DATE)
-        """, fetch_one=True)[0]
+        """, fetch_one=True, dict_cursor=True)
+        mov_mes = r['total']
         
         return {
             'total_produtos': total_produtos or 0,

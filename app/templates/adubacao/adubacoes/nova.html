@@ -43,6 +43,28 @@
                     <div class="col-md-6 mb-3"><label class="form-label">Data *</label><input type="date" name="data_aplicacao" class="form-control" required></div>
                     <div class="col-md-6 mb-3"><label class="form-label">Responsável</label><input type="text" name="responsavel" class="form-control"></div>
                 </div>
+                <div class="card border mb-3">
+                    <div class="card-header py-2"><h6 class="mb-0">Produto utilizado</h6></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-2"><label class="form-label">Produto</label><input type="text" name="produto_nome" class="form-control" placeholder="Ex: Ureia"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Quantidade</label><input type="number" step="any" name="produto_quantidade" class="form-control"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Unidade</label><input type="text" name="produto_unidade" class="form-control" placeholder="kg"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Custo unit.</label><input type="number" step="any" name="custo_unitario" class="form-control"></div>
+                            <div class="col-md-2 mb-2"><label class="form-label">Fornecedor</label><input type="text" name="fornecedor" class="form-control"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card border mb-3">
+                    <div class="card-header py-2"><h6 class="mb-0">Nutriente aplicado</h6></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-2"><label class="form-label">Nutriente</label><input type="text" name="nutriente" class="form-control" placeholder="Ex: N"></div>
+                            <div class="col-md-4 mb-2"><label class="form-label">Quantidade aplicada</label><input type="number" step="any" name="quantidade_aplicada" class="form-control"></div>
+                            <div class="col-md-4 mb-2"><label class="form-label">Unidade</label><input type="text" name="unidade_nutriente" class="form-control" placeholder="kg/ha"></div>
+                        </div>
+                    </div>
+                </div>
                 <div class="mb-3"><label class="form-label">Observações</label><textarea name="observacoes" class="form-control" rows="2"></textarea></div>
                 <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Registrar</button>
                 <a href="{{ url_for('adubacao.listar_adubacoes') }}" class="btn btn-outline-secondary">Cancelar</a>

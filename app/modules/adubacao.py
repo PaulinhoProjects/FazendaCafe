@@ -127,8 +127,8 @@ def inserir_recomendacao(dados):
             (dados['talhao_id'], dados.get('analise_id'), dados['data_recomendacao'],
              dados.get('data_validade'), dados.get('responsavel'), dados.get('observacoes'),
              dados.get('status', 'Pendente')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir recomendação: {e}")
         return None
@@ -144,8 +144,8 @@ def inserir_item_recomendacao(dados):
         resultado = executar_query(query,
             (dados['recomendacao_id'], dados['nutriente'], dados['quantidade'],
              dados['unidade'], dados.get('fonte'), dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir item: {e}")
         return None
@@ -278,8 +278,8 @@ def inserir_adubacao(dados):
         resultado = executar_query(query,
             (dados['talhao_id'], dados['recomendacao_id'], dados['tipo_adubacao_id'],
              dados['data_aplicacao'], dados.get('responsavel'), dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir adubação: {e}")
         return None
@@ -296,8 +296,8 @@ def inserir_produto_adubacao(dados):
             (dados['adubacao_id'], dados['produto_nome'], dados['quantidade'],
              dados['unidade'], dados.get('custo_unitario'), dados.get('fornecedor'),
              dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir produto: {e}")
         return None
@@ -311,8 +311,8 @@ def inserir_nutriente_aplicado(dados):
     try:
         resultado = executar_query(query,
             (dados['adubacao_id'], dados['nutriente'], dados['quantidade_aplicada'], dados['unidade']),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir nutriente: {e}")
         return None
@@ -435,7 +435,8 @@ def excluir_recomendacao(id):
     """Exclui uma recomendação (itens serão excluídos automaticamente por CASCADE)"""
     try:
         # Verificar se há adubações vinculadas
-        count = executar_query("SELECT COUNT(*) FROM adubacoes WHERE recomendacao_id = %s", (id,), fetch_one=True)[0]
+        r = executar_query("SELECT COUNT(*) AS total FROM adubacoes WHERE recomendacao_id = %s", (id,), fetch_one=True, dict_cursor=True)
+        count = r['total']
         if count > 0:
             print(f"Recomendação {id} já foi aplicada em {count} adubação(ões)")
             return False, "Esta recomendação já foi aplicada e não pode ser excluída"

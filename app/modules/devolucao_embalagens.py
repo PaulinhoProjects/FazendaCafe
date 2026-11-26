@@ -99,8 +99,8 @@ def inserir_devolucao(dados, arquivo_pdf=None):
              dados['quantidade_embalagens'], dados.get('nome_responsavel'),
              dados.get('numero_comprovante'), arquivo_pdf, 
              dados.get('observacoes')),
-            fetch_one=True)
-        return resultado[0] if resultado else None
+            fetch_one=True, dict_cursor=True)
+        return resultado['id'] if resultado else None
     except Exception as e:
         print(f"Erro ao inserir devolução: {e}")
         return None
@@ -121,30 +121,34 @@ def get_resumo_devolucoes():
     """Retorna resumo estatístico das devoluções"""
     try:
         # Total de devoluções
-        total = executar_query(
-            "SELECT COUNT(*) FROM devolucao_embalagens WHERE ativo = TRUE",
-            fetch_one=True
-        )[0]
+        r = executar_query(
+            "SELECT COUNT(*) AS total FROM devolucao_embalagens WHERE ativo = TRUE",
+            fetch_one=True, dict_cursor=True
+        )
+        total = r['total']
         
         # Total de embalagens devolvidas
-        total_embalagens = executar_query(
-            "SELECT COALESCE(SUM(quantidade_embalagens), 0) FROM devolucao_embalagens WHERE ativo = TRUE",
-            fetch_one=True
-        )[0]
+        r = executar_query(
+            "SELECT COALESCE(SUM(quantidade_embalagens), 0) AS total FROM devolucao_embalagens WHERE ativo = TRUE",
+            fetch_one=True, dict_cursor=True
+        )
+        total_embalagens = r['total']
         
         # Locais de coleta (distintos)
-        locais = executar_query(
-            "SELECT COUNT(DISTINCT local_devolucao) FROM devolucao_embalagens WHERE ativo = TRUE",
-            fetch_one=True
-        )[0]
+        r = executar_query(
+            "SELECT COUNT(DISTINCT local_devolucao) AS total FROM devolucao_embalagens WHERE ativo = TRUE",
+            fetch_one=True, dict_cursor=True
+        )
+        locais = r['total']
         
         # Devoluções no mês atual
-        dev_mes = executar_query("""
-            SELECT COUNT(*) FROM devolucao_embalagens 
+        r = executar_query("""
+            SELECT COUNT(*) AS total FROM devolucao_embalagens 
             WHERE ativo = TRUE 
             AND EXTRACT(MONTH FROM data_devolucao) = EXTRACT(MONTH FROM CURRENT_DATE)
             AND EXTRACT(YEAR FROM data_devolucao) = EXTRACT(YEAR FROM CURRENT_DATE)
-        """, fetch_one=True)[0]
+        """, fetch_one=True, dict_cursor=True)
+        dev_mes = r['total']
         
         return {
             'total_devolucoes': total or 0,

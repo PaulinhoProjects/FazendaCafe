@@ -14,7 +14,7 @@
                     <table class="table table-borderless">
                         <tr><th style="width:200px">Talhão</th><td>{{ analise.talhao_nome }}</td></tr>
                         <tr><th>Tipo</th><td>{{ analise.tipo_nome }}</td></tr>
-                        <tr><th>Laboratório</th><td>{{ analise.lab_nome or '-' }}</td></tr>
+                        <tr><th>Laboratório</th><td>{{ analise.laboratorio_nome or '-' }}</td></tr>
                         <tr><th>Data Coleta</th><td>{{ analise.data_coleta|format_data if analise.data_coleta else '-' }}</td></tr>
                         <tr><th>Data Resultado</th><td>{{ analise.data_resultado|format_data if analise.data_resultado else 'Pendente' }}</td></tr>
                         <tr><th>Protocolo</th><td>{{ analise.numero_protocolo or '-' }}</td></tr>

@@ -92,49 +92,49 @@ def get_resumo_manejo():
     # Pulverizacoes no ano
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) FROM aplicacoes_pulverizacao
+            SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao
             WHERE EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
-        """, fetch_one=True)
-        resumo['pulverizacoes_ano'] = resultado[0] if resultado and resultado[0] else 0
+        """, fetch_one=True, dict_cursor=True)
+        resumo['pulverizacoes_ano'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['pulverizacoes_ano'] = 0
 
     # Adubacoes no ano
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) FROM adubacoes
+            SELECT COUNT(*) AS total FROM adubacoes
             WHERE EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
-        """, fetch_one=True)
-        resumo['adubacoes_ano'] = resultado[0] if resultado and resultado[0] else 0
+        """, fetch_one=True, dict_cursor=True)
+        resumo['adubacoes_ano'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['adubacoes_ano'] = 0
 
     # Analises pendentes
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) FROM analises
+            SELECT COUNT(*) AS total FROM analises
             WHERE data_resultado IS NULL AND ativo = TRUE
-        """, fetch_one=True)
-        resumo['analises_pendentes'] = resultado[0] if resultado and resultado[0] else 0
+        """, fetch_one=True, dict_cursor=True)
+        resumo['analises_pendentes'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['analises_pendentes'] = 0
 
     # Retornos pendentes/atrasados
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) FROM aplicacoes_pulverizacao
+            SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao
             WHERE status_retorno IN ('pendente', 'atrasado')
-        """, fetch_one=True)
-        resumo['retornos_pendentes'] = resultado[0] if resultado and resultado[0] else 0
+        """, fetch_one=True, dict_cursor=True)
+        resumo['retornos_pendentes'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['retornos_pendentes'] = 0
 
     # Pragas ativas
     try:
         resultado = executar_query("""
-            SELECT COUNT(DISTINCT praga_doenca_id) FROM ocorrencias_pragas
-        """, fetch_one=True)
-        resumo['pragas_ativas'] = resultado[0] if resultado and resultado[0] else 0
+            SELECT COUNT(DISTINCT praga_doenca_id) AS total FROM ocorrencias_pragas
+        """, fetch_one=True, dict_cursor=True)
+        resumo['pragas_ativas'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:
         resumo['pragas_ativas'] = 0
 
