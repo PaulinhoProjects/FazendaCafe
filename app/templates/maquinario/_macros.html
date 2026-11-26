@@ -1,0 +1,87 @@
+{# Componentes visuais do módulo Maquinário — mesmo padrão do restante do Kaldi #}
+
+{# Número no formato brasileiro: 1.234,56 #}
+{% macro num(valor, casas=2) -%}
+{{ ('{:,.' ~ casas ~ 'f}').format((valor or 0)|float).replace(',', '#').replace('.', ',').replace('#', '.') }}
+{%- endmacro %}
+
+{# Valor em reais: R$ 1.234,56 #}
+{% macro brl(valor, casas=2) -%}
+R$ {{ num(valor, casas) }}
+{%- endmacro %}
+
+{# Data dd/mm/aaaa (aceita date, datetime ou vazio) #}
+{% macro data(valor) -%}
+{{ valor|format_data if valor else '—' }}
+{%- endmacro %}
+
+{# Card de indicador (stat-card). link opcional deixa o card clicável #}
+{% macro kpi(icone, cor, rotulo, valor, meta=none, link=none, classe_valor='') -%}
+{% if link %}<a class="stat-card stat-card-link" href="{{ link }}">{% else %}<div class="stat-card">{% endif %}
+    <div class="stat-icon bg-{{ cor }}-soft"><i class="bi {{ icone }}"></i></div>
+    <div class="stat-info">
+        <div class="stat-label">{{ rotulo }}</div>
+        <div class="stat-value {{ classe_valor }}">{{ valor }}</div>
+        {% if meta %}<div class="stat-meta">{{ meta }}</div>{% endif %}
+    </div>
+{% if link %}</a>{% else %}</div>{% endif %}
+{%- endmacro %}
+
+{# Linha de tabela vazia com o estado vazio padrão #}
+{% macro linha_vazia(colunas, icone, titulo, texto=none, acao_url=none, acao_texto=none) -%}
+<tr class="linha-vazia">
+    <td colspan="{{ colunas }}">
+        <div class="empty-state">
+            <i class="bi {{ icone }}"></i>
+            <h6 class="mb-1">{{ titulo }}</h6>
+            {% if texto %}<p>{{ texto }}</p>{% endif %}
+            {% if acao_url %}<a href="{{ acao_url }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>{{ acao_texto }}</a>{% endif %}
+        </div>
+    </td>
+</tr>
+{%- endmacro %}
+
+{# Status de pagamento da entrega de diesel #}
+{% macro status_pagamento(situacao) -%}
+{% set cores = {'pago': 'success', 'vencido': 'danger'} %}
+{% set icones = {'pago': 'bi-check-circle', 'vencido': 'bi-exclamation-octagon'} %}
+<span class="badge bg-{{ cores.get(situacao, 'warning') }}"><i class="bi {{ icones.get(situacao, 'bi-clock') }} me-1"></i>{{ (situacao or 'pendente')|title }}</span>
+{%- endmacro %}
+
+{# Botões de ação padrão das tabelas #}
+{% macro botao_editar(url) -%}
+<a href="{{ url }}" class="btn btn-sm btn-outline-secondary" title="Editar" aria-label="Editar"><i class="bi bi-pencil"></i></a>
+{%- endmacro %}
+
+{% macro botao_excluir(nome, url) -%}
+{% if session.get('tipo') == 'admin' %}
+<button type="button" class="btn btn-sm btn-outline-danger" title="Excluir" aria-label="Excluir"
+    onclick="confirmarExclusaoGlobal({{ nome|tojson|forceescape }}, {{ url|tojson|forceescape }})"><i class="bi bi-trash"></i></button>
+{% endif %}
+{%- endmacro %}
+
+{# Cabeçalho dos formulários: título, subtítulo e voltar #}
+{% macro cabecalho_form(icone, titulo, subtitulo, voltar_url) -%}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi {{ icone }} me-2"></i>{{ titulo }}</h1>
+        <p class="page-subtitle">{{ subtitulo }}</p>
+    </div>
+    <a href="{{ voltar_url }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+</div>
+{%- endmacro %}
+
+{# Título de seção dentro de formulário #}
+{% macro secao(icone, titulo, primeira=false) -%}
+<div class="col-12{% if not primeira %} pt-2{% endif %}">
+    <div class="maq-secao"><i class="bi {{ icone }}"></i>{{ titulo }}</div>
+</div>
+{%- endmacro %}
+
+{# Rodapé do formulário #}
+{% macro rodape_form(cancelar_url, texto='Salvar') -%}
+<div class="maq-form-rodape">
+    <a href="{{ cancelar_url }}" class="btn btn-outline-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{{ texto }}</button>
+</div>
+{%- endmacro %}

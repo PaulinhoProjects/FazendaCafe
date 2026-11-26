@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Entregas de Diesel — Maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -7,44 +8,66 @@
 <li class="breadcrumb-item active">Entregas</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-truck me-2"></i>Entregas de Diesel S10</h1>
         <p class="page-subtitle">Quantidade, valor por litro, pagamento e boleto com lembrete</p>
     </div>
-    <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova entrega</a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('maquinario.combustivel') }}" class="btn btn-outline-secondary"><i class="bi bi-bar-chart-line me-1"></i>Comparativo ANP</a>
+        <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova entrega</a>
+    </div>
 </div>
 
-<div class="card shadow-sm border-0">
+{% include 'maquinario/_nav.html' %}
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-receipt me-2"></i>Entregas</h6>
+            <small class="text-body-secondary">{{ abastecimentos|length }} registro(s)</small>
+        </div>
+        <div class="maq-filtro">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control form-control-sm" placeholder="Filtrar entregas..." data-filtra="tabelaAbastecimentos" aria-label="Filtrar entregas">
+        </div>
+    </div>
     <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle" id="tabelaAbastecimentos">
-            <thead class="table-light">
-                <tr><th>Data</th><th>Máquina</th><th>Fornecedor</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Boleto</th><th>Vencimento</th><th>Status</th><th></th></tr>
+        <table class="table table-hover mb-0 align-middle" id="tabelaAbastecimentos">
+            <thead>
+                <tr><th>Data</th><th>Fornecedor</th><th>Máquina</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Boleto</th><th>Status</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             {% for a in abastecimentos %}
+            {% set prazo = a.vencimento or a.lembrete_em %}
             <tr>
-                <td>{{ a.data_abastecimento }}</td>
+                <td class="text-nowrap tabular">{{ ui.data(a.data_abastecimento) }}</td>
+                <td class="fw-semibold">{{ a.fornecedor or '—' }}</td>
                 <td>{{ a.maquina_nome or '—' }}</td>
-                <td>{{ a.fornecedor or '—' }}</td>
-                <td class="text-end">{{ '%.2f'|format(a.quantidade_litros or 0) }}</td>
-                <td class="text-end">{{ '%.3f'|format(a.valor_litro or 0) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(a.valor_total or 0) }}</td>
-                <td>{{ a.boleto or '—' }}</td>
-                <td>{{ a.vencimento or a.lembrete_em or '—' }}</td>
-                <td><span class="badge bg-{{ 'success' if a.situacao == 'pago' else ('danger' if a.situacao == 'vencido' else 'warning') }}">{{ a.situacao|title }}</span></td>
-                <td class="text-nowrap">
-                    {% if not a.pago %}<form class="d-inline" method="POST" action="{{ url_for('maquinario.abastecimento_pagar', id=a.id) }}"><button class="btn btn-sm btn-outline-success" title="Registrar pagamento"><i class="bi bi-cash-check"></i></button></form>{% endif %}
-                    <a href="{{ url_for('maquinario.abastecimento_editar', id=a.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                    {% if session.get('tipo') == 'admin' %}
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('entrega de {{ a.fornecedor or a.data_abastecimento }}', '{{ url_for('maquinario.abastecimento_excluir', id=a.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                <td class="text-end text-nowrap tabular">{{ ui.num(a.quantidade_litros) }}</td>
+                <td class="text-end text-nowrap tabular">{{ ui.num(a.valor_litro, 3) }}</td>
+                <td class="text-end text-nowrap tabular fw-semibold">{{ ui.brl(a.valor_total) }}</td>
+                <td>
+                    {% if a.boleto or prazo %}
+                    <span class="d-block small text-truncate" style="max-width: 12rem">{{ a.boleto or '—' }}</span>
+                    {% if prazo %}<small class="text-body-secondary tabular">vence {{ ui.data(prazo) }}</small>{% endif %}
+                    {% else %}<span class="text-body-tertiary">—</span>{% endif %}
+                </td>
+                <td>{{ ui.status_pagamento(a.situacao) }}</td>
+                <td class="text-end text-nowrap">
+                    {% if not a.pago %}
+                    <form class="d-inline" method="POST" action="{{ url_for('maquinario.abastecimento_pagar', id=a.id) }}">
+                        <button class="btn btn-sm btn-outline-success" title="Marcar como pago" aria-label="Marcar como pago"><i class="bi bi-check2-circle"></i></button>
+                    </form>
                     {% endif %}
+                    {{ ui.botao_editar(url_for('maquinario.abastecimento_editar', id=a.id)) }}
+                    {{ ui.botao_excluir('entrega de ' ~ (a.fornecedor or ui.data(a.data_abastecimento)), url_for('maquinario.abastecimento_excluir', id=a.id)) }}
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="10" class="text-center text-muted py-4">Nenhuma entrega registrada.</td></tr>
+            {{ ui.linha_vazia(9, 'bi-truck', 'Nenhuma entrega registrada',
+                              'Registre cada entrega de diesel para comparar com o preço da ANP.',
+                              url_for('maquinario.abastecimento_novo'), 'Registrar entrega') }}
             {% endfor %}
             </tbody>
         </table>
@@ -53,6 +76,6 @@
 {% endblock %}
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+{% include 'maquinario/_tabela_js.html' %}
 <script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaAbastecimentos', 20); });</script>
 {% endblock %}

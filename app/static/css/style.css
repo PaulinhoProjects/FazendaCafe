@@ -2237,3 +2237,131 @@ h1, h2, h3, h4, h5, h6,
     .card { box-shadow: none !important; break-inside: avoid; }
     body { background: #fff; }
 }
+
+/* -------------------------------------------------------------------------
+   MÓDULO MAQUINÁRIO
+   ------------------------------------------------------------------------- */
+.maq-abas { overflow-x: auto; scrollbar-width: none; }
+.maq-abas::-webkit-scrollbar { display: none; }
+
+/* Grades de indicadores do módulo (4 ou 5 cards por linha, sem sobras) */
+.kpi-grid.maq-kpis, .kpi-grid.maq-kpis-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-grid.maq-kpis > *, .kpi-grid.maq-kpis-5 > * { grid-column: auto !important; }
+.kpi-grid.maq-kpis-5 > :last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
+.kpi-grid.maq-kpis-5 .stat-value { white-space: nowrap; }
+@media (min-width: 1200px) {
+    .kpi-grid.maq-kpis-5 .stat-card { flex-direction: column; gap: 0.7rem; }
+    .kpi-grid.maq-kpis-5 .stat-value { font-size: 1.45rem; }
+}
+.maq-frota-item, .maq-alerta { background: transparent; }
+.maq-frota-item:hover, .maq-alerta:hover { background: var(--surface-2); }
+@media (min-width: 1200px) {
+    .kpi-grid.maq-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .kpi-grid.maq-kpis-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .kpi-grid.maq-kpis-5 > :last-child:nth-child(odd) { grid-column: auto !important; }
+}
+
+/* Busca dentro do cabeçalho do card */
+.maq-filtro { position: relative; width: 220px; max-width: 100%; }
+.maq-filtro i { position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 0.8rem; pointer-events: none; }
+.maq-filtro input { padding-left: 1.9rem; }
+@media (max-width: 575.98px) {
+    .card-header-split:has(.maq-filtro) { flex-wrap: wrap; }
+    .maq-filtro { width: 100%; }
+}
+
+/* Linhas vazias e paginação dentro dos cards */
+.table tr.linha-vazia > td { border-bottom: 0; background: transparent !important; box-shadow: none !important; }
+.table tr.linha-vazia .empty-state { padding: 2.25rem 1rem; }
+.table-responsive > .paginacao { margin: 0 !important; padding: 0.7rem 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-2); }
+.maq-linha-destaque > td { background: var(--primary-50) !important; }
+
+/* Alertas do painel */
+.maq-alerta { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1rem; }
+.maq-alerta-icone {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--warning-50); color: var(--warning);
+}
+.maq-alerta-danger .maq-alerta-icone { background: var(--danger-50); color: var(--danger); }
+.min-w-0 { min-width: 0; }
+
+/* Lista da frota */
+.maq-frota-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1rem; }
+.maq-frota-icone {
+    width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--primary-50); color: var(--primary-text); font-size: 1.05rem;
+}
+.maq-nome-link { display: inline-flex; align-items: center; gap: 0.7rem; color: inherit; text-decoration: none; }
+.maq-nome-link:hover strong { color: var(--primary-text); text-decoration: underline; text-underline-offset: 3px; }
+.maq-nome-link .maq-frota-icone { width: 34px; height: 34px; font-size: 0.95rem; }
+
+/* Atalhos de registro */
+.maq-atalhos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.maq-atalho {
+    display: grid; grid-template-columns: auto 1fr; column-gap: 0.75rem; align-items: center;
+    padding: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text); text-decoration: none; background: var(--surface);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.maq-atalho:hover { color: var(--text); border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.maq-atalho i {
+    grid-row: span 2; width: 38px; height: 38px; border-radius: 11px;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem;
+}
+.maq-atalho span { font-weight: 600; font-size: 0.875rem; line-height: 1.2; }
+.maq-atalho small { color: var(--text-3); font-size: 0.75rem; }
+
+/* Lista de valores (rótulo à esquerda, valor à direita) */
+.maq-resumo > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px dashed var(--border); }
+.maq-resumo > div:last-child { border-bottom: 0; }
+.maq-resumo dt { font-weight: 500; color: var(--text-2); font-size: 0.85rem; }
+.maq-resumo dd { margin: 0; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+.maq-resumo-alerta dt, .maq-resumo-alerta dd { color: var(--danger); }
+.maq-nota { padding: 0.75rem 0.9rem; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-2); font-size: 0.85rem; border: 1px solid var(--border); }
+
+/* Comparativo do diesel */
+.maq-veredito-valor { margin-bottom: 1rem; }
+.maq-veredito-valor small { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+.maq-veredito-valor strong { font-family: var(--font-display, inherit); font-size: 2rem; font-weight: 800; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.maq-veredito-bom .maq-veredito-valor strong { color: var(--success); }
+.maq-veredito-ruim .maq-veredito-valor strong { color: var(--danger); }
+.maq-veredito-bom { border-top: 3px solid var(--success); }
+.maq-veredito-ruim { border-top: 3px solid var(--danger); }
+
+/* Barras por categoria */
+.maq-barras { display: flex; flex-direction: column; gap: 1rem; }
+.maq-barra { height: 8px; border-radius: 999px; background: var(--surface-3); margin: 0.35rem 0 0.2rem; overflow: hidden; }
+.maq-barra span { display: block; height: 100%; min-width: 4px; border-radius: 999px; background: var(--primary); }
+
+/* Formulários */
+.maq-secao {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-3); padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
+}
+.maq-secao i { color: var(--primary-text); font-size: 0.9rem; }
+.maq-form .card-footer { background: var(--surface-2); border-top: 1px solid var(--border); padding: 0.85rem 1.5rem; }
+.maq-form-rodape { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+/* Escolha de entrada/saída */
+.maq-tipo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.maq-tipo-opcao {
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; cursor: pointer;
+    border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
+    transition: border-color .15s ease, background .15s ease;
+}
+.maq-tipo-opcao i { font-size: 1.3rem; color: var(--text-3); }
+.maq-tipo-opcao strong { display: block; font-size: 0.9rem; }
+.maq-tipo-opcao small { color: var(--text-3); font-size: 0.75rem; }
+.btn-check:checked + .maq-tipo-opcao { border-color: var(--primary); background: var(--primary-50); box-shadow: 0 0 0 1px var(--primary); }
+.btn-check:checked + .maq-tipo-opcao i { color: var(--primary-text); }
+.btn-check:focus-visible + .maq-tipo-opcao { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Ícone dentro de botão no estado vazio não herda o "selo" grande */
+.empty-state .btn i {
+    width: auto; height: auto; margin: 0 0.25rem 0 0; padding: 0;
+    background: none; box-shadow: none; border-radius: 0;
+    display: inline; font-size: inherit; color: inherit;
+}

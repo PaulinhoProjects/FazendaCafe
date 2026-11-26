@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Estoque de maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -6,53 +7,65 @@
 <li class="breadcrumb-item active">Estoque</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
+{% set resumo = resumo or {} %}
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Estoque de maquinário</h1>
-        <p class="page-subtitle">Peças, óleos, filtros e materiais — separado do estoque de insumos</p>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Estoque da oficina</h1>
+        <p class="page-subtitle">Peças, óleos, filtros e materiais da oficina — separado do estoque de insumos</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('maquinario.movimentacoes') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-right me-1"></i>Movimentações</a>
-        <a href="{{ url_for('maquinario.produto_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Novo item</a>
+        <a href="{{ url_for('maquinario.movimentacoes') }}" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1"></i>Movimentações</a>
+        <a href="{{ url_for('maquinario.movimentacao_nova') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right me-1"></i>Entrada/saída</a>
+        <a href="{{ url_for('maquinario.produto_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo item</a>
     </div>
 </div>
 
+{% include 'maquinario/_nav.html' %}
+
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Itens ativos</div><div class="stat-value">{{ resumo.total or 0 }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Abaixo do mínimo</div><div class="stat-value text-warning">{{ resumo.baixos or 0 }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Movimentações em 30 dias</div><div class="stat-value">{{ resumo.movimentacoes_30d or 0 }}</div></div></div>
+    <div class="col-md-4">{{ ui.kpi('bi-box-seam', 'primary', 'Itens ativos', resumo.total or 0, 'Peças, óleos e filtros') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-exclamation-triangle', 'warning' if resumo.baixos else 'success', 'Abaixo do mínimo', resumo.baixos or 0,
+                                    'Precisam de reposição' if resumo.baixos else 'Estoque em dia') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-arrow-left-right', 'info', 'Movimentações', resumo.movimentacoes_30d or 0, 'Nos últimos 30 dias', url_for('maquinario.movimentacoes')) }}</div>
 </div>
 
-<div class="card shadow-sm border-0">
+<div class="card">
     <div class="card-header card-header-split">
-        <div><i class="bi bi-list-ul me-2"></i><strong>Itens</strong></div>
-        <span class="text-muted small">Use a busca da tabela para filtrar</span>
+        <div>
+            <h6><i class="bi bi-list-ul me-2"></i>Itens da oficina</h6>
+            <small class="text-body-secondary">Saldo atual e ponto de reposição</small>
+        </div>
+        <div class="maq-filtro">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control form-control-sm" placeholder="Filtrar itens..." data-filtra="tabelaMaqEstoque" aria-label="Filtrar itens">
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" id="tabelaMaqEstoque">
-            <thead class="table-light">
+            <thead>
                 <tr><th>Item</th><th>Categoria</th><th class="text-end">Saldo</th><th class="text-end">Mínimo</th><th>Local</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             {% for p in produtos %}
-                {% set baixo = p.estoque_minimo and p.quantidade_atual <= p.estoque_minimo %}
+                {% set baixo = p.estoque_minimo and (p.quantidade_atual or 0) <= p.estoque_minimo %}
                 <tr>
-                    <td><strong>{{ p.nome }}</strong>{% if baixo %} <span class="badge bg-warning text-dark">baixo</span>{% endif %}</td>
-                    <td>{{ p.categoria or '—' }}</td>
-                    <td class="text-end">{{ '%.2f'|format(p.quantidade_atual or 0) }} {{ p.unidade or '' }}</td>
-                    <td class="text-end">{{ '%.2f'|format(p.estoque_minimo or 0) }}</td>
+                    <td>
+                        <span class="fw-semibold">{{ p.nome }}</span>
+                        {% if baixo %}<span class="badge bg-warning text-dark ms-1"><i class="bi bi-arrow-down me-1"></i>Repor</span>{% endif %}
+                    </td>
+                    <td>{% if p.categoria %}<span class="badge bg-light text-dark border">{{ p.categoria }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-end text-nowrap tabular {{ 'text-warning fw-semibold' if baixo else '' }}">{{ ui.num(p.quantidade_atual) }} <small class="text-body-secondary">{{ p.unidade or '' }}</small></td>
+                    <td class="text-end text-nowrap tabular text-body-secondary">{{ ui.num(p.estoque_minimo) }}</td>
                     <td>{{ p.local_armazenagem or '—' }}</td>
                     <td class="text-end text-nowrap">
-                        <a href="{{ url_for('maquinario.produto_editar', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
-                        {% if session.get('tipo') == 'admin' %}
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('{{ p.nome }}', '{{ url_for('maquinario.produto_excluir', id=p.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
-                        {% endif %}
+                        {{ ui.botao_editar(url_for('maquinario.produto_editar', id=p.id)) }}
+                        {{ ui.botao_excluir(p.nome, url_for('maquinario.produto_excluir', id=p.id)) }}
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum item cadastrado.</td></tr>
+                {{ ui.linha_vazia(6, 'bi-box-seam', 'Nenhum item cadastrado',
+                                  'Cadastre peças, óleos e filtros usados na oficina.',
+                                  url_for('maquinario.produto_novo'), 'Cadastrar item') }}
             {% endfor %}
             </tbody>
         </table>
@@ -61,6 +74,6 @@
 {% endblock %}
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+{% include 'maquinario/_tabela_js.html' %}
 <script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaMaqEstoque', 20); });</script>
 {% endblock %}

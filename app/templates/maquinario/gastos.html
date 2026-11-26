@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Gastos com maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -6,72 +7,101 @@
 <li class="breadcrumb-item active">Gastos</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
+{% set resumo = resumo or {} %}
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-cash-coin me-2"></i>Gastos com maquinário</h1>
-        <p class="page-subtitle">Registro de reparos, peças e serviços para apurar o gasto real</p>
+        <p class="page-subtitle">Reparos, peças e serviços para apurar o custo real da frota</p>
     </div>
-    <a href="{{ url_for('maquinario.gasto_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Novo gasto</a>
+    <a href="{{ url_for('maquinario.gasto_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo gasto</a>
 </div>
+
+{% include 'maquinario/_nav.html' %}
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Total acumulado</div><div class="stat-value">R$ {{ '%.2f'|format(resumo.valor or 0) }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Gasto no mês</div><div class="stat-value">R$ {{ '%.2f'|format(resumo.mes_atual or 0) }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Lançamentos</div><div class="stat-value">{{ resumo.total or 0 }}</div></div></div>
+    <div class="col-md-4">{{ ui.kpi('bi-calendar-month', 'danger', 'Gasto no mês', ui.brl(resumo.mes_atual), 'Mês atual') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-cash-stack', 'primary', 'Total acumulado', ui.brl(resumo.valor), 'Todos os lançamentos') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-receipt', 'info', 'Lançamentos', resumo.total or 0, 'Registros ativos') }}</div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header"><i class="bi bi-pie-chart me-2"></i><strong>Por categoria</strong></div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0"><thead class="table-light"><tr><th>Categoria</th><th class="text-end">Lançamentos</th><th class="text-end">Total</th><th class="text-end">Participação</th></tr></thead><tbody>
-        {% for c in resumo.por_categoria or [] %}
-        <tr>
-            <td>{{ c.categoria or 'Outros' }}</td>
-            <td class="text-end">{{ c.quantidade or 0 }}</td>
-            <td class="text-end">R$ {{ '%.2f'|format(c.total or 0) }}</td>
-            <td class="text-end">{{ '%.1f'|format((c.total or 0) / (resumo.valor or 1) * 100) }}%</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Nenhum gasto lançado.</td></tr>
-        {% endfor %}
-        </tbody></table>
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Por categoria</h6></div>
+            <div class="card-body">
+                {% set categorias_resumo = resumo.por_categoria or [] %}
+                {% if categorias_resumo %}
+                <ul class="maq-barras list-unstyled mb-0">
+                    {% for c in categorias_resumo %}
+                    {% set pct = ((c.total or 0) / (resumo.valor or 1) * 100) %}
+                    <li>
+                        <div class="d-flex justify-content-between gap-2 small">
+                            <span class="fw-medium text-truncate">{{ c.categoria or 'Outros' }}</span>
+                            <span class="tabular text-nowrap">{{ ui.brl(c.total) }}</span>
+                        </div>
+                        <div class="maq-barra" role="img" aria-label="{{ ui.num(pct, 1) }}% do total"><span style="width: {{ '%.1f'|format(pct) }}%"></span></div>
+                        <small class="text-body-secondary tabular">{{ c.quantidade or 0 }} lançamento(s) · {{ ui.num(pct, 1) }}%</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-pie-chart"></i>
+                    <h6 class="mb-1">Sem gastos lançados</h6>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle" id="tabelaGastos">
-            <thead class="table-light">
-                <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Máquina</th><th>Local da compra</th><th class="text-end">Valor</th><th></th></tr>
-            </thead>
-            <tbody>
-            {% for g in gastos %}
-            <tr>
-                <td>{{ g.data_gasto }}</td>
-                <td><strong>{{ g.descricao }}</strong>{% if g.nota_fiscal %}<div class="small text-muted">NF {{ g.nota_fiscal }}</div>{% endif %}</td>
-                <td>{{ g.categoria or '—' }}</td>
-                <td>{{ g.maquina_nome or '—' }}</td>
-                <td>{{ g.local_compra or g.fornecedor or '—' }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(g.valor or 0) }}</td>
-                <td class="text-nowrap">
-                    <a href="{{ url_for('maquinario.gasto_editar', id=g.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                    {% if session.get('tipo') == 'admin' %}
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('gasto {{ g.descricao }}', '{{ url_for('maquinario.gasto_excluir', id=g.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
-                    {% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Nenhum gasto registrado.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    <div class="col-xl-8">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-list-ul me-2"></i>Lançamentos</h6>
+                    <small class="text-body-secondary">Mais recentes primeiro</small>
+                </div>
+                <div class="maq-filtro">
+                    <i class="bi bi-search"></i>
+                    <input type="search" class="form-control form-control-sm" placeholder="Filtrar gastos..." data-filtra="tabelaGastos" aria-label="Filtrar gastos">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle" id="tabelaGastos">
+                    <thead>
+                        <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Máquina</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for g in gastos %}
+                    <tr>
+                        <td class="text-nowrap tabular">{{ ui.data(g.data_gasto) }}</td>
+                        <td>
+                            <span class="fw-semibold">{{ g.descricao }}</span>
+                            {% if g.local_compra or g.fornecedor or g.nota_fiscal %}
+                            <small class="d-block text-body-secondary">{{ [g.local_compra or g.fornecedor, ('NF ' ~ g.nota_fiscal) if g.nota_fiscal else none]|select|join(' · ') }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{% if g.categoria %}<span class="badge bg-light text-dark border">{{ g.categoria }}</span>{% else %}—{% endif %}</td>
+                        <td>{{ g.maquina_nome or '—' }}</td>
+                        <td class="text-end text-nowrap tabular fw-semibold">{{ ui.brl(g.valor) }}</td>
+                        <td class="text-end text-nowrap">
+                            {{ ui.botao_editar(url_for('maquinario.gasto_editar', id=g.id)) }}
+                            {{ ui.botao_excluir('gasto ' ~ g.descricao, url_for('maquinario.gasto_excluir', id=g.id)) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    {{ ui.linha_vazia(6, 'bi-receipt', 'Nenhum gasto registrado',
+                                      'Lance reparos, peças e serviços para saber quanto custa cada máquina.',
+                                      url_for('maquinario.gasto_novo'), 'Lançar gasto') }}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+{% include 'maquinario/_tabela_js.html' %}
 <script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaGastos', 20); });</script>
 {% endblock %}

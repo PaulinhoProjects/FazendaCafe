@@ -1,0 +1,25 @@
+<script>
+/* Filtro rápido das tabelas do maquinário: <input data-filtra="idDaTabela"> */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[data-filtra]').forEach(function (campo) {
+        var tabela = document.getElementById(campo.dataset.filtra);
+        if (!tabela) return;
+        var linhas = Array.from(tabela.querySelectorAll('tbody tr:not(.linha-vazia)'));
+        if (!linhas.length) { campo.disabled = true; return; }
+        campo.addEventListener('input', function () {
+            var termo = campo.value.trim().toLowerCase();
+            var barra = tabela.parentElement.querySelector('.paginacao');
+            if (!termo) {
+                if (barra) barra.classList.remove('d-none');
+                linhas.forEach(function (l) { l.style.display = ''; });
+                paginarTabela(tabela.id, 20);
+                return;
+            }
+            if (barra) barra.classList.add('d-none');
+            linhas.forEach(function (l) {
+                l.style.display = l.textContent.toLowerCase().indexOf(termo) >= 0 ? '' : 'none';
+            });
+        });
+    });
+});
+</script>

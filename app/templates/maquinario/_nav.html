@@ -1,23 +1,18 @@
-{% set caminho = request.path %}
-<ul class="nav nav-tabs mb-4" role="tablist">
-    <li class="nav-item">
-        <a class="nav-link {% if caminho.rstrip('/') == url_for('maquinario.dashboard').rstrip('/') %}active{% endif %}"
-           href="{{ url_for('maquinario.dashboard') }}"><i class="bi bi-grid me-1"></i>Visão geral</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if '/maquinario/estoque' in caminho or '/maquinario/movimentacoes' in caminho %}active{% endif %}"
-           href="{{ url_for('maquinario.estoque') }}"><i class="bi bi-box-seam me-1"></i>Estoque</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if '/maquinario/maquinas' in caminho or '/maquinario/manutencoes' in caminho %}active{% endif %}"
-           href="{{ url_for('maquinario.maquinas') }}"><i class="bi bi-wrench me-1"></i>Maquinário</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if '/maquinario/combustivel' in caminho %}active{% endif %}"
-           href="{{ url_for('maquinario.combustivel') }}"><i class="bi bi-fuel-pump me-1"></i>Combustível</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if '/maquinario/gastos' in caminho %}active{% endif %}"
-           href="{{ url_for('maquinario.gastos') }}"><i class="bi bi-cash-coin me-1"></i>Gastos</a>
-    </li>
-</ul>
+{% set caminho = request.path.rstrip('/') %}
+{% set abas = [
+    ('maquinario.dashboard', 'bi-grid-1x2', 'Visão geral', caminho == url_for('maquinario.dashboard').rstrip('/')),
+    ('maquinario.estoque', 'bi-box-seam', 'Estoque', '/maquinario/estoque' in caminho or '/maquinario/movimentacoes' in caminho),
+    ('maquinario.maquinas', 'bi-truck-front', 'Máquinas', '/maquinario/maquinas' in caminho or '/maquinario/manutencoes' in caminho),
+    ('maquinario.combustivel', 'bi-fuel-pump', 'Combustível', '/maquinario/combustivel' in caminho),
+    ('maquinario.gastos', 'bi-cash-coin', 'Gastos', '/maquinario/gastos' in caminho),
+] %}
+<nav class="maq-abas mb-4" aria-label="Seções do maquinário">
+    <ul class="nav nav-tabs flex-nowrap">
+        {% for endpoint, icone, rotulo, ativa in abas %}
+        <li class="nav-item">
+            <a class="nav-link text-nowrap {% if ativa %}active{% endif %}" href="{{ url_for(endpoint) }}"
+               {% if ativa %}aria-current="page"{% endif %}><i class="bi {{ icone }} me-1"></i>{{ rotulo }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Máquinas — Maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -6,48 +7,67 @@
 <li class="breadcrumb-item active">Máquinas</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-tractor me-2"></i>Tratores e máquinas</h1>
+        <h1 class="page-title"><i class="bi bi-truck-front me-2"></i>Tratores e máquinas</h1>
         <p class="page-subtitle">Cadastro, horímetro e histórico de manutenção</p>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('maquinario.manutencoes') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-wrench me-1"></i>Manutenções</a>
-        <a href="{{ url_for('maquinario.maquina_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova máquina</a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('maquinario.manutencoes') }}" class="btn btn-outline-secondary"><i class="bi bi-wrench me-1"></i>Manutenções</a>
+        <a href="{{ url_for('maquinario.maquina_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova máquina</a>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
+{% include 'maquinario/_nav.html' %}
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-list-ul me-2"></i>Frota</h6>
+            <small class="text-body-secondary">{{ maquinas|length }} máquina(s) ativa(s)</small>
+        </div>
+        <div class="maq-filtro">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control form-control-sm" placeholder="Filtrar máquinas..." data-filtra="tabelaMaquinas" aria-label="Filtrar máquinas">
+        </div>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" id="tabelaMaquinas">
-            <thead class="table-light">
-                <tr><th>Máquina</th><th>Marca / modelo</th><th>Ano</th><th class="text-end">Horas</th><th>Última manutenção</th><th>Próxima</th><th class="text-end">Ações</th></tr>
+            <thead>
+                <tr><th>Máquina</th><th>Marca / modelo</th><th>Ano</th><th class="text-end">Horímetro</th><th>Última manutenção</th><th>Próxima revisão</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             {% for m in maquinas %}
+            {% set atrasada = m.proximas_horas and (m.horas_atuais or 0) >= m.proximas_horas %}
             <tr>
-                <td><a href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}"><strong>{{ m.nome }}</strong></a>{% if m.placa %} <span class="badge bg-secondary">{{ m.placa }}</span>{% endif %}</td>
-                <td>{{ [m.marca, m.modelo]|select|join(' / ') or '—' }}</td>
-                <td>{{ m.ano or '—' }}</td>
-                <td class="text-end">{{ '%.1f'|format(m.horas_atuais or 0) }} h</td>
-                <td>{{ m.ultima_manutencao or '—' }}</td>
                 <td>
-                    {% if m.proxima_data %}{{ m.proxima_data }}{% endif %}
-                    {% if m.proximas_horas %}{{ ' · ' if m.proxima_data else '' }}{{ '%.0f'|format(m.proximas_horas) }} h{% endif %}
-                    {% if not m.proxima_data and not m.proximas_horas %}—{% endif %}
+                    <a class="maq-nome-link" href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}">
+                        <span class="maq-frota-icone"><i class="bi bi-truck-front"></i></span>
+                        <span><strong>{{ m.nome }}</strong>{% if m.placa %}<small class="d-block text-body-secondary">{{ m.placa }}</small>{% endif %}</span>
+                    </a>
+                </td>
+                <td>{{ [m.marca, m.modelo]|select|join(' · ') or '—' }}</td>
+                <td class="tabular">{{ m.ano or '—' }}</td>
+                <td class="text-end text-nowrap tabular fw-semibold">{{ ui.num(m.horas_atuais, 1) }} h</td>
+                <td class="tabular">{{ ui.data(m.ultima_manutencao) }}</td>
+                <td class="tabular">
+                    {% if m.proxima_data or m.proximas_horas %}
+                    <span class="{{ 'text-danger fw-semibold' if atrasada else '' }}">
+                        {% if m.proxima_data %}{{ ui.data(m.proxima_data) }}{% endif %}{% if m.proxima_data and m.proximas_horas %} · {% endif %}{% if m.proximas_horas %}{{ ui.num(m.proximas_horas, 0) }} h{% endif %}
+                    </span>
+                    {% if atrasada %}<span class="badge bg-danger ms-1">Vencida</span>{% endif %}
+                    {% else %}<span class="text-body-tertiary">—</span>{% endif %}
                 </td>
                 <td class="text-end text-nowrap">
-                    <a href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Detalhes"><i class="bi bi-eye"></i></a>
-                    <a href="{{ url_for('maquinario.maquina_editar', id=m.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                    {% if session.get('tipo') == 'admin' %}
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('{{ m.nome }}', '{{ url_for('maquinario.maquina_excluir', id=m.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
-                    {% endif %}
+                    <a href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye"></i></a>
+                    {{ ui.botao_editar(url_for('maquinario.maquina_editar', id=m.id)) }}
+                    {{ ui.botao_excluir(m.nome, url_for('maquinario.maquina_excluir', id=m.id)) }}
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma máquina cadastrada.</td></tr>
+            {{ ui.linha_vazia(7, 'bi-truck-front', 'Nenhuma máquina cadastrada',
+                              'Cadastre tratores e implementos para acompanhar horímetro e revisões.',
+                              url_for('maquinario.maquina_novo'), 'Cadastrar máquina') }}
             {% endfor %}
             </tbody>
         </table>
@@ -56,6 +76,6 @@
 {% endblock %}
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+{% include 'maquinario/_tabela_js.html' %}
 <script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaMaquinas', 20); });</script>
 {% endblock %}

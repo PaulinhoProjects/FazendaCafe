@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Combustível — Maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -6,108 +7,170 @@
 <li class="breadcrumb-item active">Combustível</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
+{% set resumo = resumo or {} %}
+{% set comparativo = comparativo or {} %}
+{% set tem_compra = (resumo.litros or 0) > 0 %}
+{% set tem_ref = (comparativo.referencia or 0) > 0 %}
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-fuel-pump me-2"></i>Combustível — Diesel S10</h1>
-        <p class="page-subtitle">Entregas recebidas, boletos e comparação com preço público da ANP</p>
+        <p class="page-subtitle">Entregas recebidas, boletos e comparação com o preço público da ANP</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% if session.get('tipo') == 'admin' %}
         <form method="POST" action="{{ url_for('maquinario.precos_atualizar') }}">
-            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Consultar o CSV público da ANP"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar preços ANP</button>
+            <button type="submit" class="btn btn-outline-secondary" title="Consultar o levantamento semanal da ANP"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar preços ANP</button>
         </form>
         {% endif %}
-        <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova entrega</a>
+        <a href="{{ url_for('maquinario.abastecimentos') }}" class="btn btn-outline-secondary"><i class="bi bi-receipt me-1"></i>Entregas</a>
+        <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova entrega</a>
     </div>
 </div>
 
+{% include 'maquinario/_nav.html' %}
+
 {% if not referencia %}
-<div class="alert alert-warning">Ainda não foi possível carregar o preço de referência da ANP. Clique em “Atualizar preços ANP” para tentar novamente.</div>
+<div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-cloud-slash"></i>
+    <div>Ainda não foi possível carregar o preço de referência da ANP.{% if session.get('tipo') == 'admin' %} Clique em <strong>Atualizar preços ANP</strong> para tentar de novo.{% endif %}</div>
+</div>
 {% endif %}
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Diesel registrado</div><div class="stat-value">{{ '%.0f'|format(resumo.litros or 0) }} L</div><div class="stat-desc">R$ {{ '%.2f'|format(resumo.gasto or 0) }} pagos</div></div></div>
-    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Preço médio pago</div><div class="stat-value">R$ {{ '%.3f'|format(resumo.preco_pago or 0) }}</div><div class="stat-desc">por litro, média ponderada</div></div></div>
-    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Preço ANP {{ referencia.municipio_referencia if referencia else '' }}</div><div class="stat-value">R$ {{ '%.3f'|format(comparativo.referencia or 0) }}</div><div class="stat-desc">semana de {{ referencia.semana if referencia else '—' }}</div></div></div>
-    <div class="col-md-3">
-        <div class="stat-card h-100">
-            <div class="stat-label">Diferença por litro</div>
-            {% if comparativo.diferenca is defined and comparativo.diferenca >= 0 %}
-            <div class="stat-value text-success">- R$ {{ '%.3f'|format(comparativo.diferenca) }}</div>
-            <div class="stat-desc">desconto de {{ '%.1f'|format(comparativo.percentual) }}%</div>
+<div class="kpi-grid maq-kpis-5 mb-4">
+    {{ ui.kpi('bi-droplet', 'accent', 'Diesel registrado', ui.num(resumo.litros, 0) ~ ' L', ui.brl(resumo.gasto) ~ ' no total') }}
+    {{ ui.kpi('bi-currency-dollar', 'primary', 'Preço médio pago', ui.brl(resumo.preco_pago, 3) if tem_compra else '—',
+              'Por litro, média ponderada' if tem_compra else 'Sem entregas registradas') }}
+    {{ ui.kpi('bi-bank', 'info', 'Referência ANP', ui.brl(comparativo.referencia, 3) if tem_ref else '—',
+              (('Por litro · ' ~ referencia.municipio_referencia) if referencia else 'Sem dados da ANP')) }}
+    {% if tem_compra and tem_ref %}
+        {% set abaixo = comparativo.diferenca >= 0 %}
+        {{ ui.kpi('bi-graph-down-arrow' if abaixo else 'bi-graph-up-arrow', 'success' if abaixo else 'danger', 'Diferença por litro',
+                  ('−' if abaixo else '+') ~ ui.brl(comparativo.diferenca|abs, 3),
+                  (ui.num(comparativo.percentual|abs, 1) ~ '% ' ~ ('abaixo' if abaixo else 'acima') ~ ' da ANP'),
+                  classe_valor='text-success' if abaixo else 'text-danger') }}
+    {% else %}
+        {{ ui.kpi('bi-graph-down-arrow', 'success', 'Diferença por litro', '—', 'Precisa de entregas e da referência ANP') }}
+    {% endif %}
+    {{ ui.kpi('bi-receipt', 'warning' if resumo.pendentes else 'success', 'Boletos a pagar', ui.brl(resumo.a_pagar),
+              ((resumo.pendentes ~ ' entrega(s) pendente(s)') if resumo.pendentes else 'Tudo pago'), url_for('maquinario.abastecimentos')) }}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-7">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-bar-chart-line me-2"></i>Preço do Diesel S10 na ANP</h6>
+                    <small class="text-body-secondary">Levantamento semanal de preços (dados abertos)</small>
+                </div>
+                {% if referencia %}<span class="badge bg-light text-dark border">Semana de {{ ui.data(referencia.semana) }}</span>{% endif %}
+            </div>
+            {% if referencia %}
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead><tr><th>Região</th><th class="text-end">Média</th><th class="text-end">Mínimo</th><th class="text-end">Máximo</th><th class="text-end">Postos</th></tr></thead>
+                    <tbody>
+                    {% for rotulo, bloco, destaque in [('Brasil', referencia.brasil, false), ('Estado (' ~ referencia.municipio_referencia.split('/')[-1] ~ ')', referencia.estado, false), (referencia.municipio_referencia, referencia.municipio, true)] %}
+                    <tr class="{{ 'maq-linha-destaque' if destaque else '' }}">
+                        <td>{% if destaque %}<i class="bi bi-geo-alt-fill me-1"></i><strong>{{ rotulo }}</strong>{% else %}{{ rotulo }}{% endif %}</td>
+                        <td class="text-end text-nowrap tabular {{ 'fw-semibold' if destaque else '' }}">{{ ui.brl(bloco.preco, 3) }}</td>
+                        <td class="text-end text-nowrap tabular text-body-secondary">{{ ui.brl(bloco.min, 3) }}</td>
+                        <td class="text-end text-nowrap tabular text-body-secondary">{{ ui.brl(bloco.max, 3) }}</td>
+                        <td class="text-end text-nowrap tabular">{{ bloco.amostras or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% else %}
-            <div class="stat-value text-danger">+ R$ {{ '%.3f'|format(-(comparativo.diferenca or 0)) }}</div>
-            <div class="stat-desc">acima da referência</div>
+            <div class="empty-state">
+                <i class="bi bi-bar-chart-line"></i>
+                <h6 class="mb-1">Sem preços da ANP</h6>
+                <p>Quando a consulta funcionar, a comparação aparece aqui.</p>
+            </div>
             {% endif %}
         </div>
     </div>
-</div>
-
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header card-header-split">
-        <div><i class="bi bi-bar-chart-line me-2"></i><strong>Custo-benefício do Diesel S10</strong></div>
-        <span class="text-muted small">Base: ANP (dados abertos) × preço pago registrado</span>
-    </div>
-    <div class="card-body">
-        {% if referencia %}
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead class="table-light"><tr><th>Referência</th><th class="text-end">Média</th><th class="text-end">Mínimo</th><th class="text-end">Máximo</th><th class="text-end">Amostras</th><th>Data</th></tr></thead>
-                <tbody>
-                    <tr><td>Brasil</td><td class="text-end">R$ {{ '%.3f'|format(referencia.brasil.preco or 0) }}</td><td class="text-end">R$ {{ '%.3f'|format(referencia.brasil.min or 0) }}</td><td class="text-end">R$ {{ '%.3f'|format(referencia.brasil.max or 0) }}</td><td class="text-end">{{ referencia.brasil.amostras or 0 }}</td><td>{{ referencia.semana }}</td></tr>
-                    <tr><td>Estado (MG)</td><td class="text-end">R$ {{ '%.3f'|format(referencia.estado.preco or 0) }}</td><td class="text-end">R$ {{ '%.3f'|format(referencia.estado.min or 0) }}</td><td class="text-end">R$ {{ '%.3f'|format(referencia.estado.max or 0) }}</td><td class="text-end">{{ referencia.estado.amostras or 0 }}</td><td>{{ referencia.semana }}</td></tr>
-                    <tr class="table-primary"><td><strong>{{ referencia.municipio_referencia }}</strong></td><td class="text-end"><strong>R$ {{ '%.3f'|format(referencia.municipio.preco or 0) }}</strong></td><td class="text-end">R$ {{ '%.3f'|format(referencia.municipio.min or 0) }}</td><td class="text-end">R$ {{ '%.3f'|format(referencia.municipio.max or 0) }}</td><td class="text-end">{{ referencia.municipio.amostras or 0 }}</td><td>{{ referencia.semana }}</td></tr>
-                </tbody>
-            </table>
+    <div class="col-xl-5">
+        <div class="card h-100 maq-veredito {{ 'maq-veredito-bom' if tem_compra and tem_ref and comparativo.economia >= 0 else ('maq-veredito-ruim' if tem_compra and tem_ref else '') }}">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Custo-benefício</h6></div>
+            <div class="card-body">
+                {% if tem_compra and tem_ref %}
+                <div class="maq-veredito-valor">
+                    {% if comparativo.economia >= 0 %}
+                    <small>Economia estimada</small>
+                    <strong>{{ ui.brl(comparativo.economia) }}</strong>
+                    {% else %}
+                    <small>Custo acima da referência</small>
+                    <strong>{{ ui.brl(-comparativo.economia) }}</strong>
+                    {% endif %}
+                </div>
+                <p class="small text-body-secondary mb-0">
+                    Nos {{ ui.num(resumo.litros, 0) }} L registrados, você pagou em média
+                    <strong>{{ ui.brl(resumo.preco_pago, 3) }}/L</strong> contra
+                    <strong>{{ ui.brl(comparativo.referencia, 3) }}/L</strong> da média de {{ referencia.municipio_referencia }}.
+                </p>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calculator"></i>
+                    <h6 class="mb-1">Ainda sem comparação</h6>
+                    <p>{{ 'Registre a primeira entrega de diesel.' if not tem_compra else 'Atualize os preços da ANP.' }}</p>
+                    {% if not tem_compra %}<a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Registrar entrega</a>{% endif %}
+                </div>
+                {% endif %}
+            </div>
         </div>
-        <hr>
-        <p class="small mb-0">
-            Com {{ '%.0f'|format(resumo.litros or 0) }} L registrados, pagar
-            <strong>R$ {{ '%.3f'|format(resumo.preco_pago or 0) }}/L</strong> contra
-            <strong>R$ {{ '%.3f'|format(comparativo.referencia or 0) }}/L</strong> da referência representa
-            {% if comparativo.economia >= 0 %}<strong class="text-success">economia estimada de R$ {{ '%.2f'|format(comparativo.economia) }}</strong>.
-            {% else %}<strong class="text-danger">custo adicional estimado de R$ {{ '%.2f'|format(-comparativo.economia) }}</strong>.{% endif %}
-        </p>
-        {% else %}
-        <p class="text-muted mb-0">Sem dados de preço para comparação.</p>
-        {% endif %}
     </div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
+<div class="card mb-4">
     <div class="card-header card-header-split">
-        <div><i class="bi bi-receipt me-2"></i><strong>Entregas recentes</strong></div>
-        <a href="{{ url_for('maquinario.abastecimentos') }}" class="small">Ver todas</a>
+        <h6><i class="bi bi-truck me-2"></i>Entregas recentes</h6>
+        <a href="{{ url_for('maquinario.abastecimentos') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle">
-            <thead class="table-light"><tr><th>Data</th><th>Fornecedor</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Status</th></tr></thead>
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Data</th><th>Fornecedor</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Status</th></tr></thead>
             <tbody>
             {% for a in abastecimentos[:10] %}
             <tr>
-                <td>{{ a.data_abastecimento }}</td>
+                <td class="tabular">{{ ui.data(a.data_abastecimento) }}</td>
                 <td>{{ a.fornecedor or '—' }}</td>
-                <td class="text-end">{{ '%.2f'|format(a.quantidade_litros or 0) }}</td>
-                <td class="text-end">{{ '%.3f'|format(a.valor_litro or 0) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(a.valor_total or 0) }}</td>
-                <td><span class="badge bg-{{ 'success' if a.situacao == 'pago' else ('danger' if a.situacao == 'vencido' else 'warning') }}">{{ a.situacao|title }}</span></td>
+                <td class="text-end text-nowrap tabular">{{ ui.num(a.quantidade_litros) }}</td>
+                <td class="text-end text-nowrap tabular">{{ ui.num(a.valor_litro, 3) }}</td>
+                <td class="text-end text-nowrap tabular fw-semibold">{{ ui.brl(a.valor_total) }}</td>
+                <td>{{ ui.status_pagamento(a.situacao) }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma entrega registrada.</td></tr>
+            {{ ui.linha_vazia(6, 'bi-truck', 'Nenhuma entrega registrada', none, url_for('maquinario.abastecimento_novo'), 'Registrar entrega') }}
             {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header"><i class="bi bi-clock-history me-2"></i><strong>Histórico de preços da ANP</strong></div>
+<div class="card">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-clock-history me-2"></i>Histórico de preços da ANP</h6>
+        <small class="text-body-secondary">Últimas coletas salvas</small>
+    </div>
     <div class="table-responsive">
-        <table class="table table-sm mb-0"><thead class="table-light"><tr><th>Semana</th><th>Referência</th><th class="text-end">Média</th><th class="text-end">Amostras</th><th>Atualizado em</th></tr></thead><tbody>
-        {% for p in precos %}<tr><td>{{ p.data_coleta }}</td><td>{{ p.nivel }} — {{ p.municipio }}</td><td class="text-end">R$ {{ '%.3f'|format(p.preco_medio or 0) }}</td><td class="text-end">{{ p.amostras or 0 }}</td><td>{{ p.data_cadastro }}</td></tr>{% else %}<tr><td colspan="5" class="text-center text-muted py-3">Sem preços salvos ainda.</td></tr>{% endfor %}
-        </tbody></table>
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Semana</th><th>Referência</th><th class="text-end">Média</th><th class="text-end">Postos</th><th>Atualizado em</th></tr></thead>
+            <tbody>
+            {% for p in precos %}
+            <tr>
+                <td class="tabular">{{ ui.data(p.data_coleta) }}</td>
+                <td>{{ {'municipio': 'Município', 'estado': 'Estado', 'brasil': 'Brasil'}.get(p.nivel, p.nivel|title) }} <span class="text-body-secondary">· {{ p.municipio }}</span></td>
+                <td class="text-end text-nowrap tabular">{{ ui.brl(p.preco_medio, 3) }}</td>
+                <td class="text-end text-nowrap tabular">{{ p.amostras or 0 }}</td>
+                <td class="tabular text-body-secondary">{{ ui.data(p.data_cadastro) }}</td>
+            </tr>
+            {% else %}
+            {{ ui.linha_vazia(5, 'bi-clock-history', 'Sem preços salvos ainda') }}
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}

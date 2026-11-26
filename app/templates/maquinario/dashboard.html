@@ -1,102 +1,142 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item active">Maquinário</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
+{% set estoque = estoque or {} %}
+{% set manutencoes = manutencoes or {} %}
+{% set combustivel = combustivel or {} %}
+{% set gastos = gastos or {} %}
+{% set maquinas = maquinas or [] %}
 
 <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-wrench me-2"></i>Maquinário</h1>
-        <p class="page-subtitle">Estoque isolado, máquinas, manutenção, combustível e gastos</p>
+        <h1 class="page-title"><i class="bi bi-wrench-adjustable me-2"></i>Maquinário</h1>
+        <p class="page-subtitle">Frota, manutenção, peças, diesel e gastos da oficina em um só lugar</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-outline-secondary"><i class="bi bi-fuel-pump me-1"></i>Entrega de diesel</a>
+        <a href="{{ url_for('maquinario.manutencao_nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova manutenção</a>
     </div>
 </div>
 
+{% include 'maquinario/_nav.html' %}
+
 {% if alertas %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-1"></i>
-    <strong>{{ alertas|length }} alerta(s)</strong>
-    <ul class="mb-0 mt-2 small">
+<div class="card maq-alertas mb-4">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-bell me-2"></i>Precisa de atenção</h6>
+        <span class="badge bg-warning text-dark">{{ alertas|length }}</span>
+    </div>
+    <div class="list-group list-group-flush">
         {% for alerta in alertas %}
-        <li>
-            <a class="alert-link" href="{{ url_for(alerta.url) }}">{{ alerta.titulo }}</a>
-            — {{ alerta.detalhe }}
-        </li>
+        <a class="list-group-item list-group-item-action maq-alerta maq-alerta-{{ alerta.tipo }}" href="{{ url_for(alerta.url) }}">
+            <span class="maq-alerta-icone"><i class="bi {{ 'bi-exclamation-octagon' if alerta.tipo == 'danger' else 'bi-exclamation-triangle' }}"></i></span>
+            <span class="flex-grow-1 min-w-0">
+                <strong class="d-block">{{ alerta.titulo }}</strong>
+                <small class="text-body-secondary">{{ alerta.detalhe }}</small>
+            </span>
+            <i class="bi bi-chevron-right text-body-tertiary"></i>
+        </a>
         {% endfor %}
-    </ul>
+    </div>
 </div>
 {% endif %}
 
-<div class="row g-3 mb-4">
-    <div class="col-md-6 col-xl-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-primary-soft"><i class="bi bi-box-seam"></i></div>
-            <div class="stat-label">Peças em cadastro</div>
-            <div class="stat-value">{{ estoque.total or 0 }}</div>
-            <div class="stat-desc">{{ estoque.baixos or 0 }} abaixo do mínimo</div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-success-soft"><i class="bi bi-tractor"></i></div>
-            <div class="stat-label">Máquinas ativas</div>
-            <div class="stat-value">{{ maquinas|length }}</div>
-            <div class="stat-desc">{{ manutencoes.ultimos_30d or 0 }} manutenção(ões) em 30 dias</div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-accent-soft"><i class="bi bi-fuel-pump"></i></div>
-            <div class="stat-label">Diesel registrado</div>
-            <div class="stat-value">{{ '%.0f'|format(combustivel.litros or 0) }} L</div>
-            <div class="stat-desc">média R$ {{ '%.3f'|format(combustivel.preco_pago or 0) }}/L</div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon bg-danger-soft"><i class="bi bi-cash-coin"></i></div>
-            <div class="stat-label">Gastos acumulados</div>
-            <div class="stat-value">R$ {{ '%.2f'|format(gastos.valor or 0) }}</div>
-            <div class="stat-desc">R$ {{ '%.2f'|format(gastos.mes_atual or 0) }} no mês</div>
-        </div>
-    </div>
+<div class="kpi-grid maq-kpis mb-4">
+    {{ ui.kpi('bi-truck-front', 'primary', 'Máquinas ativas', maquinas|length,
+              (manutencoes.ultimos_30d or 0) ~ ' manutenção(ões) em 30 dias', url_for('maquinario.maquinas')) }}
+    {{ ui.kpi('bi-box-seam', 'warning' if estoque.baixos else 'success', 'Itens no estoque', estoque.total or 0,
+              ((estoque.baixos ~ ' abaixo do mínimo') if estoque.baixos else 'Nenhum abaixo do mínimo'), url_for('maquinario.estoque')) }}
+    {{ ui.kpi('bi-fuel-pump', 'accent', 'Diesel registrado', ui.num(combustivel.litros, 0) ~ ' L',
+              'Média ' ~ ui.brl(combustivel.preco_pago, 3) ~ '/L', url_for('maquinario.combustivel')) }}
+    {{ ui.kpi('bi-cash-coin', 'danger', 'Gastos no mês', ui.brl(gastos.mes_atual),
+              ui.brl(gastos.valor) ~ ' acumulado', url_for('maquinario.gastos')) }}
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card shadow-sm border-0 h-100">
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="card h-100">
             <div class="card-header card-header-split">
-                <div><i class="bi bi-lightning-charge me-2"></i><strong>Acesso rápido</strong></div>
+                <div>
+                    <h6><i class="bi bi-truck-front me-2"></i>Frota</h6>
+                    <small class="text-body-secondary">Horímetro e próxima revisão de cada máquina</small>
+                </div>
+                <a href="{{ url_for('maquinario.maquinas') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
             </div>
-            <div class="card-body d-grid gap-2">
-                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.movimentacao_nova') }}"><i class="bi bi-plus-circle me-2"></i>Entrada/saída de peças, óleo ou filtros</a>
-                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.maquina_novo') }}"><i class="bi bi-plus-circle me-2"></i>Cadastrar trator ou máquina</a>
-                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.manutencao_nova') }}"><i class="bi bi-plus-circle me-2"></i>Registrar revisão, reparo ou troca de óleo</a>
-                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.abastecimento_novo') }}"><i class="bi bi-plus-circle me-2"></i>Registrar entrega de Diesel S10</a>
-                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.gasto_novo') }}"><i class="bi bi-plus-circle me-2"></i>Registrar gasto com maquinário</a>
+            {% if maquinas %}
+            <div class="list-group list-group-flush">
+                {% for m in maquinas[:6] %}
+                {% set atrasada = m.proximas_horas and (m.horas_atuais or 0) >= m.proximas_horas %}
+                <a class="list-group-item list-group-item-action maq-frota-item" href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}">
+                    <span class="maq-frota-icone"><i class="bi bi-truck-front"></i></span>
+                    <span class="flex-grow-1 min-w-0">
+                        <strong class="d-block text-truncate">{{ m.nome }}</strong>
+                        <small class="text-body-secondary">{{ [m.marca, m.modelo]|select|join(' · ') or 'Marca/modelo não informados' }}</small>
+                    </span>
+                    <span class="text-end">
+                        <strong class="d-block tabular">{{ ui.num(m.horas_atuais, 1) }} h</strong>
+                        {% if m.proxima_data or m.proximas_horas %}
+                        <small class="{{ 'text-danger fw-medium' if atrasada else 'text-body-secondary' }}">
+                            Revisão {% if m.proxima_data %}{{ ui.data(m.proxima_data) }}{% endif %}{% if m.proxima_data and m.proximas_horas %} · {% endif %}{% if m.proximas_horas %}{{ ui.num(m.proximas_horas, 0) }} h{% endif %}
+                        </small>
+                        {% else %}
+                        <small class="text-body-tertiary">Sem revisão agendada</small>
+                        {% endif %}
+                    </span>
+                </a>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-truck-front"></i>
+                <h6 class="mb-1">Nenhuma máquina cadastrada</h6>
+                <p>Cadastre tratores e implementos para acompanhar horímetro e revisões.</p>
+                <a href="{{ url_for('maquinario.maquina_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Cadastrar máquina</a>
+            </div>
+            {% endif %}
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="card shadow-sm border-0 h-100">
+
+    <div class="col-xl-5 d-flex flex-column gap-4">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Registrar</h6></div>
+            <div class="card-body">
+                <div class="maq-atalhos">
+                    <a href="{{ url_for('maquinario.manutencao_nova') }}" class="maq-atalho">
+                        <i class="bi bi-wrench bg-primary-soft"></i><span>Manutenção</span><small>Revisão, reparo, óleo</small>
+                    </a>
+                    <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="maq-atalho">
+                        <i class="bi bi-fuel-pump bg-accent-soft"></i><span>Diesel</span><small>Entrega e boleto</small>
+                    </a>
+                    <a href="{{ url_for('maquinario.movimentacao_nova') }}" class="maq-atalho">
+                        <i class="bi bi-arrow-left-right bg-info-soft"></i><span>Peças</span><small>Entrada ou saída</small>
+                    </a>
+                    <a href="{{ url_for('maquinario.gasto_novo') }}" class="maq-atalho">
+                        <i class="bi bi-receipt bg-danger-soft"></i><span>Gasto</span><small>Serviço ou compra</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card flex-grow-1">
             <div class="card-header card-header-split">
-                <div><i class="bi bi-truck me-2"></i><strong>Contas e manutenções</strong></div>
-                <a href="{{ url_for('maquinario.abastecimentos') }}" class="small">Ver todas</a>
+                <h6><i class="bi bi-wallet2 me-2"></i>Custos</h6>
+                <a href="{{ url_for('maquinario.abastecimentos') }}" class="btn btn-sm btn-outline-secondary">Entregas</a>
             </div>
             <div class="card-body">
-                {% set pendentes = [] %}
-                {% for item in alertas %}{% if 'Boleto' in item.titulo %}{% set _ = pendentes.append(item) %}{% endif %}{% endfor %}
-                {% if pendentes %}
-                    {% for item in pendentes %}
-                    <div class="alert alert-{{ item.tipo }} py-2 small mb-2">{{ item.titulo }} — {{ item.detalhe }}</div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted small mb-0">Nenhum boleto ou revisão próxima do vencimento.</p>
-                {% endif %}
-                <hr>
-                <p class="small text-muted mb-0">Gastos com manutenção: <strong>R$ {{ '%.2f'|format(manutencoes.valor or 0) }}</strong></p>
+                <dl class="maq-resumo mb-0">
+                    <div><dt>Manutenção (acumulado)</dt><dd>{{ ui.brl(manutencoes.valor) }}</dd></div>
+                    <div><dt>Diesel pago</dt><dd>{{ ui.brl(combustivel.gasto) }}</dd></div>
+                    <div><dt>Gastos lançados</dt><dd>{{ ui.brl(gastos.valor) }}</dd></div>
+                    <div class="{{ 'maq-resumo-alerta' if combustivel.pendentes else '' }}">
+                        <dt>Boletos a pagar{% if combustivel.pendentes %} ({{ combustivel.pendentes }}){% endif %}</dt>
+                        <dd>{{ ui.brl(combustivel.a_pagar) }}</dd>
+                    </div>
+                </dl>
             </div>
         </div>
     </div>

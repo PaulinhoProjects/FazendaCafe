@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
 {% block titulo %}Manutenções — Maquinário{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
@@ -7,46 +8,66 @@
 <li class="breadcrumb-item active">Manutenções</li>
 {% endblock %}
 {% block conteudo %}
-{% include 'maquinario/_nav.html' %}
-
+{% set resumo = resumo or {} %}
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-wrench me-2"></i>Manutenções</h1>
         <p class="page-subtitle">Revisões, reparos, trocas de óleo e filtros por máquina</p>
     </div>
-    <a href="{{ url_for('maquinario.manutencao_nova') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova manutenção</a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('maquinario.maquinas') }}" class="btn btn-outline-secondary"><i class="bi bi-truck-front me-1"></i>Máquinas</a>
+        <a href="{{ url_for('maquinario.manutencao_nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova manutenção</a>
+    </div>
 </div>
+
+{% include 'maquinario/_nav.html' %}
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Serviços registrados</div><div class="stat-value">{{ resumo.total or 0 }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Em 30 dias</div><div class="stat-value">{{ resumo.ultimos_30d or 0 }}</div></div></div>
-    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Total em manutenção</div><div class="stat-value">R$ {{ '%.2f'|format(resumo.valor or 0) }}</div></div></div>
+    <div class="col-md-4">{{ ui.kpi('bi-wrench', 'primary', 'Serviços registrados', resumo.total or 0, 'Desde o início') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-calendar3', 'info', 'Últimos 30 dias', resumo.ultimos_30d or 0, 'Serviços realizados') }}</div>
+    <div class="col-md-4">{{ ui.kpi('bi-cash-coin', 'danger', 'Total em manutenção', ui.brl(resumo.valor), 'Valor acumulado') }}</div>
 </div>
 
-<div class="card shadow-sm border-0">
+<div class="card">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-clock-history me-2"></i>Histórico de serviços</h6>
+            <small class="text-body-secondary">Mais recentes primeiro</small>
+        </div>
+        <div class="maq-filtro">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control form-control-sm" placeholder="Filtrar serviços..." data-filtra="tabelaManutencoes" aria-label="Filtrar serviços">
+        </div>
+    </div>
     <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle" id="tabelaManutencoes">
-            <thead class="table-light">
-                <tr><th>Data</th><th>Máquina</th><th>Serviço</th><th class="text-end">Horas</th><th class="text-end">Valor</th><th>Próxima</th><th></th></tr>
+        <table class="table table-hover mb-0 align-middle" id="tabelaManutencoes">
+            <thead>
+                <tr><th>Data</th><th>Máquina</th><th>Serviço</th><th class="text-end">Horímetro</th><th class="text-end">Valor</th><th>Próxima</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             {% for mt in manutencoes %}
             <tr>
-                <td>{{ mt.data_servico }}</td>
-                <td><a href="{{ url_for('maquinario.maquina_detalhe', id=mt.maquina_id) }}">{{ mt.maquina_nome }}</a></td>
-                <td><strong>{{ mt.tipo }}</strong>{% if mt.descricao %}<div class="small text-muted">{{ mt.descricao|truncate(60) }}</div>{% endif %}</td>
-                <td class="text-end">{{ '%.1f'|format(mt.horimetro or 0) if mt.horimetro else '—' }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(mt.valor or 0) }}</td>
-                <td>{% if mt.proxima_data %}{{ mt.proxima_data }}{% endif %}{% if mt.proximas_horas %}{{ ' · ' if mt.proxima_data else '' }}{{ '%.0f'|format(mt.proximas_horas) }} h{% endif %}{% if not mt.proxima_data and not mt.proximas_horas %}—{% endif %}</td>
-                <td class="text-nowrap">
-                    <a href="{{ url_for('maquinario.manutencao_editar', id=mt.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                    {% if session.get('tipo') == 'admin' %}
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('manutenção de {{ mt.maquina_nome }}', '{{ url_for('maquinario.manutencao_excluir', id=mt.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
-                    {% endif %}
+                <td class="text-nowrap tabular">{{ ui.data(mt.data_servico) }}</td>
+                <td><a href="{{ url_for('maquinario.maquina_detalhe', id=mt.maquina_id) }}" class="fw-semibold">{{ mt.maquina_nome }}</a></td>
+                <td>
+                    <span class="badge bg-light text-dark border">{{ mt.tipo }}</span>
+                    {% if mt.descricao %}<small class="d-block text-body-secondary mt-1">{{ mt.descricao|truncate(70) }}</small>{% endif %}
+                </td>
+                <td class="text-end text-nowrap tabular">{{ (ui.num(mt.horimetro, 1) ~ ' h') if mt.horimetro else '—' }}</td>
+                <td class="text-end text-nowrap tabular">{{ ui.brl(mt.valor) }}</td>
+                <td class="tabular">
+                    {% if mt.proxima_data %}{{ ui.data(mt.proxima_data) }}{% endif %}{% if mt.proxima_data and mt.proximas_horas %} · {% endif %}{% if mt.proximas_horas %}{{ ui.num(mt.proximas_horas, 0) }} h{% endif %}
+                    {% if not mt.proxima_data and not mt.proximas_horas %}<span class="text-body-tertiary">—</span>{% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                    {{ ui.botao_editar(url_for('maquinario.manutencao_editar', id=mt.id)) }}
+                    {{ ui.botao_excluir('manutenção de ' ~ mt.maquina_nome, url_for('maquinario.manutencao_excluir', id=mt.id)) }}
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma manutenção registrada.</td></tr>
+            {{ ui.linha_vazia(7, 'bi-wrench', 'Nenhuma manutenção registrada',
+                              'Registre revisões e reparos para acompanhar custos e próximas trocas.',
+                              url_for('maquinario.manutencao_nova'), 'Registrar manutenção') }}
             {% endfor %}
             </tbody>
         </table>
@@ -55,6 +76,6 @@
 {% endblock %}
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+{% include 'maquinario/_tabela_js.html' %}
 <script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaManutencoes', 20); });</script>
 {% endblock %}
