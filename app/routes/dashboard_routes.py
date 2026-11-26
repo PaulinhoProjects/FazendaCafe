@@ -41,6 +41,13 @@ def index():
         except Exception:
             pass
 
+        cotacoes_atuais = None
+        try:
+            from app.modules.cotacoes import obter_cotacoes
+            cotacoes_atuais = obter_cotacoes()
+        except Exception as e:
+            logger.error(f"dashboard_routes.index cotacoes: {e}")
+
         return render_template('dashboard.html',
             resumo=resumo, alertas=alertas, atividades=atividades,
             grafico_tendencia=grafico_tendencia,
@@ -52,6 +59,7 @@ def index():
             ultimas_analises=ultimas_analises,
             ultimos_manejos=ultimos_manejos,
             clima_atual=clima_atual,
+            cotacoes_atuais=cotacoes_atuais,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima
         )
@@ -67,7 +75,7 @@ def index():
             resumo_analises={'analises_ano': 0, 'pendentes': 0},
             resumo_pdfs={'total_pdfs': 0, 'pdfs_mes': 0},
             produtos_baixo=[], ultimas_analises=[], ultimos_manejos=[],
-            clima_atual=None,
+            clima_atual=None, cotacoes_atuais=None,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima
         )

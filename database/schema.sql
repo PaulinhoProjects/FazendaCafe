@@ -463,3 +463,21 @@ ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS embalagens_abertas IN
 
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto_data ON movimentacoes_estoque(produto_id, data_movimento DESC);
 CREATE INDEX IF NOT EXISTS idx_embalagens_produto ON produto_embalagens(produto_id);
+
+-- Cotações externas: uma linha por fonte/cotação a cada coleta (histórico)
+CREATE TABLE IF NOT EXISTS cotacoes_snapshots (
+    id SERIAL PRIMARY KEY,
+    chave VARCHAR(30) NOT NULL,
+    fonte VARCHAR(50) NOT NULL,
+    papel VARCHAR(80),
+    descricao VARCHAR(180),
+    valor NUMERIC(14,4) NOT NULL,
+    valor_compra NUMERIC(14,4),
+    unidade VARCHAR(40),
+    variacao NUMERIC(12,4),
+    variacao_percentual NUMERIC(12,4),
+    data_origem VARCHAR(60),
+    coletado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cotacoes_snapshots_chave_data ON cotacoes_snapshots(chave, coletado_em DESC);

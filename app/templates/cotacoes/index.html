@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block titulo %}Cotações do Café{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Cotações</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-graph-up-arrow me-2"></i>Cotações do Café</h1>
+        <p class="page-subtitle">Preços divulgados pela Cooxupé e dólar oficial — referência de mercado, não preço pago na cooperativa</p>
+    </div>
+    {% if session.get('tipo') == 'admin' %}
+    <form method="POST" action="{{ url_for('cotacoes.atualizar') }}" class="d-inline">
+        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar cotações novas agora"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if cotacoes and cotacoes.stale %}
+<div class="alert alert-warning alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ cotacoes.erro or 'Não foi possível consultar as fontes agora.' }} Exibindo o último snapshot salvo.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if cotacoes %}
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body py-4">
+                <div class="text-muted small"><i class="bi bi-cup-hot me-1"></i>Café B3 · {{ cotacoes.cafe_b3.papel if cotacoes.cafe_b3 else '—' }}</div>
+                <div class="display-6 fw-bold">{{ '%.2f'|format(cotacoes.cafe_b3.brl_saca_ptax) if cotacoes.cafe_b3 and cotacoes.cafe_b3.brl_saca_ptax is not none else '—' }} <small class="fs-6 text-muted">R$/saca</small></div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between small"><span>US$/saca</span><strong>{{ cotacoes.cafe_b3.usd_saca if cotacoes.cafe_b3 else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Com dólar comercial</span><strong>{{ cotacoes.cafe_b3.brl_saca_comercial if cotacoes.cafe_b3 else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Variação</span><strong>{{ cotacoes.cafe_b3.variacao_percentual if cotacoes.cafe_b3 and cotacoes.cafe_b3.variacao_percentual is not none else '—' }}%</strong></div>
+                <div class="text-muted small mt-2">Fonte: Cooxupé · {{ cotacoes.cafe_b3.data_origem if cotacoes.cafe_b3 else '—' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body py-4">
+                <div class="text-muted small"><i class="bi bi-globe me-1"></i>Café Nova York · {{ cotacoes.cafe_ny.papel if cotacoes.cafe_ny else '—' }}</div>
+                <div class="display-6 fw-bold">{{ '%.2f'|format(cotacoes.cafe_ny.brl_saca_ptax) if cotacoes.cafe_ny and cotacoes.cafe_ny.brl_saca_ptax is not none else '—' }} <small class="fs-6 text-muted">R$/saca</small></div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between small"><span>Nova York</span><strong>{{ cotacoes.cafe_ny.cents_lb if cotacoes.cafe_ny else '—' }} ¢/lb</strong></div>
+                <div class="d-flex justify-content-between small"><span>Convertido</span><strong>US$ {{ cotacoes.cafe_ny.usd_saca if cotacoes.cafe_ny else '—' }}/saca</strong></div>
+                <div class="d-flex justify-content-between small"><span>Com dólar comercial</span><strong>{{ cotacoes.cafe_ny.brl_saca_comercial if cotacoes.cafe_ny else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Variação</span><strong>{{ cotacoes.cafe_ny.variacao_percentual if cotacoes.cafe_ny and cotacoes.cafe_ny.variacao_percentual is not none else '—' }}%</strong></div>
+                <div class="text-muted small mt-2">Fonte: Cooxupé · {{ cotacoes.cafe_ny.data_origem if cotacoes.cafe_ny else '—' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body py-4">
+                <div class="text-muted small"><i class="bi bi-currency-exchange me-1"></i>Dólar (câmbio usado na conversão)</div>
+                <div class="display-6 fw-bold">{{ '%.4f'|format(cotacoes.dolar.ptax_venda) if cotacoes.dolar.ptax_venda is not none else '—' }} <small class="fs-6 text-muted">R$/US$</small></div>
+                <div class="small text-muted mb-2">PTAX venda · {{ cotacoes.taxa_fonte }}</div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between small"><span>PTAX compra</span><strong>{{ cotacoes.dolar.ptax_compra if cotacoes.dolar.ptax_compra is not none else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Comercial venda</span><strong>{{ cotacoes.dolar.comercial_venda if cotacoes.dolar.comercial_venda is not none else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Comercial compra</span><strong>{{ cotacoes.dolar.comercial_compra if cotacoes.dolar.comercial_compra is not none else '—' }}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Variação comercial</span><strong>{{ cotacoes.dolar.comercial_variacao_percentual if cotacoes.dolar.comercial_variacao_percentual is not none else '—' }}%</strong></div>
+                <div class="text-muted small mt-2">{{ cotacoes.dolar.comercial_fonte }} · {{ cotacoes.dolar.comercial_data or '—' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-light border small">
+    <i class="bi bi-info-circle me-1"></i>
+    Conversão: saca de <strong>60 kg</strong> (132,277 lb), sem desconto. A PTAX do Banco Central é usada por padrão; o dólar comercial aparece como comparação.
+    A Cooxupé publica as cotações após o fechamento do mercado — valores de referência, não negociação da cooperativa. Cache de 30 minutos.
+    <span class="text-muted">Consultado em {{ cotacoes.atualizado_em }}.</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-clock-history me-2"></i><strong>Histórico de coletas</strong></div>
+        <span class="text-muted small">{{ historico|length }} registros</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead><tr><th>Cotação</th><th>Fonte</th><th>Papel</th><th class="text-end">Valor</th><th>Data origem</th><th>Coletado em</th></tr></thead>
+            <tbody>
+                {% set rotulos = {'kc': 'Café Nova York', 'icf': 'Café B3', 'dolcooxupe': 'Dólar Cooxupé', 'ptax': 'PTAX', 'awesome': 'Dólar comercial'} %}
+                {% for item in historico %}
+                <tr>
+                    <td>{{ rotulos.get(item.chave, item.chave) }}</td>
+                    <td>{{ item.fonte }}</td>
+                    <td>{{ item.papel or '—' }}</td>
+                    <td class="text-end">{{ '%.4f'|format(item.valor|float) }} {{ item.unidade or '' }}</td>
+                    <td>{{ item.data_origem or '—' }}</td>
+                    <td>{{ item.coletado_em }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma coleta registrada ainda.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="bi bi-link-45deg me-2"></i><strong>Fontes consultadas</strong></div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for fonte in cotacoes.fontes %}
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="fw-semibold"><a href="{{ fonte.url }}" target="_blank" rel="noopener noreferrer">{{ fonte.nome }} <i class="bi bi-box-arrow-up-right small"></i></a></div>
+                    <div class="text-muted small">{{ fonte.descricao }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>Não foi possível carregar as cotações. Tente novamente mais tarde ou use o botão Atualizar (administrador).
+</div>
+{% endif %}
+{% endblock %}

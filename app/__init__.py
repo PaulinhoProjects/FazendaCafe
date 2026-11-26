@@ -113,6 +113,12 @@ def create_app(config_class=Config):
         print(f"Aviso: blueprint clima nao carregado: {e}")
 
     try:
+        from app.routes.cotacoes_routes import cotacoes_bp
+        app.register_blueprint(cotacoes_bp)
+    except Exception as e:
+        print(f"Aviso: blueprint cotacoes nao carregado: {e}")
+
+    try:
         from app.routes.notas_fiscais_routes import notas_fiscais_bp
         app.register_blueprint(notas_fiscais_bp)
     except Exception as e:
