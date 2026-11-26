@@ -9,14 +9,36 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.graphics.shapes import Drawing, Rect, Ellipse, Circle, Group
 from datetime import datetime
 
-# Cores da marca AgroCafé
-COR_PRIMARIA = HexColor('#1B4332')
+# Cores da marca Florada
+COR_PRIMARIA = HexColor('#1F5C3E')
+COR_MIOLO = HexColor('#E2B04B')
 COR_ACENT = HexColor('#D4A373')
 COR_CINZA = HexColor('#6C757D')
 COR_CINZA_CLARO = HexColor('#F8F9FA')
 COR_BRANCO = HexColor('#FFFFFF')
+
+def _logo_florada(tamanho=26):
+    """Desenha o ícone da Florada (selo verde com a flor de 5 pétalas) em pontos."""
+    escala = tamanho / 64.0
+    desenho = Drawing(tamanho, tamanho)
+    marca = Group()
+    marca.add(Rect(0, 0, 64, 64, rx=16, ry=16, fillColor=COR_PRIMARIA, strokeColor=None))
+    flor = Group()
+    for i in range(5):
+        petala = Group(Ellipse(0, 12.5, 5.2, 12, fillColor=COR_BRANCO, strokeColor=None))
+        petala.rotate(72 * i)
+        flor.add(petala)
+    flor.translate(32, 32)
+    flor.scale(0.78, 0.78)
+    marca.add(flor)
+    marca.add(Circle(32, 32, 4.2, fillColor=COR_MIOLO, strokeColor=None))
+    marca.scale(escala, escala)
+    desenho.add(marca)
+    return desenho
+
 
 def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retrato'):
     """
@@ -86,15 +108,28 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
     )
 
     # Cabeçalho
-    elementos.append(Paragraph("AgroCafé", ParagraphStyle(
-        'LogoAgroCafe',
-        parent=styles['Title'],
-        fontSize=22,
-        textColor=COR_PRIMARIA,
-        fontName='Helvetica-Bold',
-        spaceAfter=2,
-        alignment=TA_CENTER
-    )))
+    marca = Table(
+        [[_logo_florada(26), Paragraph("florada", ParagraphStyle(
+            'LogoFlorada',
+            parent=styles['Title'],
+            fontSize=22,
+            leading=26,
+            textColor=COR_PRIMARIA,
+            fontName='Helvetica-Bold',
+            alignment=TA_LEFT
+        ))]],
+        colWidths=[34, 100]
+    )
+    marca.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    marca.hAlign = 'CENTER'
+    elementos.append(marca)
+    elementos.append(Spacer(1, 4))
     elementos.append(Paragraph("Tecnologia que Colhe Resultados", ParagraphStyle(
         'SloganAgroCafe',
         parent=styles['Normal'],
@@ -190,7 +225,7 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
                 ParagraphStyle('RodapeData', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA)
             ),
             Paragraph(
-                "AgroCafé · Tecnologia que Colhe Resultados",
+                "Florada · Tecnologia que Colhe Resultados",
                 ParagraphStyle('RodapeMarca', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA, alignment=TA_RIGHT)
             )
         ]],

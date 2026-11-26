@@ -185,7 +185,7 @@ def create_app(config_class=Config):
         """)
         # Inserir configs padrao
         configs_padrao = [
-            ('nome_sistema', 'AgroCafe', 'Nome do sistema'),
+            ('nome_sistema', 'Florada', 'Nome do sistema'),
             ('slogan', 'Tecnologia que Colhe Resultados', 'Slogan do sistema'),
             ('cidade', 'Campos Gerais', 'Cidade para clima'),
             ('estado', 'MG', 'Estado para clima'),
