@@ -12,7 +12,6 @@
     </div>
     {% if session.get('tipo') == 'admin' %}
     <div class="d-flex gap-2">
-        <a href="{{ url_for('cotacoes.saude') }}" class="btn btn-outline-secondary btn-sm" title="Verificar se as integrações estão funcionando"><i class="bi bi-shield-check me-1"></i>Integrações</a>
         <form method="POST" action="{{ url_for('cotacoes.atualizar') }}">
             <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar cotações novas agora"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
         </form>
