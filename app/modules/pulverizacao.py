@@ -369,7 +369,7 @@ def excluir_receita(id):
         if count > 0:
             return False, f"Não é possível excluir: receita usada em {count} aplicação(ões)"
         
-        executar_query("DELETE FROM receitas WHERE id = %s", (id,))
+        executar_query("UPDATE receitas SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Receita excluída com sucesso"
     except Exception as e:
         print(f"Erro ao excluir receita: {e}")
@@ -406,7 +406,7 @@ def excluir_praga(id):
 def excluir_aplicacao(id):
     """Exclui uma aplicação (ocorrências serão excluídas por CASCADE)"""
     try:
-        executar_query("DELETE FROM aplicacoes_pulverizacao WHERE id = %s", (id,))
+        executar_query("UPDATE aplicacoes_pulverizacao SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Aplicação excluída com sucesso"
     except Exception as e:
         print(f"Erro ao excluir aplicação: {e}")

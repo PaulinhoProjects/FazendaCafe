@@ -186,6 +186,22 @@ def executar_transacao(funcao):
 # CONFIGURAÇÕES DO SISTEMA
 # =====================================================
 
+def criar_schema_base():
+    """Cria todas as tabelas do sistema a partir de database/schema.sql."""
+    caminho = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'database', 'schema.sql'
+    )
+    try:
+        with open(caminho, encoding='utf-8') as arquivo:
+            sql = arquivo.read()
+        executar_query(sql)
+        print("Schema base verificado/criado com sucesso!")
+        return True
+    except Exception as e:
+        print(f"Erro ao criar schema base: {e}")
+        return False
+
 def criar_tabela_configuracoes():
     """Cria tabela de configurações do sistema."""
     query = """
@@ -317,7 +333,7 @@ def transacao():
     Uso:
         with transacao() as cur:
             cur.execute("INSERT ... RETURNING id", (...,))
-            mov_id = cur.fetchone()[0]
+            mov_id = cur.fetchone()['id']
             cur.execute("UPDATE ...", (...,))
     """
     conn = ConexaoBanco.get_conexao()
@@ -325,7 +341,8 @@ def transacao():
         raise Exception("Não foi possível obter conexão com o banco")
     cursor = None
     try:
-        cursor = conn.cursor()
+        from psycopg2.extras import RealDictCursor
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         yield cursor
         conn.commit()
     except Exception:

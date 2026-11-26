@@ -144,7 +144,13 @@ def create_app(config_class=Config):
     def acesso_negado(e):
         return render_template('erro.html', codigo=403, titulo='Acesso negado', mensagem='Você não tem permissão para acessar esta página.'), 403
 
-    # Garante a tabela de usuários em instalações novas
+    # Garante o schema base e a tabela de usuários em instalações novas
+    try:
+        from config.database import criar_schema_base
+        criar_schema_base()
+    except Exception as e:
+        print(f"Aviso: schema base nao verificado: {e}")
+
     try:
         from app.modules.auth import criar_tabela_usuarios
         criar_tabela_usuarios()
@@ -183,12 +189,14 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: nao foi possivel criar tabela de configuracoes: {e}")
 
-    # Corrigir tabela talhoes
+    # Criar/corrigir tabela talhoes
     try:
+        from app.modules.talhoes import criar_tabela_talhoes
+        criar_tabela_talhoes()
         from config.database import corrigir_tabela_talhoes
         corrigir_tabela_talhoes()
     except Exception as e:
-        print(f"Aviso: nao foi possivel corrigir tabela talhoes: {e}")
+        print(f"Aviso: nao foi possivel criar/corrigir tabela talhoes: {e}")
 
     try:
         from config.database import criar_tabela_categorias_estoque

@@ -441,7 +441,7 @@ def excluir_recomendacao(id):
             return False, "Esta recomendação já foi aplicada e não pode ser excluída"
         
         # Excluir a recomendação (CASCADE cuida dos itens)
-        executar_query("DELETE FROM recomendacoes_adubacao WHERE id = %s", (id,))
+        executar_query("UPDATE recomendacoes_adubacao SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Recomendação excluída com sucesso"
     except Exception as e:
         print(f"Erro ao excluir recomendação: {e}")
@@ -451,7 +451,7 @@ def excluir_adubacao(id):
     """Exclui uma adubação (produtos e nutrientes serão excluídos por CASCADE)"""
     try:
         # CASCADE cuida dos filhos
-        executar_query("DELETE FROM adubacoes WHERE id = %s", (id,))
+        executar_query("UPDATE adubacoes SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Adubação excluída com sucesso"
     except Exception as e:
         print(f"Erro ao excluir adubação: {e}")
