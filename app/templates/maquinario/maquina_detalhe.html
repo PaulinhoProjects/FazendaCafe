@@ -84,28 +84,7 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header"><h6 class="mb-0"><i class="bi bi-fuel-pump me-2"></i>Abastecimentos recentes</h6></div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead><tr><th>Data</th><th class="text-end">Litros</th><th class="text-end">Total</th></tr></thead>
-                    <tbody>
-                    {% for a in abastecimentos[:8] %}
-                    <tr>
-                        <td class="tabular">{{ ui.data(a.data_abastecimento) }}</td>
-                        <td class="text-end text-nowrap tabular">{{ ui.num(a.quantidade_litros) }} L</td>
-                        <td class="text-end text-nowrap tabular">{{ ui.brl(a.valor_total) }}</td>
-                    </tr>
-                    {% else %}
-                    {{ ui.linha_vazia(3, 'bi-fuel-pump', 'Nenhum abastecimento ligado a esta máquina') }}
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
+    <div class="col-12">
         <div class="card h-100">
             <div class="card-header"><h6 class="mb-0"><i class="bi bi-receipt me-2"></i>Gastos recentes</h6></div>
             <div class="table-responsive">

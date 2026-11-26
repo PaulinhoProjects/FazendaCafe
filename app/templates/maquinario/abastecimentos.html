@@ -35,7 +35,7 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" id="tabelaAbastecimentos">
             <thead>
-                <tr><th>Data</th><th>Fornecedor</th><th>Máquina</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Boleto</th><th>Status</th><th class="text-end">Ações</th></tr>
+                <tr><th>Data</th><th>Fornecedor</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Boleto</th><th>Status</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             {% for a in abastecimentos %}
@@ -43,7 +43,6 @@
             <tr>
                 <td class="text-nowrap tabular">{{ ui.data(a.data_abastecimento) }}</td>
                 <td class="fw-semibold">{{ a.fornecedor or '—' }}</td>
-                <td>{{ a.maquina_nome or '—' }}</td>
                 <td class="text-end text-nowrap tabular">{{ ui.num(a.quantidade_litros) }}</td>
                 <td class="text-end text-nowrap tabular">{{ ui.num(a.valor_litro, 3) }}</td>
                 <td class="text-end text-nowrap tabular fw-semibold">{{ ui.brl(a.valor_total) }}</td>
@@ -65,7 +64,7 @@
                 </td>
             </tr>
             {% else %}
-            {{ ui.linha_vazia(9, 'bi-truck', 'Nenhuma entrega registrada',
+            {{ ui.linha_vazia(8, 'bi-truck', 'Nenhuma entrega registrada',
                               'Registre cada entrega de diesel para comparar com o preço da ANP.',
                               url_for('maquinario.abastecimento_novo'), 'Registrar entrega') }}
             {% endfor %}

@@ -597,16 +597,15 @@ def resumo_manutencoes():
 
 
 # ---------------------------------------------------------------------------
-# Combustível: abastecimentos, boletos e preço público da ANP
+# Combustível: entregas no tanque da fazenda, boletos e preço público da ANP
 # ---------------------------------------------------------------------------
 def listar_abastecimentos(pendentes=False, limite=None):
     sql = """
-        SELECT a.*, m.nome AS maquina_nome,
+        SELECT a.*,
                CASE WHEN a.pago THEN 'pago'
                     WHEN a.vencimento IS NOT NULL AND a.vencimento < CURRENT_DATE
                     THEN 'vencido' ELSE 'pendente' END AS situacao
         FROM maq_abastecimentos a
-        LEFT JOIN maq_maquinas m ON m.id = a.maquina_id
         WHERE a.ativo = TRUE
     """
     if pendentes:
@@ -653,11 +652,13 @@ def _gravar_abastecimento(id, dados):
     if vencimento and not pago and lembrete is None:
         lembrete = vencimento - timedelta(days=3)
 
+    # A entrega é feita no tanque da fazenda: não há vínculo com máquina.
+    # O campo maquina_id é mantido apenas por compatibilidade e fica nulo.
     campos = ("maquina_id", "data_abastecimento", "produto", "quantidade_litros",
               "valor_litro", "valor_total", "fornecedor", "boleto", "vencimento",
               "lembrete_em", "pago", "data_pagamento", "observacoes")
     valores = (
-        _inteiro(dados.get("maquina_id"), None),
+        None,
         _data(dados.get("data_abastecimento")) or date.today(),
         _texto(dados.get("produto")) or PRODUTO_DIESEL,
         quantidade, valor_litro, total, _texto(dados.get("fornecedor")),

@@ -205,7 +205,6 @@ def maquina_detalhe(id):
     return render_template(
         'maquinario/maquina_detalhe.html', maquina=maquina,
         manutencoes=maquinario.listar_manutencoes(maquina_id=id),
-        abastecimentos=[a for a in maquinario.listar_abastecimentos() if a['maquina_id'] == id][:20],
         gastos=[g for g in maquinario.listar_gastos() if g['maquina_id'] == id][:20],
     )
 
@@ -360,14 +359,13 @@ def combustivel():
             resumo=resumo,
             abastecimentos=maquinario.listar_abastecimentos(limite=100),
             precos=maquinario.listar_precos_diesel(limite=30),
-            maquinas=maquinario.listar_maquinas(),
         )
     except Exception as e:
         logger.error(f"maquinario_routes.combustivel: {e}")
         flash('Erro ao carregar dados de combustível.', 'error')
         return render_template('maquinario/combustivel.html', referencia=None,
                                comparativo={}, resumo={}, abastecimentos=[],
-                               precos=[], maquinas=[])
+                               precos=[])
 
 
 @maquinario_bp.route('/combustivel/atualizar-precos', methods=['POST'])
@@ -390,12 +388,11 @@ def abastecimentos():
         return render_template(
             'maquinario/abastecimentos.html',
             abastecimentos=maquinario.listar_abastecimentos(),
-            maquinas=maquinario.listar_maquinas(),
         )
     except Exception as e:
         logger.error(f"maquinario_routes.abastecimentos: {e}")
         flash('Erro ao carregar abastecimentos.', 'error')
-        return render_template('maquinario/abastecimentos.html', abastecimentos=[], maquinas=[])
+        return render_template('maquinario/abastecimentos.html', abastecimentos=[])
 
 
 @maquinario_bp.route('/combustivel/novo', methods=['GET', 'POST'])
@@ -404,7 +401,7 @@ def abastecimento_novo():
     if request.method == 'POST':
         try:
             registro_id, msg = maquinario.inserir_abastecimento(_dados(
-                'maquina_id', 'data_abastecimento', 'produto', 'quantidade_litros',
+                'data_abastecimento', 'produto', 'quantidade_litros',
                 'valor_litro', 'valor_total', 'fornecedor', 'boleto', 'vencimento',
                 'lembrete_em', 'pago', 'observacoes',
             ))
@@ -414,9 +411,8 @@ def abastecimento_novo():
             _flash(msg, False)
         except Exception as e:
             logger.error(f"maquinario_routes.abastecimento_novo: {e}")
-            flash(f'Erro ao registrar abastecimento: {e}', 'error')
-    return render_template('maquinario/abastecimento_form.html',
-                           abastecimento=None, maquinas=maquinario.listar_maquinas())
+            flash(f'Erro ao registrar entrega: {e}', 'error')
+    return render_template('maquinario/abastecimento_form.html', abastecimento=None)
 
 
 @maquinario_bp.route('/combustivel/<int:id>/editar', methods=['GET', 'POST'])
@@ -425,7 +421,7 @@ def abastecimento_editar(id):
     if request.method == 'POST':
         try:
             sucesso, msg = maquinario.atualizar_abastecimento(id, _dados(
-                'maquina_id', 'data_abastecimento', 'produto', 'quantidade_litros',
+                'data_abastecimento', 'produto', 'quantidade_litros',
                 'valor_litro', 'valor_total', 'fornecedor', 'boleto', 'vencimento',
                 'lembrete_em', 'pago', 'observacoes',
             ))
@@ -434,14 +430,13 @@ def abastecimento_editar(id):
                 return redirect(url_for('maquinario.abastecimentos'))
         except Exception as e:
             logger.error(f"maquinario_routes.abastecimento_editar: {e}")
-            flash(f'Erro ao atualizar abastecimento: {e}', 'error')
+            flash(f'Erro ao atualizar entrega: {e}', 'error')
     abastecimento = maquinario.buscar_abastecimento(id)
     if not abastecimento:
-        flash('Abastecimento não encontrado.', 'warning')
+        flash('Entrega não encontrada.', 'warning')
         return redirect(url_for('maquinario.abastecimentos'))
     return render_template('maquinario/abastecimento_form.html',
-                           abastecimento=abastecimento,
-                           maquinas=maquinario.listar_maquinas())
+                           abastecimento=abastecimento)
 
 
 @maquinario_bp.route('/combustivel/<int:id>/pagar', methods=['POST'])

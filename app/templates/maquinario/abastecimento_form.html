@@ -28,16 +28,6 @@
                 <label for="produto" class="form-label">Produto</label>
                 <input type="text" class="form-control" id="produto" name="produto" value="{{ abastecimento.produto if abastecimento and abastecimento.produto else 'DIESEL S10' }}">
             </div>
-            <div class="col-md-6">
-                <label for="maquina_id" class="form-label">Máquina / trator</label>
-                <select class="form-select" id="maquina_id" name="maquina_id">
-                    <option value="">Não informado</option>
-                    {% for m in maquinas %}
-                    <option value="{{ m.id }}" {% if abastecimento and abastecimento.maquina_id == m.id %}selected{% endif %}>{{ m.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
             {{ ui.secao('bi-calculator', 'Valores') }}
             <div class="col-md-4">
                 <label for="quantidade_litros" class="form-label">Litros <span class="text-danger">*</span></label>
