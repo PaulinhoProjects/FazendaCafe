@@ -12,8 +12,15 @@
     <div>
         <h1 class="page-title"><i class="bi bi-spray me-2"></i>Pulverização</h1>
         <p class="page-subtitle">{{ aplicacoes|length if aplicacoes else 0 }} aplicações registradas</p>
+        <p class="text-muted small mb-0">Aplicações vêm das receitas: cada talhão da receita vira uma tarefa na fila de campo.</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('pulverizacao.nova_receita') }}" class="btn btn-success">
+            <i class="bi bi-journal-text me-1"></i>Nova Receita
+        </a>
+        <a href="{{ url_for('pulverizacao.fila_aplicacao') }}" class="btn btn-primary">
+            <i class="bi bi-list-check me-1"></i>Fila de Aplicação
+        </a>
         <a href="{{ url_for('relatorios.rel_pulverizacoes') }}" class="btn btn-outline-secondary">
             <i class="bi bi-file-earmark-pdf me-1"></i>Relatório
         </a>
@@ -23,8 +30,8 @@
         <a href="{{ url_for('pulverizacao.exportar_csv_aplicacoes') }}" class="btn btn-outline-secondary">
             <i class="bi bi-filetype-csv me-1"></i>CSV
         </a>
-        <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-1"></i>Nova Aplicação
+        <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-outline-secondary btn-sm" title="Lançamento avançado, fora de uma receita">
+            Registro manual
         </a>
     </div>
 </div>
@@ -62,7 +69,8 @@
         <div class="empty-state">
             <i class="bi bi-spray"></i>
             <h5 class="mt-3">Nenhuma aplicação registrada ainda.</h5>
-            <a href="{{ url_for('pulverizacao.nova_aplicacao') }}" class="btn btn-primary mt-3">Registrar primeira aplicação</a>
+            <p class="text-muted small">Crie uma receita com os talhões para gerar as tarefas de aplicação.</p>
+            <a href="{{ url_for('pulverizacao.nova_receita') }}" class="btn btn-success mt-3">Criar primeira receita</a>
         </div>
         {% else %}
         <div class="table-responsive">

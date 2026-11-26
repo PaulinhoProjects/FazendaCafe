@@ -9,6 +9,7 @@
                 {{ periodo_nome }} ·
                 {{ resumo.total_talhoes }} talhão(ões) · {{ resumo.area_total|float|round(2) }} ha
             </p>
+            <p class="text-muted small mb-0">Cada talhão desta receita já virou uma tarefa na fila de aplicação.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ url_for('pulverizacao.listar_receitas') }}" class="btn btn-outline-secondary btn-sm">
@@ -19,6 +20,9 @@
             </a>
             <a href="{{ url_for('pulverizacao.pdf_receita', id=receita.id) }}" class="btn btn-outline-danger btn-sm">
                 <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+            <a href="{{ url_for('pulverizacao.fila_aplicacao') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-list-check me-1"></i>Ver tarefas na fila
             </a>
         </div>
     </div>
