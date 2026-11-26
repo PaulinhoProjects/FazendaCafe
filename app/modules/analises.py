@@ -5,9 +5,12 @@ Gerencia laboratórios, análises e resultados
 
 import sys
 import os
+import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # =====================================================
 # FUNÇÕES PARA TIPOS DE ANÁLISE
@@ -182,25 +185,6 @@ def buscar_analise_por_id(id):
         print(f"Erro ao buscar análise: {e}")
         return None
 
-def inserir_analise(dados):
-    query = """
-    INSERT INTO analises 
-        (talhao_id, tipo_analise_id, laboratorio_id, data_coleta, 
-         data_resultado, numero_protocolo, responsavel_coleta, observacoes)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-    """
-    try:
-        resultado = executar_query(query,
-            (dados['talhao_id'], dados['tipo_id'], dados.get('laboratorio_id'),
-             dados['data_coleta'], dados.get('data_resultado'),
-             dados.get('numero_protocolo'), dados.get('responsavel'),
-             dados.get('observacoes')),
-            fetch_one=True, dict_cursor=True)
-        return resultado['id'] if resultado else None
-    except Exception as e:
-        print(f"Erro ao inserir análise: {e}")
-        return None
-
 # =====================================================
 # FUNÇÕES PARA RESULTADOS
 # =====================================================
@@ -261,9 +245,9 @@ def inserir_analise(dados):
             fetch_one=True, dict_cursor=True)
         return resultado['id'] if resultado else None
     except Exception as e:
-        print(f"Erro ao inserir análise: {e}")
+        logger.error(f"analises.inserir_analise: {e}")
         return None
-    
+
 def atualizar_data_resultado(analise_id):
     """Atualiza a data_resultado para a data atual quando resultados são inseridos"""
     query = "UPDATE analises SET data_resultado = CURRENT_DATE WHERE id = %s AND data_resultado IS NULL"

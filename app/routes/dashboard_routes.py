@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, session, redirect, url_for
 from app.modules.login_manager import login_required
 from app.modules.clima import get_icone_clima
+from app.models import get_logger
 from datetime import datetime
 
+logger = get_logger(__name__)
 dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/')
@@ -16,6 +18,8 @@ def index():
             get_resumo_estoque, get_resumo_analises, get_resumo_pdfs,
             get_produtos_estoque_baixo, get_ultimas_analises
         )
+        from app.modules import manejo
+        ultimos_manejos = manejo.get_timeline_manejo(5)
 
         resumo = get_resumo_geral()
         alertas = get_alertas_retorno()
@@ -46,14 +50,13 @@ def index():
             resumo_estoque=resumo_estoque, resumo_analises=resumo_analises,
             resumo_pdfs=resumo_pdfs, produtos_baixo=produtos_baixo,
             ultimas_analises=ultimas_analises,
+            ultimos_manejos=ultimos_manejos,
             clima_atual=clima_atual,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima
         )
     except Exception as e:
-        print(f"Erro no dashboard: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"dashboard_routes.index: {e}")
         return render_template('dashboard.html',
             resumo=None, alertas=[], atividades=[],
             grafico_tendencia={'labels': [], 'dados': []},
@@ -63,7 +66,7 @@ def index():
             resumo_estoque={'total_produtos': 0, 'estoque_baixo': 0, 'total_itens': 0},
             resumo_analises={'analises_ano': 0, 'pendentes': 0},
             resumo_pdfs={'total_pdfs': 0, 'pdfs_mes': 0},
-            produtos_baixo=[], ultimas_analises=[],
+            produtos_baixo=[], ultimas_analises=[], ultimos_manejos=[],
             clima_atual=None,
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima

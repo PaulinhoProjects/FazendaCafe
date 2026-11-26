@@ -1,7 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import (Blueprint, render_template, request, redirect, url_for,
+                   flash, current_app, send_from_directory)
 from app.modules import analises
 from app.modules.login_manager import login_required, admin_required
 from app.models import get_logger
+import os
+import uuid
 
 logger = get_logger(__name__)
 analises_bp = Blueprint('analises', __name__, url_prefix='/analises')
@@ -46,8 +49,20 @@ def nova():
                 'data_resultado': request.form.get('data_resultado') or None,
                 'numero_protocolo': request.form.get('numero_protocolo'),
                 'responsavel': request.form.get('responsavel'),
-                'observacoes': request.form.get('observacoes')
+                'observacoes': request.form.get('observacoes'),
+                'arquivo_pdf': None
             }
+
+            arquivo = request.files.get('arquivo_pdf')
+            if arquivo and arquivo.filename:
+                if not arquivo.filename.lower().endswith('.pdf'):
+                    flash('O laudo deve ser um arquivo PDF.', 'error')
+                else:
+                    nome_arquivo = f"analise_{uuid.uuid4().hex[:12]}.pdf"
+                    caminho = os.path.join(current_app.config['UPLOAD_FOLDER'], nome_arquivo)
+                    arquivo.save(caminho)
+                    dados['arquivo_pdf'] = nome_arquivo
+
             analise_id = analises.inserir_analise(dados)
             if analise_id:
                 flash('Analise registrada!', 'success')
@@ -69,6 +84,18 @@ def nova():
         logger.error(f"analises_routes.nova: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('analises.listar'))
+
+@analises_bp.route('/arquivo/<path:filename>')
+@login_required
+def arquivo(filename):
+    """Serve o laudo PDF da análise."""
+    try:
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        logger.error(f"analises_routes.arquivo: {e}")
+        flash('Laudo PDF não encontrado.', 'warning')
+        return redirect(url_for('analises.listar'))
+
 
 @analises_bp.route('/<int:id>')
 @login_required

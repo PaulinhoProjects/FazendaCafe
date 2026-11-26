@@ -17,6 +17,9 @@
             <a href="{{ url_for('pulverizacao.editar_receita', id=receita.id) }}" class="btn btn-warning btn-sm">
                 <i class="bi bi-pencil me-1"></i>Editar receita
             </a>
+            <a href="{{ url_for('pulverizacao.pdf_receita', id=receita.id) }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
         </div>
     </div>
 

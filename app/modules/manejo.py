@@ -123,7 +123,9 @@ def get_resumo_manejo():
     try:
         resultado = executar_query("""
             SELECT COUNT(*) AS total FROM aplicacoes_pulverizacao
-            WHERE status_retorno IN ('pendente', 'atrasado')
+            WHERE data_prevista_retorno IS NOT NULL
+              AND data_prevista_retorno <= CURRENT_DATE
+              AND (status_retorno IS NULL OR status_retorno NOT IN ('realizado', 'cancelado'))
         """, fetch_one=True, dict_cursor=True)
         resumo['retornos_pendentes'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:

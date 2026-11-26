@@ -19,6 +19,16 @@
                         <tr><th>Data Resultado</th><td>{{ analise.data_resultado|format_data if analise.data_resultado else 'Pendente' }}</td></tr>
                         <tr><th>Protocolo</th><td>{{ analise.numero_protocolo or '-' }}</td></tr>
                         <tr><th>Responsável</th><td>{{ analise.responsavel_coleta or '-' }}</td></tr>
+                        <tr>
+                            <th>Laudo PDF</th>
+                            <td>
+                                {% if analise.arquivo_pdf %}
+                                <a href="{{ url_for('analises.arquivo', filename=analise.arquivo_pdf) }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>Abrir laudo
+                                </a>
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
                     </table>
                 </div>
             </div>

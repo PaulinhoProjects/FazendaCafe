@@ -637,10 +637,10 @@ def exportar_csv_aplicacoes():
             writer.writerow([
                 a.get('id', ''),
                 a.get('data_aplicacao', ''),
-                a.get('talhao', ''),
-                a.get('periodo', ''),
+                a.get('talhao_nome', ''),
+                a.get('periodo_nome', ''),
                 a.get('responsavel', ''),
-                a.get('receita', ''),
+                a.get('receita_nome', ''),
                 a.get('data_prevista_retorno', ''),
                 a.get('status_retorno', '')
             ])
@@ -654,3 +654,86 @@ def exportar_csv_aplicacoes():
         logger.error(f"pulverizacao_routes.exportar_csv_aplicacoes: {e}")
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
+
+
+@pulverizacao_bp.route('/aplicacoes/exportar-pdf')
+@login_required
+def exportar_pdf_aplicacoes():
+    """PDF completo das aplicações, com talhão, período e retorno."""
+    try:
+        aplicacoes = []
+        for a in pulverizacao.listar_aplicacoes():
+            item = dict(a)
+            item['data_retorno'] = item.get('data_retorno') or item.get('data_prevista_retorno') or '-'
+            item['data_aplicacao'] = item.get('data_aplicacao') or '-'
+            item['periodo_nome'] = item.get('periodo_nome') or 'Geral'
+            item['receita_nome'] = item.get('receita_nome') or '-'
+            aplicacoes.append(item)
+
+        buffer = pulverizacao.gerar_pdf_pulverizacoes(
+            aplicacoes,
+            request.args.get('data_inicio') or None,
+            request.args.get('data_fim') or None,
+        )
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment;filename=aplicacoes_{datetime.now().strftime("%Y%m%d")}.pdf'}
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.exportar_pdf_aplicacoes: {e}")
+        flash('Erro ao gerar PDF das aplicações.', 'error')
+        return redirect(url_for('pulverizacao.listar_aplicacoes'))
+
+
+@pulverizacao_bp.route('/receitas/exportar-pdf')
+@login_required
+def exportar_pdf_receitas():
+    """PDF de todas as receitas, com o nome do período fenológico."""
+    try:
+        lista = []
+        for r in pulverizacao.listar_receitas():
+            item = dict(r)
+            item['periodo_nome'] = _periodo_nome(item.get('periodo_id'))
+            lista.append(item)
+
+        buffer = pulverizacao.gerar_pdf_receitas(
+            lista,
+            periodo_filtro=request.args.get('periodo_id', type=int),
+            mes=request.args.get('mes', type=int),
+            ano=request.args.get('ano', type=int),
+            termo_busca=request.args.get('termo_busca') or None,
+        )
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment;filename=receitas_{datetime.now().strftime("%Y%m%d")}.pdf'}
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.exportar_pdf_receitas: {e}")
+        flash('Erro ao gerar PDF das receitas.', 'error')
+        return redirect(url_for('pulverizacao.listar_receitas'))
+
+
+@pulverizacao_bp.route('/receitas/<int:id>/pdf')
+@login_required
+def pdf_receita(id):
+    """PDF de uma receita específica."""
+    try:
+        receita = pulverizacao.buscar_receita_por_id(id)
+        if not receita:
+            flash('Receita não encontrada.', 'warning')
+            return redirect(url_for('pulverizacao.listar_receitas'))
+
+        item = dict(receita)
+        item['periodo_nome'] = _periodo_nome(item.get('periodo_id'))
+        buffer = pulverizacao.gerar_pdf_receitas([item])
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment;filename=receita_{id}.pdf'}
+        )
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.pdf_receita: {e}")
+        flash('Erro ao gerar PDF da receita.', 'error')
+        return redirect(url_for('pulverizacao.listar_receitas'))

@@ -94,7 +94,7 @@ def get_alertas_retorno():
     JOIN periodos_lavoura p ON p.id = ap.periodo_id
     WHERE ap.data_prevista_retorno IS NOT NULL
     AND ap.data_prevista_retorno <= %s
-    AND (ap.status_retorno IS NULL OR ap.status_retorno != 'concluido')
+    AND (ap.status_retorno IS NULL OR ap.status_retorno NOT IN ('realizado', 'cancelado'))
     ORDER BY ap.data_prevista_retorno ASC
     """
     try:
