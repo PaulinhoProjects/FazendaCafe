@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}{{ 'Editar gasto' if gasto and gasto.id else 'Lançar gasto' }} — Manejo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.visao_geral') }}">Manejo do Cafezal</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.gastos') }}">Gastos</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if gasto and gasto.id else 'Lançar' }}</li>
+{% endblock %}
+{% block conteudo %}
+{% set g = gasto or {} %}
+{% set editando = g.id is defined and g.id %}
+{% set forma = g.forma_pagamento or 'diaria' %}
+{% set cat = g.categoria or categoria_inicial or '' %}
+{% macro valor(campo, padrao='') -%}{{ g[campo] if g[campo] is defined and g[campo] is not none else padrao }}{%- endmacro %}
+{{ ui.cabecalho_form('bi-people', 'Editar gasto' if editando else 'Lançar gasto com o café',
+                     'Mão de obra e serviços — o total é calculado conforme a forma de pagamento', url_for('manejo.gastos')) }}
+
+<form method="POST" class="card maq-form" id="formGasto">
+    <div class="card-body p-4">
+        <div class="row g-3">
+            {{ ui.secao('bi-tools', 'Serviço', primeira=true) }}
+            <div class="col-12">
+                <div class="gasto-cats" role="radiogroup" aria-label="Serviço">
+                    {% for c in categorias %}
+                    <input type="radio" class="btn-check" name="categoria" id="cat{{ loop.index }}" value="{{ c }}" {% if c == cat %}checked{% endif %} required>
+                    <label class="gasto-cat" for="cat{{ loop.index }}">{{ c }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="data_gasto" class="form-label">Data</label>
+                <input type="date" class="form-control" id="data_gasto" name="data_gasto" value="{{ valor('data_gasto') }}">
+                <div class="form-text">Vazio = hoje. Define a safra.</div>
+            </div>
+            <div class="col-md-4">
+                <label for="talhao_id" class="form-label">Talhão</label>
+                <select class="form-select" id="talhao_id" name="talhao_id">
+                    <option value="">Geral (toda a lavoura)</option>
+                    {% for t in talhoes %}<option value="{{ t.id }}" {% if g.talhao_id|string == t.id|string %}selected{% endif %}>{{ t.nome }} · {{ ui.num(t.area) }} ha</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label for="trabalhador" class="form-label">Trabalhador / equipe</label>
+                <input type="text" class="form-control" id="trabalhador" name="trabalhador" maxlength="150" value="{{ valor('trabalhador') }}" placeholder="Ex.: Turma do Zé">
+            </div>
+
+            {{ ui.secao('bi-calculator', 'Pagamento') }}
+            <div class="col-12">
+                <div class="maq-tipo gasto-formas" role="radiogroup" aria-label="Forma de pagamento">
+                    <input type="radio" class="btn-check" name="forma_pagamento" id="fp_diaria" value="diaria" {% if forma == 'diaria' %}checked{% endif %}>
+                    <label class="maq-tipo-opcao" for="fp_diaria"><i class="bi bi-sun"></i><span><strong>Diária</strong><small>Pessoas × dias × valor</small></span></label>
+                    <input type="radio" class="btn-check" name="forma_pagamento" id="fp_producao" value="producao" {% if forma == 'producao' %}checked{% endif %}>
+                    <label class="maq-tipo-opcao" for="fp_producao"><i class="bi bi-basket"></i><span><strong>Por produção</strong><small>Latas, medidas ou sacos</small></span></label>
+                    <input type="radio" class="btn-check" name="forma_pagamento" id="fp_empreita" value="empreita" {% if forma == 'empreita' %}checked{% endif %}>
+                    <label class="maq-tipo-opcao" for="fp_empreita"><i class="bi bi-clipboard-check"></i><span><strong>Empreita</strong><small>Valor fechado</small></span></label>
+                </div>
+            </div>
+
+            <div class="col-12" data-forma="diaria">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="pessoas" class="form-label">Pessoas</label>
+                        <input type="number" class="form-control" id="pessoas" name="pessoas" min="1" step="1" value="{{ valor('pessoas', 1) if forma == 'diaria' else 1 }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="dias" class="form-label">Dias</label>
+                        <input type="number" class="form-control" id="dias" name="dias" min="0.5" step="0.5" value="{{ (g.quantidade or g.dias or '') if forma == 'diaria' else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="valor_diaria" class="form-label">Valor da diária</label>
+                        <div class="input-group"><span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="valor_diaria" name="valor_diaria" min="0" step="0.01" value="{{ (g.valor_unitario or g.valor_diaria or '') if forma == 'diaria' else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-forma="producao">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="quantidade" class="form-label">Quantidade colhida</label>
+                        <input type="number" class="form-control" id="quantidade" name="quantidade" min="0" step="0.5" value="{{ g.quantidade if forma == 'producao' and g.quantidade else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="unidade" class="form-label">Unidade</label>
+                        <select class="form-select" id="unidade" name="unidade">
+                            {% for u in unidades %}<option value="{{ u }}" {% if g.unidade == u %}selected{% endif %}>{{ u|capitalize }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="valor_unidade" class="form-label">Valor por unidade</label>
+                        <div class="input-group"><span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="valor_unidade" name="valor_unidade" min="0" step="0.01" value="{{ (g.valor_unitario or g.valor_unidade or '') if forma == 'producao' else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-forma="empreita">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="valor_total" class="form-label">Valor da empreita</label>
+                        <div class="input-group"><span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="valor_total" name="valor_total" min="0" step="0.01" value="{{ g.valor_total if forma == 'empreita' and g.valor_total else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="gasto-total">
+                    <span>Total</span>
+                    <strong id="totalCalculado">R$ 0,00</strong>
+                    <small id="totalDetalhe" class="text-body-secondary"></small>
+                </div>
+            </div>
+
+            {{ ui.secao('bi-journal-text', 'Detalhes') }}
+            <div class="col-md-8">
+                <label for="descricao" class="form-label">Descrição</label>
+                <input type="text" class="form-control" id="descricao" name="descricao" maxlength="200" value="{{ valor('descricao') }}" placeholder="Ex.: Desbrota dos talhões recepados">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="pago" name="pago" value="on" {% if not gasto or g.pago %}checked{% endif %}>
+                    <label class="form-check-label" for="pago">Já foi pago</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <label for="observacoes" class="form-label">Observações</label>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="2">{{ valor('observacoes') }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="maq-form-rodape">
+            <a href="{{ url_for('manejo.gastos') }}" class="btn btn-outline-secondary">Cancelar</a>
+            {% if not editando %}
+            <button type="submit" name="continuar" value="1" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Salvar e lançar outro</button>
+            {% endif %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    var form = document.getElementById('formGasto');
+    var moeda = function (v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+    var num = function (id) { return parseFloat(document.getElementById(id).value) || 0; };
+    function forma() { return (form.querySelector('input[name="forma_pagamento"]:checked') || {}).value || 'diaria'; }
+    function atualizar() {
+        var f = forma();
+        form.querySelectorAll('[data-forma]').forEach(function (bloco) {
+            var ativo = bloco.dataset.forma === f;
+            bloco.classList.toggle('d-none', !ativo);
+            bloco.querySelectorAll('input').forEach(function (i) { i.required = ativo && i.id !== 'pessoas'; });
+        });
+        var total = 0, detalhe = '';
+        if (f === 'diaria') {
+            total = Math.max(1, num('pessoas')) * num('dias') * num('valor_diaria');
+            detalhe = Math.max(1, num('pessoas')) + ' pessoa(s) × ' + num('dias') + ' dia(s) × ' + moeda(num('valor_diaria'));
+        } else if (f === 'producao') {
+            var u = document.getElementById('unidade').value;
+            total = num('quantidade') * num('valor_unidade');
+            detalhe = num('quantidade') + ' ' + u + '(s) × ' + moeda(num('valor_unidade'));
+        } else {
+            total = num('valor_total');
+            detalhe = 'Valor fechado';
+        }
+        document.getElementById('totalCalculado').textContent = moeda(total);
+        document.getElementById('totalDetalhe').textContent = detalhe;
+    }
+    form.addEventListener('input', atualizar);
+    form.addEventListener('change', atualizar);
+    atualizar();
+})();
+</script>
+{% endblock %}

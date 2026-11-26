@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}{{ 'Editar tarefa' if tarefa else 'Nova tarefa' }} — Calendário do café{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.visao_geral') }}">Manejo do Cafezal</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.calendario') }}">Calendário</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if tarefa else 'Nova' }}</li>
+{% endblock %}
+{% block conteudo %}
+{{ ui.cabecalho_form('bi-calendar-plus', 'Editar tarefa do calendário' if tarefa else 'Nova tarefa do calendário',
+                     'Defina a época do ano em que esta atividade deve ser feita', url_for('manejo.calendario')) }}
+
+<form method="POST" class="card maq-form">
+    <div class="card-body p-4">
+        <div class="row g-3">
+            {{ ui.secao('bi-card-text', 'Tarefa', primeira=true) }}
+            <div class="col-md-8">
+                <label for="titulo" class="form-label">Nome da tarefa <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="titulo" name="titulo" maxlength="150" required autofocus
+                       value="{{ tarefa.titulo if tarefa else '' }}" placeholder="Ex.: Desbrota dos talhões podados">
+            </div>
+            <div class="col-md-4">
+                <label for="categoria" class="form-label">Categoria</label>
+                <select class="form-select" id="categoria" name="categoria">
+                    {% for c in categorias %}<option value="{{ c }}" {% if tarefa and tarefa.categoria == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <label for="descricao" class="form-label">Orientação</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="2" placeholder="Como e por que fazer — aparece como sugestão no calendário">{{ tarefa.descricao if tarefa else '' }}</textarea>
+            </div>
+
+            {{ ui.secao('bi-calendar-range', 'Época') }}
+            <div class="col-md-4">
+                <label for="mes_inicio" class="form-label">Começa em <span class="text-danger">*</span></label>
+                <select class="form-select" id="mes_inicio" name="mes_inicio" required>
+                    {% for m in meses %}<option value="{{ loop.index }}" {% if tarefa and tarefa.mes_inicio == loop.index %}selected{% endif %}>{{ m }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="mes_fim" class="form-label">Termina em <span class="text-danger">*</span></label>
+                <select class="form-select" id="mes_fim" name="mes_fim" required>
+                    {% for m in meses %}<option value="{{ loop.index }}" {% if tarefa and tarefa.mes_fim == loop.index %}selected{% endif %}>{{ m }}</option>{% endfor %}
+                </select>
+                <div class="form-text">Pode virar o ano (ex.: novembro a fevereiro).</div>
+            </div>
+            <div class="col-md-4">
+                <label for="periodo_id" class="form-label">Fase da lavoura</label>
+                <select class="form-select" id="periodo_id" name="periodo_id">
+                    <option value="">—</option>
+                    {% for p in periodos %}<option value="{{ p.id }}" {% if tarefa and tarefa.periodo_id == p.id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer d-flex align-items-center">
+        {% if tarefa %}
+        <button type="button" class="btn btn-outline-danger"
+            onclick="confirmarExclusaoGlobal({{ tarefa.titulo|tojson|forceescape }}, {{ url_for('manejo.calendario_tarefa_excluir', tarefa_id=tarefa.id)|tojson|forceescape }})">
+            <i class="bi bi-trash me-1"></i>Remover do calendário
+        </button>
+        {% endif %}
+        <div class="ms-auto">{{ ui.rodape_form(url_for('manejo.calendario')) }}</div>
+    </div>
+</form>
+{% endblock %}

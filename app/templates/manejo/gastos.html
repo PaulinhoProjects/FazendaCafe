@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Gastos e mão de obra — Manejo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.visao_geral') }}">Manejo do Cafezal</a></li>
+<li class="breadcrumb-item active">Gastos</li>
+{% endblock %}
+{% block conteudo %}
+{% set talhao_sel = (talhoes|selectattr('id', 'equalto', talhao)|first) if talhao and talhao != 'geral' else none %}
+{% set area_total = talhoes|sum(attribute='area') %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-people me-2"></i>Gastos e mão de obra</h1>
+        <p class="page-subtitle">Desbrota, panha manual, capina e outros serviços no café — {{ 'todas as safras' if safra == 'todas' else 'safra ' ~ safra }}</p>
+    </div>
+    <a href="{{ url_for('manejo.gasto_novo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Lançar gasto</a>
+</div>
+
+{% include 'manejo/_abas.html' %}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="fSafra" class="form-label small fw-semibold text-body-secondary">Safra</label>
+                <select id="fSafra" name="safra" class="form-select" onchange="this.form.submit()">
+                    {% for s in safras %}<option value="{{ s }}" {% if s == safra %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                    <option value="todas" {% if safra == 'todas' %}selected{% endif %}>Todas as safras</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="fCategoria" class="form-label small fw-semibold text-body-secondary">Serviço</label>
+                <select id="fCategoria" name="categoria" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos os serviços</option>
+                    {% for c in categorias %}<option value="{{ c }}" {% if c == categoria %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="fTalhao" class="form-label small fw-semibold text-body-secondary">Talhão</label>
+                <select id="fTalhao" name="talhao" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    <option value="geral" {% if talhao == 'geral' %}selected{% endif %}>Geral (sem talhão)</option>
+                    {% for t in talhoes %}<option value="{{ t.id }}" {% if t.id == talhao %}selected{% endif %}>{{ t.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                {% if categoria or talhao %}
+                <a href="{{ url_for('manejo.gastos', safra=safra) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-x-circle me-1"></i>Limpar</a>
+                {% endif %}
+                <noscript><button class="btn btn-primary w-100">Filtrar</button></noscript>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% set area_ref = talhao_sel.area if talhao_sel else (area_total if not talhao else 0) %}
+<div class="kpi-grid maq-kpis mb-4">
+    {{ ui.kpi('bi-cash-stack', 'danger', 'Total gasto', ui.brl(resumo.total), resumo.lancamentos ~ ' lançamento(s)') }}
+    {{ ui.kpi('bi-calendar-month', 'primary', 'Neste mês', ui.brl(resumo.mes_atual), 'Lançado no mês atual') }}
+    {{ ui.kpi('bi-hourglass-split', 'warning' if resumo.pendentes else 'success', 'A pagar', ui.brl(resumo.a_pagar),
+              (resumo.pendentes ~ ' pagamento(s) pendente(s)') if resumo.pendentes else 'Tudo pago') }}
+    {{ ui.kpi('bi-rulers', 'info', 'Custo por hectare', (ui.brl(resumo.total / area_ref) ~ '/ha') if area_ref else '—',
+              ((ui.num(area_ref) ~ ' ha considerados') if area_ref else 'Escolha um talhão ou veja todos')) }}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Por serviço</h6></div>
+            <div class="card-body">
+                {% if resumo.por_categoria %}
+                <ul class="maq-barras list-unstyled mb-0">
+                    {% for c in resumo.por_categoria %}
+                    {% set p = (c.total / resumo.total * 100) if resumo.total else 0 %}
+                    <li>
+                        <div class="d-flex justify-content-between gap-2 small">
+                            <a class="fw-medium text-truncate text-reset" href="{{ url_for('manejo.gastos', safra=safra, categoria=c.categoria, talhao=talhao) }}">{{ c.categoria }}</a>
+                            <span class="tabular text-nowrap">{{ ui.brl(c.total) }}</span>
+                        </div>
+                        <div class="maq-barra" role="img" aria-label="{{ ui.num(p, 1) }}% do total"><span style="width: {{ '%.1f'|format(p) }}%"></span></div>
+                        <small class="text-body-secondary tabular">{{ c.quantidade }} lançamento(s) · {{ ui.num(p, 1) }}%</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-state py-4"><i class="bi bi-pie-chart"></i><h6 class="mb-1">Sem gastos lançados</h6></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-pin-map me-2"></i>Por talhão</h6></div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Talhão</th><th class="text-end">Área</th><th class="text-end">Total</th><th class="text-end">Por hectare</th></tr></thead>
+                    <tbody>
+                    {% for t in resumo.por_talhao %}
+                    <tr>
+                        <td class="fw-semibold">{{ t.nome }}</td>
+                        <td class="text-end text-nowrap tabular">{{ (ui.num(t.area) ~ ' ha') if t.area else '—' }}</td>
+                        <td class="text-end text-nowrap tabular">{{ ui.brl(t.total) }}</td>
+                        <td class="text-end text-nowrap tabular">{{ ui.brl(t.por_ha) if t.por_ha else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    {{ ui.linha_vazia(4, 'bi-pin-map', 'Sem gastos por talhão') }}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-list-ul me-2"></i>Lançamentos</h6>
+            <small class="text-body-secondary">{{ gastos|length }} registro(s){% if talhao_sel %} · {{ talhao_sel.nome }}{% endif %}{% if categoria %} · {{ categoria }}{% endif %}</small>
+        </div>
+        <div class="maq-filtro">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control form-control-sm" placeholder="Filtrar lançamentos..." data-filtra="tabelaGastosCafe" aria-label="Filtrar lançamentos">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tabelaGastosCafe">
+            <thead><tr><th>Data</th><th>Serviço</th><th>Talhão</th><th>Cálculo</th><th class="text-end">Total</th><th>Pagamento</th><th class="text-end">Ações</th></tr></thead>
+            <tbody>
+            {% for g in gastos %}
+            <tr>
+                <td class="text-nowrap tabular">{{ ui.data(g.data_gasto) }}</td>
+                <td>
+                    <span class="fw-semibold">{{ g.categoria }}</span>
+                    {% if g.trabalhador or g.descricao %}<small class="d-block text-body-secondary">{{ [g.trabalhador, g.descricao]|select|join(' · ') }}</small>{% endif %}
+                </td>
+                <td>{{ g.talhao_nome or 'Geral' }}</td>
+                <td class="small text-body-secondary tabular">
+                    {% if g.forma_pagamento == 'diaria' %}
+                    {{ g.pessoas }} pessoa(s) × {{ ui.num(g.quantidade, 1) }} dia(s) × {{ ui.brl(g.valor_unitario) }}
+                    {% elif g.forma_pagamento == 'producao' %}
+                    {{ ui.num(g.quantidade, 1) }} {{ g.unidade }}(s) × {{ ui.brl(g.valor_unitario) }}
+                    {% else %}
+                    Empreita
+                    {% endif %}
+                </td>
+                <td class="text-end text-nowrap tabular fw-semibold">{{ ui.brl(g.valor_total) }}</td>
+                <td>
+                    {% if g.pago %}<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pago</span>
+                    {% else %}<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>A pagar</span>{% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                    {% if not g.pago %}
+                    <form class="d-inline" method="POST" action="{{ url_for('manejo.gasto_pagar', gasto_id=g.id) }}">
+                        <button class="btn btn-sm btn-outline-success" title="Marcar como pago" aria-label="Marcar como pago"><i class="bi bi-check2-circle"></i></button>
+                    </form>
+                    {% endif %}
+                    {{ ui.botao_editar(url_for('manejo.gasto_editar', gasto_id=g.id)) }}
+                    {{ ui.botao_excluir(g.categoria ~ ' de ' ~ ui.data(g.data_gasto), url_for('manejo.gasto_excluir', gasto_id=g.id)) }}
+                </td>
+            </tr>
+            {% else %}
+            {{ ui.linha_vazia(7, 'bi-people', 'Nenhum gasto lançado',
+                              'Registre diárias, panha por lata e empreitas para saber o custo real do café.',
+                              url_for('manejo.gasto_novo'), 'Lançar gasto') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+{% include 'maquinario/_tabela_js.html' %}
+<script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaGastosCafe', 20); });</script>
+{% endblock %}

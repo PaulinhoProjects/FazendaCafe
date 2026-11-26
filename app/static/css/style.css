@@ -2365,3 +2365,83 @@ h1, h2, h3, h4, h5, h6,
     background: none; box-shadow: none; border-radius: 0;
     display: inline; font-size: inherit; color: inherit;
 }
+
+/* -------------------------------------------------------------------------
+   MANEJO: CALENDÁRIO DO CAFÉ E GASTOS
+   ------------------------------------------------------------------------- */
+.cal-cat-planejamento { --cal-cor: var(--info); }
+.cal-cat-solo         { --cal-cor: var(--accent); }
+.cal-cat-nutricao     { --cal-cor: var(--success); }
+.cal-cat-fito         { --cal-cor: var(--danger); }
+.cal-cat-tratos       { --cal-cor: #7B61C4; }
+:root[data-theme="dark"] .cal-cat-tratos { --cal-cor: #A28FE3; }
+.cal-cat-colheita     { --cal-cor: var(--warning); }
+.cal-cat-pos          { --cal-cor: var(--text-3); }
+
+.cal-chip {
+    display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 500;
+    color: var(--text-2); white-space: nowrap;
+}
+.cal-chip::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--cal-cor, var(--text-3)); }
+.cal-legenda { display: flex; flex-wrap: wrap; gap: .35rem .85rem; justify-content: flex-end; max-width: 560px; }
+
+.cal-agora-item { padding: 1rem 1.25rem; }
+.cal-agora-icone {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; font-size: 1.05rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--primary-50); color: var(--primary-text);
+}
+.cal-agora-atrasada { background: var(--danger-50); color: var(--danger); }
+.cal-form-feito { margin-top: .25rem; }
+
+.cal-gantt-scroll { overflow-x: auto; }
+.cal-gantt { min-width: 860px; }
+.cal-linha { display: grid; grid-template-columns: minmax(220px, 30%) 1fr; align-items: stretch; border-bottom: 1px solid var(--border); }
+.cal-cabecalho { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.cal-cabecalho .cal-titulo, .cal-cabecalho .cal-mes {
+    font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3);
+    padding: .55rem .5rem;
+}
+.cal-titulo {
+    display: flex; align-items: center; gap: .5rem; min-width: 0; padding: .55rem 1rem;
+    background: none; border: 0; text-align: left; font-size: .85rem; color: var(--text); cursor: pointer;
+}
+.cal-cabecalho .cal-titulo { padding-left: 1rem; cursor: default; }
+button.cal-titulo:hover { color: var(--primary-text); background: var(--surface-2); }
+button.cal-titulo:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.cal-st { font-size: .95rem; flex-shrink: 0; }
+.cal-meses { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: 1fr; }
+.cal-mes { grid-row: 1; border-left: 1px solid var(--border); text-align: center; }
+.cal-mes.cal-hoje { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.cal-cabecalho .cal-mes.cal-hoje { color: var(--primary-text); }
+.cal-barra {
+    grid-row: 1; align-self: center; height: 12px; margin: 0 4px; border-radius: 4px;
+    background: var(--cal-cor, var(--primary)); position: relative; z-index: 1;
+}
+.cal-situacao-feita .cal-barra { opacity: .35; }
+.cal-situacao-feita .cal-titulo span { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--border-strong); }
+.cal-situacao-atrasada .cal-barra { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--danger); }
+.cal-detalhe { padding: 1rem 1.25rem 1.25rem; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.cal-execucoes li + li { margin-top: .35rem; }
+
+.cal-sugestao-agora .maq-alerta-icone { background: var(--primary-50); color: var(--primary-text); }
+.cal-sugestao-proxima .maq-alerta-icone { background: var(--info-50); color: var(--info); }
+
+/* Formulário de gastos do café */
+.gasto-cats { display: flex; flex-wrap: wrap; gap: .5rem; }
+.gasto-cat {
+    padding: .45rem .9rem; border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+    font-size: .85rem; font-weight: 500; color: var(--text-2); background: var(--surface);
+    transition: border-color .15s ease, background .15s ease;
+}
+.gasto-cat:hover { border-color: var(--border-strong); color: var(--text); }
+.btn-check:checked + .gasto-cat { border-color: var(--primary); background: var(--primary-50); color: var(--primary-text); box-shadow: 0 0 0 1px var(--primary); }
+.btn-check:focus-visible + .gasto-cat { outline: 2px solid var(--primary); outline-offset: 2px; }
+.gasto-formas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 767.98px) { .gasto-formas { grid-template-columns: 1fr; } }
+.gasto-total {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem 1rem; padding: .9rem 1.1rem;
+    border-radius: var(--radius-md); background: var(--surface-2); border: 1px dashed var(--border-strong);
+}
+.gasto-total span { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
+.gasto-total strong { font-family: var(--font-display, inherit); font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }

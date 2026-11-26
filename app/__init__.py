@@ -244,6 +244,13 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: mapas_importados: {e}")
 
+    # Calendário do café: carrega o modelo do Sul de Minas na primeira vez
+    try:
+        from app.modules import calendario_cafe
+        calendario_cafe.garantir_modelo()
+    except Exception as e:
+        print(f"Aviso: calendario do cafe: {e}")
+
     # Segurança: registro de acessos e regras padrão
     try:
         from app.modules import seguranca

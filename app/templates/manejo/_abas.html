@@ -1,0 +1,17 @@
+{# Abas do Manejo do Cafezal #}
+{% set caminho = request.path.rstrip('/') %}
+{% set abas = [
+    ('manejo.visao_geral', 'bi-kanban', 'Visão geral', caminho == '/manejo' or caminho.startswith('/manejo/talhao')),
+    ('manejo.calendario', 'bi-calendar3', 'Calendário do café', caminho.startswith('/manejo/calendario')),
+    ('manejo.gastos', 'bi-people', 'Gastos e mão de obra', caminho.startswith('/manejo/gastos')),
+] %}
+<nav class="maq-abas mb-4" aria-label="Seções do manejo">
+    <ul class="nav nav-tabs flex-nowrap">
+        {% for endpoint, icone, rotulo, ativa in abas %}
+        <li class="nav-item">
+            <a class="nav-link text-nowrap {% if ativa %}active{% endif %}" href="{{ url_for(endpoint) }}"
+               {% if ativa %}aria-current="page"{% endif %}><i class="bi {{ icone }} me-1"></i>{{ rotulo }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>

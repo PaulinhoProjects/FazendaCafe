@@ -275,6 +275,62 @@ CREATE TABLE IF NOT EXISTS nutrientes_aplicados (
     unidade VARCHAR(30)
 );
 
+-- Nutrição e Correção do Solo: compra da formulação, saldo e aplicação por talhão.
+-- O estoque é próprio deste módulo: não conversa com insumos, café ou maquinário.
+CREATE TABLE IF NOT EXISTS nutri_compras (
+    id SERIAL PRIMARY KEY,
+    fornecedor VARCHAR(150) NOT NULL,
+    numero_nota VARCHAR(80),
+    data_nota DATE DEFAULT CURRENT_DATE,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nutri_compra_itens (
+    id SERIAL PRIMARY KEY,
+    compra_id INTEGER NOT NULL REFERENCES nutri_compras(id),
+    produto VARCHAR(150) NOT NULL,
+    formulacao VARCHAR(80),
+    marca VARCHAR(100),
+    tecnologia VARCHAR(80),
+    categoria_id INTEGER REFERENCES tipos_adubacao(id),
+    quantidade NUMERIC(14,2) NOT NULL,
+    unidade VARCHAR(20) DEFAULT 'kg',
+    peso_saco_kg NUMERIC(10,2),
+    quantidade_kg NUMERIC(14,2) NOT NULL,
+    valor_unitario NUMERIC(14,2),
+    valor_total NUMERIC(14,2),
+    lote VARCHAR(80),
+    validade DATE,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nutri_aplicacoes (
+    id SERIAL PRIMARY KEY,
+    compra_item_id INTEGER NOT NULL REFERENCES nutri_compra_itens(id),
+    data_aplicacao DATE DEFAULT CURRENT_DATE,
+    metodo VARCHAR(60) DEFAULT 'Tratorizada',
+    responsavel VARCHAR(100),
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nutri_aplicacao_talhoes (
+    id SERIAL PRIMARY KEY,
+    aplicacao_id INTEGER NOT NULL REFERENCES nutri_aplicacoes(id),
+    talhao_id INTEGER NOT NULL REFERENCES talhoes(id),
+    recomendacao_id INTEGER REFERENCES recomendacoes_adubacao(id),
+    quantidade_kg NUMERIC(14,2) NOT NULL,
+    area_ha NUMERIC(12,2),
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Dados iniciais
 INSERT INTO periodos_lavoura (nome, descricao) VALUES
     ('Pré-floração', 'Preparação e manejo antes da floração'),
@@ -294,7 +350,13 @@ INSERT INTO tipos_adubacao (nome, descricao) VALUES
     ('Química', 'Adubação com fertilizantes químicos'),
     ('Orgânica', 'Adubação com materiais orgânicos'),
     ('Bioestimulante', 'Bioestimulantes e promotores de crescimento'),
-    ('Micronutrientes', 'Aplicação de micronutrientes')
+    ('Micronutrientes', 'Aplicação de micronutrientes'),
+    ('Convencional', 'Adubação convencional com até 8 aplicações no ciclo'),
+    ('Liberação lenta', 'Tecnologia de liberação lenta: 6 a 10 meses entre aplicações'),
+    ('Fertirrigação', 'Nutrição via água de irrigação'),
+    ('Tratorizada', 'Aplicação tratorizada no solo'),
+    ('Calagem', 'Correção da acidez do solo com calcário'),
+    ('Gessagem', 'Correção do solo com gesso agrícola')
 ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO pragas_doencas (nome, tipo, nome_cientifico, sintomas) VALUES
@@ -620,3 +682,54 @@ CREATE TABLE IF NOT EXISTS maq_gastos (
     data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_maq_gastos_data ON maq_gastos(data_gasto DESC);
+
+-- =====================================================
+-- MANEJO DO CAFÉ: calendário (modelo editável), execuções por safra e gastos
+-- =====================================================
+CREATE TABLE IF NOT EXISTS cafe_calendario (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(150) NOT NULL,
+    descricao TEXT,
+    categoria VARCHAR(60),
+    periodo_id INTEGER REFERENCES periodos_lavoura(id),
+    mes_inicio SMALLINT NOT NULL CHECK (mes_inicio BETWEEN 1 AND 12),
+    mes_fim SMALLINT NOT NULL CHECK (mes_fim BETWEEN 1 AND 12),
+    ordem INTEGER NOT NULL DEFAULT 0,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS cafe_calendario_execucoes (
+    id SERIAL PRIMARY KEY,
+    tarefa_id INTEGER NOT NULL REFERENCES cafe_calendario(id),
+    safra VARCHAR(9) NOT NULL,
+    talhao_id INTEGER REFERENCES talhoes(id),
+    data_execucao DATE NOT NULL DEFAULT CURRENT_DATE,
+    observacoes TEXT,
+    usuario VARCHAR(100),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cafe_exec_safra ON cafe_calendario_execucoes(safra, tarefa_id);
+
+CREATE TABLE IF NOT EXISTS cafe_gastos (
+    id SERIAL PRIMARY KEY,
+    data_gasto DATE NOT NULL DEFAULT CURRENT_DATE,
+    safra VARCHAR(9) NOT NULL,
+    categoria VARCHAR(60) NOT NULL,
+    descricao VARCHAR(200),
+    forma_pagamento VARCHAR(20) NOT NULL,
+    talhao_id INTEGER REFERENCES talhoes(id),
+    trabalhador VARCHAR(150),
+    pessoas INTEGER NOT NULL DEFAULT 1,
+    quantidade NUMERIC(14,2) NOT NULL DEFAULT 1,
+    unidade VARCHAR(30),
+    valor_unitario NUMERIC(14,2),
+    valor_total NUMERIC(14,2) NOT NULL,
+    pago BOOLEAN NOT NULL DEFAULT TRUE,
+    observacoes TEXT,
+    usuario VARCHAR(100),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cafe_gastos_safra ON cafe_gastos(safra, data_gasto DESC);

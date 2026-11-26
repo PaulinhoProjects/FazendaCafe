@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Calendário do café{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('manejo.visao_geral') }}">Manejo do Cafezal</a></li>
+<li class="breadcrumb-item active">Calendário</li>
+{% endblock %}
+{% block conteudo %}
+{% set admin = session.get('tipo') == 'admin' %}
+{% set rotulo_situacao = {
+    'feita': ('success', 'bi-check-circle-fill', 'Feita'),
+    'agora': ('primary', 'bi-play-circle-fill', 'Fazer agora'),
+    'atrasada': ('danger', 'bi-exclamation-circle-fill', 'Atrasada'),
+    'proxima': ('info', 'bi-skip-forward-circle', 'Próximo mês'),
+    'futura': ('secondary', 'bi-circle', 'Mais adiante'),
+} %}
+{% set cor_categoria = {
+    'Planejamento': 'cal-cat-planejamento', 'Solo': 'cal-cat-solo', 'Nutrição': 'cal-cat-nutricao',
+    'Fitossanidade': 'cal-cat-fito', 'Tratos culturais': 'cal-cat-tratos', 'Colheita': 'cal-cat-colheita',
+    'Pós-colheita': 'cal-cat-pos',
+} %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-calendar3 me-2"></i>Calendário do café</h1>
+        <p class="page-subtitle">O que fazer em cada fase da safra {{ cal.safra }} — marque o que já foi feito</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <label for="safraSel" class="small text-body-secondary text-nowrap">Safra</label>
+            <select id="safraSel" name="safra" class="form-select" style="min-width: 10rem" onchange="this.form.submit()">
+                {% for s in safras %}<option value="{{ s }}" {% if s == cal.safra %}selected{% endif %}>{{ s }}{% if s == cal.safra_atual %} (atual){% endif %}</option>{% endfor %}
+            </select>
+        </form>
+        {% if admin %}
+        <a href="{{ url_for('manejo.calendario_tarefa_nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova tarefa</a>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'manejo/_abas.html' %}
+
+{% set pct = ((cal.contagem.feita / cal.total * 100) if cal.total else 0) %}
+<div class="kpi-grid maq-kpis mb-4">
+    {{ ui.kpi('bi-play-circle', 'primary', 'Fazer agora', cal.contagem.agora,
+              ('Em ' ~ cal.mes_hoje_nome) if cal.safra == cal.safra_atual else 'Safra ' ~ cal.safra, '#agora') }}
+    {{ ui.kpi('bi-exclamation-circle', 'danger' if cal.contagem.atrasada else 'success', 'Atrasadas', cal.contagem.atrasada,
+              'Janela já passou sem registro' if cal.contagem.atrasada else 'Nada atrasado', '#linha-do-tempo') }}
+    {{ ui.kpi('bi-check2-circle', 'success', 'Feitas na safra', cal.contagem.feita ~ ' de ' ~ cal.total,
+              ui.num(pct, 0) ~ '% do calendário') }}
+    {{ ui.kpi('bi-skip-forward-circle', 'info', 'Próximo mês', cal.contagem.proxima, 'Para se preparar') }}
+</div>
+
+{% macro marcar_feito(t) -%}
+<form method="POST" action="{{ url_for('manejo.calendario_feito', tarefa_id=t.id) }}" class="row g-2 align-items-end cal-form-feito">
+    <input type="hidden" name="safra" value="{{ cal.safra }}">
+    <div class="col-sm-4">
+        <label class="form-label small mb-1" for="tal{{ t.id }}">Talhão</label>
+        <select class="form-select form-select-sm" id="tal{{ t.id }}" name="talhao_id">
+            <option value="">Toda a lavoura</option>
+            {% for tl in talhoes %}<option value="{{ tl.id }}">{{ tl.nome }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-sm-3">
+        <label class="form-label small mb-1" for="dt{{ t.id }}">Data</label>
+        <input type="date" class="form-control form-control-sm" id="dt{{ t.id }}" name="data_execucao">
+    </div>
+    <div class="col-sm-5">
+        <label class="form-label small mb-1" for="obs{{ t.id }}">Observação</label>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="obs{{ t.id }}" name="observacoes" placeholder="Opcional">
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Feito</button>
+        </div>
+    </div>
+</form>
+{%- endmacro %}
+
+{% set agora = cal.tarefas|selectattr('situacao', 'in', ['agora', 'atrasada'])|list %}
+<div class="card mb-4" id="agora">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-lightning-charge me-2"></i>{{ ('Para fazer em ' ~ cal.mes_hoje_nome) if cal.safra == cal.safra_atual else 'Pendências da safra ' ~ cal.safra }}</h6>
+            <small class="text-body-secondary">Sugestões do calendário que ainda não foram registradas</small>
+        </div>
+    </div>
+    {% if agora %}
+    <div class="list-group list-group-flush">
+        {% for t in agora %}
+        {% set st = rotulo_situacao[t.situacao] %}
+        <div class="list-group-item cal-agora-item">
+            <div class="d-flex gap-3 align-items-start">
+                <span class="cal-agora-icone cal-agora-{{ t.situacao }}"><i class="bi {{ st[1] }}"></i></span>
+                <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong>{{ t.titulo }}</strong>
+                        <span class="badge bg-{{ st[0] }}{{ ' text-dark' if st[0] == 'warning' }}">{{ st[2] }}</span>
+                        <span class="cal-chip {{ cor_categoria.get(t.categoria, '') }}">{{ t.categoria }}</span>
+                        <small class="text-body-secondary"><i class="bi bi-calendar-range me-1"></i>{{ t.janela }}</small>
+                    </div>
+                    {% if t.descricao %}<p class="small text-body-secondary mb-0 mt-1">{{ t.descricao }}</p>{% endif %}
+                    <div class="collapse" id="feito-agora-{{ t.id }}"><div class="pt-2">{{ marcar_feito(t) }}</div></div>
+                </div>
+                <button class="btn btn-sm btn-outline-success text-nowrap flex-shrink-0" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#feito-agora-{{ t.id }}" aria-expanded="false" aria-controls="feito-agora-{{ t.id }}">
+                    <i class="bi bi-check2-circle me-1"></i>Marcar feito
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <i class="bi bi-emoji-smile"></i>
+        <h6 class="mb-1">Tudo em dia</h6>
+        <p>Nenhuma tarefa pendente para este momento da safra.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" id="linha-do-tempo">
+    <div class="card-header card-header-split">
+        <div>
+            <h6><i class="bi bi-bar-chart-steps me-2"></i>Safra {{ cal.safra }} — mês a mês</h6>
+            <small class="text-body-secondary">Clique na tarefa para ver detalhes, marcar como feita ou editar</small>
+        </div>
+        <div class="cal-legenda" aria-label="Legenda das categorias">
+            {% for c in categorias %}<span class="cal-chip {{ cor_categoria.get(c, '') }}">{{ c }}</span>{% endfor %}
+        </div>
+    </div>
+    <div class="cal-gantt-scroll">
+        <div class="cal-gantt" role="table" aria-label="Calendário da safra">
+            <div class="cal-linha cal-cabecalho" role="row">
+                <div class="cal-titulo" role="columnheader">Tarefa</div>
+                <div class="cal-meses">
+                    {% for numero, sigla in cal.meses %}
+                    <div class="cal-mes {{ 'cal-hoje' if cal.mes_hoje_idx == loop.index0 }}" role="columnheader" style="grid-column: {{ loop.index }}">{{ sigla }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% for t in cal.tarefas %}
+            {% set st = rotulo_situacao[t.situacao] %}
+            <div class="cal-bloco" id="tarefa-{{ t.id }}">
+                <div class="cal-linha cal-situacao-{{ t.situacao }}" role="row">
+                    <button class="cal-titulo" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ t.id }}" aria-expanded="false" aria-controls="det{{ t.id }}">
+                        <i class="bi {{ st[1] }} cal-st text-{{ st[0] }}" title="{{ st[2] }}"></i>
+                        <span class="text-truncate">{{ t.titulo }}</span>
+                    </button>
+                    <div class="cal-meses">
+                        {% for numero, sigla in cal.meses %}<div class="cal-mes {{ 'cal-hoje' if cal.mes_hoje_idx == loop.index0 }}" style="grid-column: {{ loop.index }}"></div>{% endfor %}
+                        {% set fim1 = t.fim_idx if t.fim_idx <= 11 else 11 %}
+                        <span class="cal-barra {{ cor_categoria.get(t.categoria, '') }}" style="grid-column: {{ t.inicio_idx + 1 }} / {{ fim1 + 2 }}" title="{{ t.titulo }} · {{ t.janela }}"></span>
+                        {% if t.fim_idx > 11 %}
+                        <span class="cal-barra {{ cor_categoria.get(t.categoria, '') }}" style="grid-column: 1 / {{ t.fim_idx - 12 + 2 }}" title="{{ t.titulo }} · {{ t.janela }}"></span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="collapse cal-detalhe" id="det{{ t.id }}">
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                        <span class="badge bg-{{ st[0] }}">{{ st[2] }}</span>
+                        <span class="cal-chip {{ cor_categoria.get(t.categoria, '') }}">{{ t.categoria }}</span>
+                        <small class="text-body-secondary"><i class="bi bi-calendar-range me-1"></i>{{ t.janela }}{% if t.periodo_nome %} · {{ t.periodo_nome }}{% endif %}</small>
+                        {% if admin %}
+                        <a href="{{ url_for('manejo.calendario_tarefa_editar', tarefa_id=t.id) }}" class="btn btn-sm btn-outline-secondary ms-auto"><i class="bi bi-pencil me-1"></i>Editar</a>
+                        {% endif %}
+                    </div>
+                    {% if t.descricao %}<p class="small mb-3">{{ t.descricao }}</p>{% endif %}
+                    {% if t.execucoes %}
+                    <ul class="list-unstyled small mb-3 cal-execucoes">
+                        {% for e in t.execucoes %}
+                        <li>
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                            {{ ui.data(e.data_execucao) }} · {{ e.talhao_nome or 'Toda a lavoura' }}{% if e.usuario %} · {{ e.usuario }}{% endif %}{% if e.observacoes %} — <span class="text-body-secondary">{{ e.observacoes }}</span>{% endif %}
+                            <form method="POST" action="{{ url_for('manejo.calendario_desfazer', execucao_id=e.id) }}" class="d-inline">
+                                <input type="hidden" name="safra" value="{{ cal.safra }}">
+                                <button type="submit" class="btn btn-link btn-sm p-0 ms-2 text-danger" title="Desfazer este registro">desfazer</button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {{ marcar_feito(t) }}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-calendar3"></i>
+                <h6 class="mb-1">Calendário vazio</h6>
+                <p>Inclua as tarefas de manejo de cada época do ano.</p>
+                {% if admin %}<a href="{{ url_for('manejo.calendario_tarefa_nova') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova tarefa</a>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="card-footer small text-body-secondary">
+        <i class="bi bi-info-circle me-1"></i>Modelo base do arábica no Sul de Minas. Ajuste as épocas à sua altitude, variedade e às recomendações do seu agrônomo.
+    </div>
+</div>
+{% endblock %}
