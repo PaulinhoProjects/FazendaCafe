@@ -3,7 +3,9 @@ from app.modules import devolucao_embalagens
 from app.modules.login_manager import login_required, admin_required
 import os
 import uuid
+from app.models import get_logger
 
+logger = get_logger(__name__)
 devolucao_bp = Blueprint('devolucao', __name__, url_prefix='/devolucoes')
 
 @devolucao_bp.route('/')
@@ -14,6 +16,7 @@ def dashboard():
         devolucoes = devolucao_embalagens.listar_devolucoes()
         return render_template('devolucao/dashboard.html', resumo=resumo, devolucoes=devolucoes[:10])
     except Exception as e:
+        logger.error(f"devolucao_embalagens_routes.dashboard: {e}")
         flash('Erro ao carregar painel.', 'error')
         return render_template('devolucao/dashboard.html', resumo=None, devolucoes=[])
 
@@ -24,6 +27,7 @@ def listar():
         devolucoes = devolucao_embalagens.listar_devolucoes()
         return render_template('devolucao/lista.html', devolucoes=devolucoes)
     except Exception as e:
+        logger.error(f"devolucao_embalagens_routes.listar: {e}")
         flash('Erro ao carregar devolucoes.', 'error')
         return render_template('devolucao/lista.html', devolucoes=[])
 
@@ -57,6 +61,7 @@ def nova():
             else:
                 flash('Erro ao registrar.', 'error')
         except Exception as e:
+            logger.error(f"devolucao_embalagens_routes.nova: {e}")
             flash(f'Erro: {e}', 'error')
     return render_template('devolucao/nova.html')
 
@@ -66,7 +71,8 @@ def arquivo(filename):
     """Serve o PDF do comprovante (abre em nova aba)."""
     try:
         return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
-    except Exception:
+    except Exception as e:
+        logger.error(f"devolucao_embalagens_routes.arquivo: {e}")
         flash('Comprovante não encontrado.', 'warning')
         return redirect(url_for('devolucao.listar'))
 
@@ -80,6 +86,7 @@ def detalhe(id):
             return redirect(url_for('devolucao.listar'))
         return render_template('devolucao/detalhe.html', devolucao=dev)
     except Exception as e:
+        logger.error(f"devolucao_embalagens_routes.detalhe: {e}")
         flash('Erro ao carregar devolucao.', 'error')
         return redirect(url_for('devolucao.listar'))
 
@@ -91,5 +98,6 @@ def excluir(id):
         sucesso, msg = devolucao_embalagens.excluir_devolucao(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"devolucao_embalagens_routes.excluir: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('devolucao.listar'))

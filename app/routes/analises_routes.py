@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.modules import analises
 from app.modules.login_manager import login_required, admin_required
+from app.models import get_logger
 
+logger = get_logger(__name__)
 analises_bp = Blueprint('analises', __name__, url_prefix='/analises')
 
 @analises_bp.route('/')
@@ -15,6 +17,7 @@ def dashboard():
                              analises=lista[:10], total=len(lista),
                              total_labs=len(laboratorios), tipos=tipos)
     except Exception as e:
+        logger.error(f"analises_routes.dashboard: {e}")
         flash('Erro ao carregar painel.', 'error')
         return render_template('analises/dashboard.html',
                              analises=[], total=0, total_labs=0, tipos=[])
@@ -26,6 +29,7 @@ def listar():
         lista = analises.listar_analises()
         return render_template('analises/lista.html', analises=lista)
     except Exception as e:
+        logger.error(f"analises_routes.listar: {e}")
         flash('Erro ao carregar analises.', 'error')
         return render_template('analises/lista.html', analises=[])
 
@@ -51,6 +55,7 @@ def nova():
             else:
                 flash('Erro ao registrar.', 'error')
         except Exception as e:
+            logger.error(f"analises_routes.nova: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -61,6 +66,7 @@ def nova():
         return render_template('analises/nova.html',
                              talhoes=talhoes_lista, tipos=tipos, laboratorios=laboratorios)
     except Exception as e:
+        logger.error(f"analises_routes.nova: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('analises.listar'))
 
@@ -73,10 +79,11 @@ def detalhe(id):
             flash('Analise nao encontrada.', 'warning')
             return redirect(url_for('analises.listar'))
         resultados = analises.listar_resultados_por_analise(id)
-        parametros = analises.listar_parametros_por_tipo(analise['tipo_analise_id'])
+        parametros = analises.listar_parametros_por_tipo(analise['tipo_id'])
         return render_template('analises/detalhe.html',
                              analise=analise, resultados=resultados, parametros=parametros)
     except Exception as e:
+        logger.error(f"analises_routes.detalhe: {e}")
         flash('Erro ao carregar analise.', 'error')
         return redirect(url_for('analises.listar'))
 
@@ -97,6 +104,7 @@ def adicionar_resultado(id):
         else:
             flash('Erro ao adicionar.', 'error')
     except Exception as e:
+        logger.error(f"analises_routes.adicionar_resultado: {e}")
         flash('Erro.', 'error')
     return redirect(url_for('analises.detalhe', id=id))
 
@@ -108,6 +116,7 @@ def excluir(id):
         sucesso, msg = analises.excluir_analise(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"analises_routes.excluir: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('analises.listar'))
 
@@ -118,6 +127,7 @@ def listar_laboratorios():
         laboratorios = analises.listar_laboratorios()
         return render_template('analises/laboratorios.html', laboratorios=laboratorios)
     except Exception as e:
+        logger.error(f"analises_routes.listar_laboratorios: {e}")
         flash('Erro ao carregar laboratorios.', 'error')
         return render_template('analises/laboratorios.html', laboratorios=[])
 
@@ -140,6 +150,7 @@ def novo_laboratorio():
             else:
                 flash('Erro ao cadastrar.', 'error')
         except Exception as e:
+            logger.error(f"analises_routes.novo_laboratorio: {e}")
             flash(f'Erro: {e}', 'error')
     return render_template('analises/novo_laboratorio.html')
 
@@ -150,5 +161,6 @@ def excluir_laboratorio(id):
         sucesso, msg = analises.excluir_laboratorio(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"analises_routes.excluir_laboratorio: {e}")
         flash('Erro.', 'error')
     return redirect(url_for('analises.listar_laboratorios'))

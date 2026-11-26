@@ -3,7 +3,9 @@ from app.modules import notas_fiscais
 from app.modules import estoque
 from app.modules.login_manager import login_required, admin_required
 import os
+from app.models import get_logger
 
+logger = get_logger(__name__)
 notas_fiscais_bp = Blueprint('notas_fiscais', __name__, url_prefix='/notas-fiscais')
 
 @notas_fiscais_bp.route('/')
@@ -14,6 +16,7 @@ def dashboard():
         notas = notas_fiscais.listar_notas()
         return render_template('notas_fiscais/dashboard.html', resumo=resumo, notas=notas[:10])
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.dashboard: {e}")
         flash('Erro ao carregar painel.', 'error')
         return render_template('notas_fiscais/dashboard.html', resumo=None, notas=[])
 
@@ -24,6 +27,7 @@ def listar():
         notas = notas_fiscais.listar_notas()
         return render_template('notas_fiscais/lista.html', notas=notas)
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.listar: {e}")
         flash('Erro ao carregar notas.', 'error')
         return render_template('notas_fiscais/lista.html', notas=[])
 
@@ -58,6 +62,7 @@ def nova():
             else:
                 flash('Erro ao cadastrar.', 'error')
         except Exception as e:
+            logger.error(f"notas_fiscais_routes.nova: {e}")
             flash(f'Erro: {e}', 'error')
     return render_template('notas_fiscais/nova.html')
 
@@ -72,6 +77,7 @@ def detalhe(id):
         movimentacoes = notas_fiscais.listar_movimentacoes_por_nota(id)
         return render_template('notas_fiscais/detalhe.html', nota=nota, movimentacoes=movimentacoes)
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.detalhe: {e}")
         flash('Erro ao carregar nota.', 'error')
         return redirect(url_for('notas_fiscais.listar'))
 
@@ -83,6 +89,7 @@ def excluir(id):
         sucesso, msg = notas_fiscais.excluir_nota_fiscal(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.excluir: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('notas_fiscais.listar'))
 
@@ -107,6 +114,7 @@ def adicionar_item(id):
                 flash(msg, 'error')
             return redirect(url_for('notas_fiscais.detalhe', id=id))
         except Exception as e:
+            logger.error(f"notas_fiscais_routes.adicionar_item: {e}")
             flash(f'Erro ao adicionar item: {e}', 'error')
             return redirect(url_for('notas_fiscais.detalhe', id=id))
     # GET - mostrar formulario
@@ -118,6 +126,7 @@ def adicionar_item(id):
         categorias = estoque.listar_categorias() if hasattr(estoque, 'listar_categorias') else []
         return render_template('notas_fiscais/adicionar_item.html', nota=nota, categorias=categorias)
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.adicionar_item: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('notas_fiscais.detalhe', id=id))
 
@@ -129,6 +138,7 @@ def remover_item(id, item_id):
         sucesso, msg = notas_fiscais.remover_item_nota(item_id)
         flash(msg, 'success' if sucesso else 'error')
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.remover_item: {e}")
         flash('Erro ao remover item.', 'error')
     return redirect(url_for('notas_fiscais.detalhe', id=id))
 
@@ -187,5 +197,6 @@ def relatorio_pdf(id):
         return Response(buffer.getvalue(), mimetype='application/pdf',
                        headers={'Content-Disposition': f'attachment; filename=NF_{nota.get("numero_nota", id)}.pdf'})
     except Exception as e:
+        logger.error(f"notas_fiscais_routes.relatorio_pdf: {e}")
         flash('Erro ao gerar PDF.', 'error')
         return redirect(url_for('notas_fiscais.detalhe', id=id))

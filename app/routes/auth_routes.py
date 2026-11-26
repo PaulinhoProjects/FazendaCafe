@@ -3,7 +3,9 @@ from app.modules import auth
 from app.modules.login_manager import login_required
 from werkzeug.security import generate_password_hash
 from config.database import executar_query
+from app.models import get_logger
 
+logger = get_logger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -68,6 +70,7 @@ def alterar_senha():
         )
         flash('Senha alterada com sucesso!', 'success')
     except Exception as e:
+        logger.error(f"auth_routes.alterar_senha: {e}")
         flash('Erro ao alterar senha.', 'error')
 
     return redirect(url_for('auth.perfil'))

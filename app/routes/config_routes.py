@@ -2,7 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from app.modules.login_manager import login_required, admin_required
 from app.modules import auth
 from config.database import get_config, set_config, executar_query
+from app.models import get_logger
 
+logger = get_logger(__name__)
 config_bp = Blueprint('config', __name__, url_prefix='/configuracoes')
 
 @config_bp.route('/')
@@ -40,6 +42,7 @@ def salvar():
                 set_config(chave, valor)
         flash('Configurações salvas com sucesso!', 'success')
     except Exception as e:
+        logger.error(f"config_routes.salvar: {e}")
         flash(f'Erro ao salvar: {e}', 'error')
     return redirect(url_for('config.index'))
 

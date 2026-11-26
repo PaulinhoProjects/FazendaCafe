@@ -1,7 +1,9 @@
 from flask import Blueprint, send_file, flash, redirect, url_for, render_template
 from app.modules.login_manager import login_required
 from app.modules import relatorios
+from app.models import get_logger
 
+logger = get_logger(__name__)
 relatorios_bp = Blueprint('relatorios', __name__, url_prefix='/relatorios')
 
 @relatorios_bp.route('/')
@@ -21,6 +23,7 @@ def rel_pulverizacoes():
             download_name='relatorio_pulverizacoes.pdf'
         )
     except Exception as e:
+        logger.error(f"relatorios_routes.rel_pulverizacoes: {e}")
         flash('Erro ao gerar relatório de pulverizações.', 'error')
         return redirect(url_for('dashboard.index'))
 
@@ -36,6 +39,7 @@ def rel_estoque():
             download_name='relatorio_estoque.pdf'
         )
     except Exception as e:
+        logger.error(f"relatorios_routes.rel_estoque: {e}")
         flash('Erro ao gerar relatório de estoque.', 'error')
         return redirect(url_for('dashboard.index'))
 
@@ -51,6 +55,7 @@ def rel_analises():
             download_name='relatorio_analises.pdf'
         )
     except Exception as e:
+        logger.error(f"relatorios_routes.rel_analises: {e}")
         flash('Erro ao gerar relatório de análises.', 'error')
         return redirect(url_for('dashboard.index'))
 

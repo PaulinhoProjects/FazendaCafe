@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.modules.login_manager import login_required
 from app.modules import manejo
+from app.models import get_logger
 
+logger = get_logger(__name__)
 manejo_bp = Blueprint('manejo', __name__, url_prefix='/manejo')
 
 @manejo_bp.route('/')
@@ -29,5 +31,6 @@ def manejo_talhao(id):
         timeline = manejo.get_manejo_por_talhao(id)
         return render_template('manejo/visao_geral.html', timeline=timeline, resumo=manejo.get_resumo_manejo(), talhao=talhao)
     except Exception as e:
+        logger.error(f"manejo_routes.manejo_talhao: {e}")
         flash('Erro ao carregar manejo do talhao.', 'error')
         return redirect(url_for('manejo.visao_geral'))

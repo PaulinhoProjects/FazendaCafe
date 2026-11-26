@@ -4,7 +4,9 @@ from app.modules.login_manager import login_required
 from datetime import datetime
 import io
 import csv
+from app.models import get_logger
 
+logger = get_logger(__name__)
 pulverizacao_bp = Blueprint('pulverizacao', __name__, url_prefix='/pulverizacao')
 
 # =====================================================
@@ -24,6 +26,7 @@ def dashboard():
                              total_receitas=len(receitas),
                              periodos=periodos)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.dashboard: {e}")
         flash('Erro ao carregar painel de pulverizacao.', 'error')
         return render_template('pulverizacao/dashboard.html',
                              aplicacoes=[], total_aplicacoes=0,
@@ -40,6 +43,7 @@ def listar_aplicacoes():
         aplicacoes = pulverizacao.listar_aplicacoes()
         return render_template('pulverizacao/aplicacoes/lista.html', aplicacoes=aplicacoes)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.listar_aplicacoes: {e}")
         flash('Erro ao carregar aplicacoes.', 'error')
         return render_template('pulverizacao/aplicacoes/lista.html', aplicacoes=[])
 
@@ -66,6 +70,7 @@ def nova_aplicacao():
             else:
                 flash('Erro ao registrar aplicacao.', 'error')
         except Exception as e:
+            logger.error(f"pulverizacao_routes.nova_aplicacao: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -76,6 +81,7 @@ def nova_aplicacao():
         return render_template('pulverizacao/aplicacoes/nova.html',
                              periodos=periodos, receitas=receitas, talhoes=talhoes_lista)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.nova_aplicacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -92,6 +98,7 @@ def detalhe_aplicacao(id):
         return render_template('pulverizacao/aplicacoes/detalhe.html',
                              aplicacao=app, ocorrencias=ocorrencias, pragas=pragas)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.detalhe_aplicacao: {e}")
         flash('Erro ao carregar aplicacao.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -117,6 +124,7 @@ def editar_aplicacao(id):
             else:
                 flash('Erro ao atualizar.', 'error')
         except Exception as e:
+            logger.error(f"pulverizacao_routes.editar_aplicacao: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -132,6 +140,7 @@ def editar_aplicacao(id):
                              aplicacao=app, periodos=periodos,
                              receitas=receitas, talhoes=talhoes_lista)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.editar_aplicacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -145,6 +154,7 @@ def excluir_aplicacao(id):
         else:
             flash(msg, 'warning')
     except Exception as e:
+        logger.error(f"pulverizacao_routes.excluir_aplicacao: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -168,6 +178,7 @@ def retorno_aplicacao(id):
                 flash('Erro ao atualizar retorno.', 'error')
             return redirect(url_for('pulverizacao.detalhe_aplicacao', id=id))
         except Exception as e:
+            logger.error(f"pulverizacao_routes.retorno_aplicacao: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -179,6 +190,7 @@ def retorno_aplicacao(id):
         return render_template('pulverizacao/aplicacoes/retorno.html',
                              aplicacao=app, retorno=retorno)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.retorno_aplicacao: {e}")
         flash('Erro ao carregar retorno.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -193,6 +205,7 @@ def listar_receitas():
         receitas = pulverizacao.listar_receitas()
         return render_template('pulverizacao/receitas/lista.html', receitas=receitas)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.listar_receitas: {e}")
         flash('Erro ao carregar receitas.', 'error')
         return render_template('pulverizacao/receitas/lista.html', receitas=[])
 
@@ -216,12 +229,14 @@ def nova_receita():
             else:
                 flash('Erro ao cadastrar receita.', 'error')
         except Exception as e:
+            logger.error(f"pulverizacao_routes.nova_receita: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
         periodos = pulverizacao.listar_periodos()
         return render_template('pulverizacao/receitas/nova.html', periodos=periodos)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.nova_receita: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('pulverizacao.listar_receitas'))
 
@@ -244,6 +259,7 @@ def editar_receita(id):
             else:
                 flash('Erro ao atualizar.', 'error')
         except Exception as e:
+            logger.error(f"pulverizacao_routes.editar_receita: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -255,6 +271,7 @@ def editar_receita(id):
         return render_template('pulverizacao/receitas/editar.html',
                              receita=receita, periodos=periodos)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.editar_receita: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('pulverizacao.listar_receitas'))
 
@@ -268,6 +285,7 @@ def excluir_receita(id):
         else:
             flash(msg, 'warning')
     except Exception as e:
+        logger.error(f"pulverizacao_routes.excluir_receita: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('pulverizacao.listar_receitas'))
 
@@ -296,6 +314,7 @@ def nova_ocorrencia():
             else:
                 flash('Erro ao registrar ocorrencia.', 'error')
         except Exception as e:
+            logger.error(f"pulverizacao_routes.nova_ocorrencia: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -305,6 +324,7 @@ def nova_ocorrencia():
         return render_template('pulverizacao/ocorrencias/nova.html',
                              pragas=pragas, talhoes=talhoes_lista)
     except Exception as e:
+        logger.error(f"pulverizacao_routes.nova_ocorrencia: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))
 
@@ -335,5 +355,6 @@ def exportar_csv_aplicacoes():
             headers={'Content-Disposition': f'attachment;filename=aplicacoes_{datetime.now().strftime("%Y%m%d")}.csv'}
         )
     except Exception as e:
+        logger.error(f"pulverizacao_routes.exportar_csv_aplicacoes: {e}")
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('pulverizacao.listar_aplicacoes'))

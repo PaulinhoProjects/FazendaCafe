@@ -2,6 +2,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template
+from werkzeug.exceptions import HTTPException
 
 def get_logger(name='fazenda_cafe'):
     """
@@ -67,5 +68,9 @@ def register_error_handlers(app):
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(error):
+        # HTTPException (404, 405, 403...) já tem status próprio:
+        # devolvê-lo evita transformar erros HTTP em 500.
+        if isinstance(error, HTTPException):
+            return error
         logger.error(f"Erro não tratado: {error}", exc_info=True)
         return render_template('errors/500.html'), 500

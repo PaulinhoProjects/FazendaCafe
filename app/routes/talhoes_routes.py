@@ -43,6 +43,7 @@ def novo():
             flash('Talhão cadastrado com sucesso!', 'success')
             return redirect(url_for('talhoes.listar'))
         except Exception as e:
+            logger.error(f"talhoes_routes.novo: {e}")
             flash(f'Erro ao cadastrar talhão: {e}', 'error')
             return redirect(url_for('talhoes.novo'))
     return render_template('talhoes/novo.html')
@@ -59,6 +60,7 @@ def detalhe(id):
         historico = talhoes.get_historico_talhao(id)
         return render_template('talhoes/detalhe.html', talhao=talhao, historico=historico, datetime=datetime)
     except Exception as e:
+        logger.error(f"talhoes_routes.detalhe: {e}")
         flash('Erro ao carregar detalhes do talhão.', 'error')
         return redirect(url_for('talhoes.listar'))
 
@@ -83,6 +85,7 @@ def editar(id):
             flash('Talhão atualizado com sucesso!', 'success')
             return redirect(url_for('talhoes.detalhe', id=id))
         except Exception as e:
+            logger.error(f"talhoes_routes.editar: {e}")
             flash(f'Erro ao atualizar: {e}', 'error')
     try:
         talhao = talhoes.buscar_talhao_por_id(id)
@@ -91,6 +94,7 @@ def editar(id):
             return redirect(url_for('talhoes.listar'))
         return render_template('talhoes/editar.html', talhao=talhao)
     except Exception as e:
+        logger.error(f"talhoes_routes.editar: {e}")
         flash('Erro ao carregar formulário de edição.', 'error')
         return redirect(url_for('talhoes.listar'))
 
@@ -103,6 +107,7 @@ def excluir(id):
         talhoes.excluir_talhao(id)
         flash('Talhão excluído com sucesso!', 'success')
     except Exception as e:
+        logger.error(f"talhoes_routes.excluir: {e}")
         flash('Erro ao excluir talhão.', 'error')
     return redirect(url_for('talhoes.listar'))
 
@@ -130,5 +135,6 @@ def exportar_csv():
             headers={'Content-Disposition': f'attachment; filename=talhoes_{datetime.now().strftime("%Y%m%d")}.csv'}
         )
     except Exception as e:
+        logger.error(f"talhoes_routes.exportar_csv: {e}")
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('talhoes.listar'))

@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from app.modules import estoque
 from app.modules.login_manager import login_required, admin_required
 from app.models import get_logger
+from datetime import datetime
 import io
 import csv
 
@@ -18,6 +19,7 @@ def dashboard():
         produtos_baixo = [p for p in produtos if p.get('estoque_baixo')]
         return render_template('estoque/dashboard.html', resumo=resumo, produtos_baixo=produtos_baixo)
     except Exception as e:
+        logger.error(f"estoque_routes.dashboard: {e}")
         flash('Erro ao carregar o painel de estoque.', 'error')
         return render_template('estoque/dashboard.html', resumo=None, produtos_baixo=[])
 
@@ -28,6 +30,7 @@ def listar_produtos():
         produtos = estoque.listar_produtos(ativos=True)
         return render_template('estoque/produtos/lista.html', produtos=produtos)
     except Exception as e:
+        logger.error(f"estoque_routes.listar_produtos: {e}")
         flash('Erro ao carregar a lista de produtos.', 'error')
         return render_template('estoque/produtos/lista.html', produtos=[])
 
@@ -51,6 +54,7 @@ def novo_produto():
             else:
                 flash('Erro ao cadastrar produto.', 'error')
         except Exception as e:
+            logger.error(f"estoque_routes.novo_produto: {e}")
             flash(f'Erro: {e}', 'error')
     return render_template('estoque/produtos/novo.html')
 
@@ -65,6 +69,7 @@ def detalhe_produto(id):
         movimentacoes = estoque.listar_movimentacoes(produto_id=id)
         return render_template('estoque/produtos/detalhe.html', produto=produto, movimentacoes=movimentacoes)
     except Exception as e:
+        logger.error(f"estoque_routes.detalhe_produto: {e}")
         flash('Erro ao carregar detalhes.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
 
@@ -87,6 +92,7 @@ def editar_produto(id):
             else:
                 flash('Erro ao atualizar.', 'error')
         except Exception as e:
+            logger.error(f"estoque_routes.editar_produto: {e}")
             flash(f'Erro: {e}', 'error')
     try:
         produto = estoque.buscar_produto_por_id(id)
@@ -95,6 +101,7 @@ def editar_produto(id):
             return redirect(url_for('estoque.listar_produtos'))
         return render_template('estoque/produtos/editar.html', produto=produto)
     except Exception as e:
+        logger.error(f"estoque_routes.editar_produto: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
 
@@ -109,6 +116,7 @@ def excluir_produto(id):
         else:
             flash(mensagem, 'warning')
     except Exception as e:
+        logger.error(f"estoque_routes.excluir_produto: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('estoque.listar_produtos'))
 
@@ -119,6 +127,7 @@ def listar_movimentacoes():
         movimentacoes = estoque.listar_movimentacoes()
         return render_template('estoque/movimentacoes/lista.html', movimentacoes=movimentacoes)
     except Exception as e:
+        logger.error(f"estoque_routes.listar_movimentacoes: {e}")
         flash('Erro ao carregar movimentações.', 'error')
         return render_template('estoque/movimentacoes/lista.html', movimentacoes=[])
 
@@ -143,12 +152,14 @@ def nova_movimentacao():
             else:
                 flash('Erro ao registrar.', 'error')
         except Exception as e:
+            logger.error(f"estoque_routes.nova_movimentacao: {e}")
             flash(f'Erro: {e}', 'error')
     try:
         produtos = estoque.listar_produtos(ativos=True)
         from datetime import datetime
         return render_template('estoque/movimentacoes/nova.html', produtos=produtos, hoje=datetime.now().strftime('%Y-%m-%d'))
     except Exception as e:
+        logger.error(f"estoque_routes.nova_movimentacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_movimentacoes'))
 
@@ -172,6 +183,7 @@ def editar_movimentacao(id):
             else:
                 flash('Erro ao atualizar.', 'error')
         except Exception as e:
+            logger.error(f"estoque_routes.editar_movimentacao: {e}")
             flash(f'Erro: {e}', 'error')
     try:
         mov = estoque.buscar_movimentacao_por_id(id)
@@ -181,6 +193,7 @@ def editar_movimentacao(id):
         produtos = estoque.listar_produtos(ativos=True)
         return render_template('estoque/movimentacoes/editar.html', movimentacao=mov, produtos=produtos)
     except Exception as e:
+        logger.error(f"estoque_routes.editar_movimentacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_movimentacoes'))
 
@@ -242,6 +255,7 @@ def exportar_csv_produtos():
             headers={'Content-Disposition': f'attachment;filename=estoque_{datetime.now().strftime("%Y%m%d")}.csv'}
         )
     except Exception as e:
+        logger.error(f"estoque_routes.exportar_csv_produtos: {e}")
         flash('Erro ao exportar CSV.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
 
@@ -252,6 +266,7 @@ def listar_categorias():
         categorias = estoque.listar_categorias()
         return render_template('estoque/categorias/lista.html', categorias=categorias)
     except Exception as e:
+        logger.error(f"estoque_routes.listar_categorias: {e}")
         flash('Erro ao carregar categorias.', 'error')
         return render_template('estoque/categorias/lista.html', categorias=[])
 
@@ -271,5 +286,6 @@ def relatorio():
             grafico_top=grafico_top
         )
     except Exception as e:
+        logger.error(f"estoque_routes.relatorio: {e}")
         flash('Erro ao gerar relatório.', 'error')
         return redirect(url_for('estoque.dashboard'))

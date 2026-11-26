@@ -30,8 +30,8 @@ def get_ultimo_valor_produto(produto_id):
     LIMIT 1
     """
     try:
-        resultado = executar_query(query, (produto_id,), fetch_one=True)
-        return float(resultado[0]) if resultado and resultado[0] else None
+        resultado = executar_query(query, (produto_id,), fetch_one=True, dict_cursor=True)
+        return float(resultado['valor_unitario']) if resultado and resultado['valor_unitario'] else None
     except Exception as e:
         print(f"Erro ao buscar último valor: {e}")
         return None
@@ -49,22 +49,22 @@ def listar_produtos(ativos=True):
     ORDER BY nome
     """
     try:
-        resultado = executar_query(query, (ativos,), fetch_all=True)
+        resultado = executar_query(query, (ativos,), fetch_all=True, dict_cursor=True)
         produtos = []
         for r in resultado:
-            estoque_minimo = r[3] if r[3] is not None else 0
-            quantidade_atual = float(r[4]) if r[4] is not None else 0
-            ultimo_valor = get_ultimo_valor_produto(r[0])
-            
+            estoque_minimo = r['estoque_minimo'] if r['estoque_minimo'] is not None else 0
+            quantidade_atual = float(r['quantidade_atual']) if r['quantidade_atual'] is not None else 0
+            ultimo_valor = get_ultimo_valor_produto(r['id'])
+
             produtos.append({
-                'id': r[0],
-                'nome': r[1],
-                'unidade': r[2],
+                'id': r['id'],
+                'nome': r['nome'],
+                'unidade': r['unidade'],
                 'estoque_minimo': estoque_minimo,
                 'quantidade_atual': quantidade_atual,
-                'observacoes': r[5],
-                'ativo': r[6],
-                'categoria': r[7],
+                'observacoes': r['observacoes'],
+                'ativo': r['ativo'],
+                'categoria': r['categoria'],
                 'ultimo_valor': ultimo_valor,
                 'valor_total': quantidade_atual * (ultimo_valor or 0),
                 'estoque_baixo': quantidade_atual <= estoque_minimo if estoque_minimo > 0 else False
@@ -209,20 +209,20 @@ def listar_movimentacoes(produto_id=None):
         params = None
 
     try:
-        resultado = executar_query(query, params, fetch_all=True)
+        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
         movs = []
         for r in resultado:
             movs.append({
-                'id': r[0],
-                'produto_nome': r[1],
-                'tipo': r[2],
-                'quantidade': float(r[3]) if r[3] else 0,
-                'unidade': r[4],
-                'data_movimento': r[5],
-                'valor_unitario': float(r[6]) if r[6] else None,
-                'observacoes': r[7],
-                'produto_ativo': r[8],
-                'nota_fiscal_id': r[9] 
+                'id': r['id'],
+                'produto_nome': r['produto_nome'],
+                'tipo': r['tipo'],
+                'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
+                'unidade': r['unidade'],
+                'data_movimento': r['data_movimento'],
+                'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
+                'observacoes': r['observacoes'],
+                'produto_ativo': r['ativo'],
+                'nota_fiscal_id': r['nota_fiscal_id']
             })
         return movs
     except Exception as e:
@@ -242,20 +242,20 @@ def buscar_movimentacao_por_id(id):
     WHERE m.id = %s
     """
     try:
-        r = executar_query(query, (id,), fetch_one=True)
+        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
         if r:
             return {
-                'id': r[0],
-                'produto_id': r[1],
-                'produto_nome': r[2],
-                'tipo': r[3],
-                'quantidade': float(r[4]) if r[4] else 0,
-                'unidade': r[5],
-                'data_movimento': r[6],
-                'valor_unitario': float(r[7]) if r[7] else None,
-                'observacoes': r[8],
-                'produto_ativo': r[9],
-                'nota_fiscal_id': r[10]
+                'id': r['id'],
+                'produto_id': r['produto_id'],
+                'produto_nome': r['produto_nome'],
+                'tipo': r['tipo'],
+                'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
+                'unidade': r['unidade'],
+                'data_movimento': r['data_movimento'],
+                'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
+                'observacoes': r['observacoes'],
+                'produto_ativo': r['ativo'],
+                'nota_fiscal_id': r['nota_fiscal_id']
             }
         return None
     except Exception as e:
@@ -571,8 +571,8 @@ def listar_categorias():
     """Lista categorias ativas."""
     query = "SELECT id, nome, descricao, cor FROM categorias_estoque WHERE ativo = TRUE ORDER BY nome"
     try:
-        resultado = executar_query(query, fetch_all=True)
-        return [{'id': r[0], 'nome': r[1], 'descricao': r[2], 'cor': r[3]} for r in resultado] if resultado else []
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
+        return [{'id': r['id'], 'nome': r['nome'], 'descricao': r['descricao'], 'cor': r['cor']} for r in resultado] if resultado else []
     except Exception:
         return []
 
@@ -593,12 +593,12 @@ def get_valor_por_categoria():
     ORDER BY valor DESC
     """
     try:
-        resultado = executar_query(query, fetch_all=True)
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         labels = []
         dados = []
         for r in resultado:
-            labels.append(r[0])
-            dados.append(float(r[2]) if r[2] else 0)
+            labels.append(r['categoria'])
+            dados.append(float(r['valor']) if r['valor'] else 0)
         return {'labels': labels, 'dados': dados}
     except Exception:
         return {'labels': [], 'dados': []}

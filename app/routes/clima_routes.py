@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, flash
 from app.modules import clima
 from app.modules.login_manager import login_required
+from app.models import get_logger
 
+logger = get_logger(__name__)
 clima_bp = Blueprint('clima', __name__, url_prefix='/clima')
 
 @clima_bp.route('/')
@@ -14,6 +16,7 @@ def index():
             alertas = clima.gerar_alertas(clima_atual)
         return render_template('clima/index.html', clima=clima_atual, alertas=alertas)
     except Exception as e:
+        logger.error(f"clima_routes.index: {e}")
         flash('Erro ao carregar dados do clima.', 'error')
         return render_template('clima/index.html', clima=None, alertas=[])
 
@@ -24,5 +27,6 @@ def previsao():
         previsoes = clima.get_previsao()
         return render_template('clima/previsao.html', previsoes=previsoes or [])
     except Exception as e:
+        logger.error(f"clima_routes.previsao: {e}")
         flash('Erro ao carregar previsao.', 'error')
         return render_template('clima/previsao.html', previsoes=[])

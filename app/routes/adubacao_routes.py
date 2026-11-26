@@ -2,7 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from app.modules import adubacao
 from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
+from app.models import get_logger
 
+logger = get_logger(__name__)
 adubacao_bp = Blueprint('adubacao', __name__, url_prefix='/adubacao')
 
 @adubacao_bp.route('/')
@@ -19,6 +21,7 @@ def dashboard():
                              total_adubacoes=len(adubacoes),
                              tipos=tipos)
     except Exception as e:
+        logger.error(f"adubacao_routes.dashboard: {e}")
         flash('Erro ao carregar painel.', 'error')
         return render_template('adubacao/dashboard.html',
                              recomendacoes=[], adubacoes=[],
@@ -31,6 +34,7 @@ def listar_recomendacoes():
         recomendacoes = adubacao.listar_recomendacoes()
         return render_template('adubacao/recomendacoes/lista.html', recomendacoes=recomendacoes)
     except Exception as e:
+        logger.error(f"adubacao_routes.listar_recomendacoes: {e}")
         flash('Erro ao carregar recomendacoes.', 'error')
         return render_template('adubacao/recomendacoes/lista.html', recomendacoes=[])
 
@@ -55,6 +59,7 @@ def nova_recomendacao():
             else:
                 flash('Erro ao criar recomendacao.', 'error')
         except Exception as e:
+            logger.error(f"adubacao_routes.nova_recomendacao: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -62,6 +67,7 @@ def nova_recomendacao():
         talhoes_lista = talhoes.listar_talhoes()
         return render_template('adubacao/recomendacoes/nova.html', talhoes=talhoes_lista)
     except Exception as e:
+        logger.error(f"adubacao_routes.nova_recomendacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('adubacao.listar_recomendacoes'))
 
@@ -76,6 +82,7 @@ def detalhe_recomendacao(id):
         itens = adubacao.listar_itens_recomendacao(id)
         return render_template('adubacao/recomendacoes/detalhe.html', rec=rec, itens=itens)
     except Exception as e:
+        logger.error(f"adubacao_routes.detalhe_recomendacao: {e}")
         flash('Erro ao carregar recomendacao.', 'error')
         return redirect(url_for('adubacao.listar_recomendacoes'))
 
@@ -89,6 +96,7 @@ def atualizar_status(id):
         else:
             flash('Erro ao atualizar status.', 'error')
     except Exception as e:
+        logger.error(f"adubacao_routes.atualizar_status: {e}")
         flash('Erro.', 'error')
     return redirect(url_for('adubacao.detalhe_recomendacao', id=id))
 
@@ -100,6 +108,7 @@ def excluir_recomendacao(id):
         sucesso, msg = adubacao.excluir_recomendacao(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"adubacao_routes.excluir_recomendacao: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('adubacao.listar_recomendacoes'))
 
@@ -110,6 +119,7 @@ def listar_adubacoes():
         adubacoes = adubacao.listar_adubacoes()
         return render_template('adubacao/adubacoes/lista.html', adubacoes=adubacoes)
     except Exception as e:
+        logger.error(f"adubacao_routes.listar_adubacoes: {e}")
         flash('Erro ao carregar adubacoes.', 'error')
         return render_template('adubacao/adubacoes/lista.html', adubacoes=[])
 
@@ -133,6 +143,7 @@ def nova_adubacao():
             else:
                 flash('Erro ao registrar adubacao.', 'error')
         except Exception as e:
+            logger.error(f"adubacao_routes.nova_adubacao: {e}")
             flash(f'Erro: {e}', 'error')
 
     try:
@@ -143,6 +154,7 @@ def nova_adubacao():
         return render_template('adubacao/adubacoes/nova.html',
                              talhoes=talhoes_lista, tipos=tipos, recomendacoes=recomendacoes)
     except Exception as e:
+        logger.error(f"adubacao_routes.nova_adubacao: {e}")
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('adubacao.listar_adubacoes'))
 
@@ -159,6 +171,7 @@ def detalhe_adubacao(id):
         return render_template('adubacao/adubacoes/detalhe.html',
                              adubacao=adub, produtos=produtos, nutrientes=nutrientes)
     except Exception as e:
+        logger.error(f"adubacao_routes.detalhe_adubacao: {e}")
         flash('Erro ao carregar adubacao.', 'error')
         return redirect(url_for('adubacao.listar_adubacoes'))
 
@@ -170,5 +183,6 @@ def excluir_adubacao(id):
         sucesso, msg = adubacao.excluir_adubacao(id)
         flash(msg, 'success' if sucesso else 'warning')
     except Exception as e:
+        logger.error(f"adubacao_routes.excluir_adubacao: {e}")
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('adubacao.listar_adubacoes'))
