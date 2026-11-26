@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Nova movimentação — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.estoque') }}">Estoque</a></li>
+<li class="breadcrumb-item active">Nova movimentação</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-arrow-left-right me-2"></i>Nova movimentação</h1>
+        <p class="page-subtitle">O saldo do item é atualizado na mesma transação</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="produto_id" class="form-label">Item <span class="text-danger">*</span></label>
+                    <select class="form-select" id="produto_id" name="produto_id" required>
+                        <option value="">Selecione...</option>
+                        {% for p in produtos %}
+                        <option value="{{ p.id }}">{{ p.nome }} — saldo {{ '%.2f'|format(p.quantidade_atual or 0) }} {{ p.unidade or '' }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="tipo" class="form-label">Tipo <span class="text-danger">*</span></label>
+                    <select class="form-select" id="tipo" name="tipo" required>
+                        <option value="entrada">Entrada</option>
+                        <option value="saida">Saída</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="data_movimento" class="form-label">Data</label>
+                    <input type="date" class="form-control" id="data_movimento" name="data_movimento">
+                </div>
+                <div class="col-md-3">
+                    <label for="quantidade" class="form-label">Quantidade <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="quantidade" name="quantidade" step="0.01" min="0.01" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="unidade" class="form-label">Unidade</label>
+                    <input type="text" class="form-control" id="unidade" name="unidade" placeholder="Ex.: un, L, kg">
+                </div>
+                <div class="col-md-3">
+                    <label for="valor_unitario" class="form-label">Valor unitário (R$)</label>
+                    <input type="number" class="form-control" id="valor_unitario" name="valor_unitario" step="0.0001" min="0">
+                </div>
+                <div class="col-md-3">
+                    <label for="nota_fiscal" class="form-label">Nota fiscal</label>
+                    <input type="text" class="form-control" id="nota_fiscal" name="nota_fiscal">
+                </div>
+                <div class="col-12">
+                    <label for="observacoes" class="form-label">Observações</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar</button>
+                <a href="{{ url_for('maquinario.movimentacoes') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

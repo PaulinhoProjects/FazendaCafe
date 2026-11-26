@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Movimentações — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.estoque') }}">Estoque</a></li>
+<li class="breadcrumb-item active">Movimentações</li>
+{% endblock %}
+{% block conteudo %}
+{% include 'maquinario/_nav.html' %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-arrow-left-right me-2"></i>Movimentações de estoque</h1>
+        <p class="page-subtitle">Entradas e saídas de peças, óleos e filtros</p>
+    </div>
+    <a href="{{ url_for('maquinario.movimentacao_nova') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova movimentação</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header"><i class="bi bi-clock-history me-2"></i><strong>Histórico</strong></div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle" id="tabelaMaqMov">
+            <thead class="table-light">
+                <tr><th>Data</th><th>Item</th><th>Tipo</th><th class="text-end">Quantidade</th><th class="text-end">Valor unit.</th><th>Observações</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for m in movimentacoes %}
+            <tr>
+                <td>{{ m.data_movimento }}</td>
+                <td>{{ m.produto_nome }}</td>
+                <td><span class="badge bg-{{ 'success' if m.tipo == 'entrada' else 'warning' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
+                <td class="text-end">{{ '%.2f'|format(m.quantidade or 0) }} {{ m.unidade or '' }}</td>
+                <td class="text-end">{{ 'R$ %.2f'|format(m.valor_unitario or 0) if m.valor_unitario else '—' }}</td>
+                <td class="small text-muted">{{ m.observacoes or '—' }}</td>
+                <td>
+                    {% if session.get('tipo') == 'admin' %}
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('movimentação de {{ m.produto_nome }}', '{{ url_for('maquinario.movimentacao_excluir', id=m.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma movimentação registrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaMaqMov', 20); });</script>
+{% endblock %}

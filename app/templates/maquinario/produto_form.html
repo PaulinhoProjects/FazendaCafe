@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar item' if produto else 'Novo item' }} — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.estoque') }}">Estoque</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if produto else 'Novo' }}</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>{{ 'Editar item' if produto else 'Novo item de estoque' }}</h1>
+        <p class="page-subtitle">Estoque exclusivo de maquinário</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="nome" class="form-label">Nome <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ produto.nome if produto else '' }}" placeholder="Ex.: Filtro de óleo hidráulico" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="categoria" class="form-label">Categoria</label>
+                    <select class="form-select" id="categoria" name="categoria">
+                        {% for cat in categorias %}
+                        <option value="{{ cat }}" {% if produto and produto.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="unidade" class="form-label">Unidade</label>
+                    <input type="text" class="form-control" id="unidade" name="unidade" value="{{ produto.unidade if produto else 'un' }}" required>
+                </div>
+                {% if not produto %}
+                <div class="col-md-4">
+                    <label for="quantidade_atual" class="form-label">Saldo inicial</label>
+                    <input type="number" class="form-control" id="quantidade_atual" name="quantidade_atual" step="0.01" min="0" value="0">
+                    <div class="form-text">Para entradas posteriores, use Movimentações.</div>
+                </div>
+                {% endif %}
+                <div class="col-md-4">
+                    <label for="estoque_minimo" class="form-label">Estoque mínimo</label>
+                    <input type="number" class="form-control" id="estoque_minimo" name="estoque_minimo" step="0.01" min="0" value="{{ produto.estoque_minimo if produto else 0 }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="local_armazenagem" class="form-label">Local de armazenagem</label>
+                    <input type="text" class="form-control" id="local_armazenagem" name="local_armazenagem" value="{{ produto.local_armazenagem if produto else '' }}" placeholder="Ex.: Almoxarifado da oficina">
+                </div>
+                <div class="col-12">
+                    <label for="observacoes" class="form-label">Observações</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ produto.observacoes if produto and produto.observacoes else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+                <a href="{{ url_for('maquinario.estoque') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

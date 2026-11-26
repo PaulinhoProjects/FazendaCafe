@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Entregas de Diesel — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.combustivel') }}">Combustível</a></li>
+<li class="breadcrumb-item active">Entregas</li>
+{% endblock %}
+{% block conteudo %}
+{% include 'maquinario/_nav.html' %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-truck me-2"></i>Entregas de Diesel S10</h1>
+        <p class="page-subtitle">Quantidade, valor por litro, pagamento e boleto com lembrete</p>
+    </div>
+    <a href="{{ url_for('maquinario.abastecimento_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova entrega</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle" id="tabelaAbastecimentos">
+            <thead class="table-light">
+                <tr><th>Data</th><th>Máquina</th><th>Fornecedor</th><th class="text-end">Litros</th><th class="text-end">R$/L</th><th class="text-end">Total</th><th>Boleto</th><th>Vencimento</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for a in abastecimentos %}
+            <tr>
+                <td>{{ a.data_abastecimento }}</td>
+                <td>{{ a.maquina_nome or '—' }}</td>
+                <td>{{ a.fornecedor or '—' }}</td>
+                <td class="text-end">{{ '%.2f'|format(a.quantidade_litros or 0) }}</td>
+                <td class="text-end">{{ '%.3f'|format(a.valor_litro or 0) }}</td>
+                <td class="text-end">R$ {{ '%.2f'|format(a.valor_total or 0) }}</td>
+                <td>{{ a.boleto or '—' }}</td>
+                <td>{{ a.vencimento or a.lembrete_em or '—' }}</td>
+                <td><span class="badge bg-{{ 'success' if a.situacao == 'pago' else ('danger' if a.situacao == 'vencido' else 'warning') }}">{{ a.situacao|title }}</span></td>
+                <td class="text-nowrap">
+                    {% if not a.pago %}<form class="d-inline" method="POST" action="{{ url_for('maquinario.abastecimento_pagar', id=a.id) }}"><button class="btn btn-sm btn-outline-success" title="Registrar pagamento"><i class="bi bi-cash-check"></i></button></form>{% endif %}
+                    <a href="{{ url_for('maquinario.abastecimento_editar', id=a.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                    {% if session.get('tipo') == 'admin' %}
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('entrega de {{ a.fornecedor or a.data_abastecimento }}', '{{ url_for('maquinario.abastecimento_excluir', id=a.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10" class="text-center text-muted py-4">Nenhuma entrega registrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaAbastecimentos', 20); });</script>
+{% endblock %}

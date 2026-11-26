@@ -501,3 +501,122 @@ CREATE TABLE IF NOT EXISTS cotacoes_saude (
 
 CREATE INDEX IF NOT EXISTS idx_cotacoes_saude_fonte_data ON cotacoes_saude(fonte, verificado_em DESC);
 CREATE INDEX IF NOT EXISTS idx_cotacoes_saude_ativo_data ON cotacoes_saude(ativo, verificado_em DESC);
+
+-- ============================================================
+-- MAQUINÁRIO: estrutura isolada do estoque de insumos/café
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS maq_produtos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL,
+    categoria VARCHAR(60),
+    unidade VARCHAR(20) DEFAULT 'un',
+    quantidade_atual NUMERIC(12,2) NOT NULL DEFAULT 0,
+    estoque_minimo NUMERIC(12,2) NOT NULL DEFAULT 0,
+    local_armazenagem VARCHAR(100),
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_maq_produtos_ativo_nome ON maq_produtos(ativo, nome);
+
+CREATE TABLE IF NOT EXISTS maq_movimentacoes (
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES maq_produtos(id),
+    tipo VARCHAR(10) NOT NULL,
+    quantidade NUMERIC(12,2) NOT NULL,
+    unidade VARCHAR(20),
+    data_movimento DATE NOT NULL DEFAULT CURRENT_DATE,
+    valor_unitario NUMERIC(14,4),
+    nota_fiscal VARCHAR(80),
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_maq_mov_produto_data ON maq_movimentacoes(produto_id, data_movimento DESC);
+
+CREATE TABLE IF NOT EXISTS maq_maquinas (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(120) NOT NULL,
+    marca VARCHAR(80),
+    modelo VARCHAR(80),
+    ano VARCHAR(10),
+    numero_serie VARCHAR(80),
+    placa VARCHAR(20),
+    horas_atuais NUMERIC(12,1) NOT NULL DEFAULT 0,
+    data_aquisicao DATE,
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS maq_manutencoes (
+    id SERIAL PRIMARY KEY,
+    maquina_id INTEGER NOT NULL REFERENCES maq_maquinas(id),
+    tipo VARCHAR(40) NOT NULL,
+    data_servico DATE NOT NULL DEFAULT CURRENT_DATE,
+    horimetro NUMERIC(12,1),
+    descricao TEXT,
+    valor NUMERIC(14,2) DEFAULT 0,
+    fornecedor VARCHAR(150),
+    proxima_data DATE,
+    proximas_horas NUMERIC(12,1),
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_maq_manutencoes_maquina_data ON maq_manutencoes(maquina_id, data_servico DESC);
+
+CREATE TABLE IF NOT EXISTS maq_abastecimentos (
+    id SERIAL PRIMARY KEY,
+    maquina_id INTEGER REFERENCES maq_maquinas(id),
+    data_abastecimento DATE NOT NULL DEFAULT CURRENT_DATE,
+    produto VARCHAR(40) NOT NULL DEFAULT 'DIESEL S10',
+    quantidade_litros NUMERIC(12,2) NOT NULL,
+    valor_litro NUMERIC(12,4) NOT NULL,
+    valor_total NUMERIC(14,2) NOT NULL,
+    fornecedor VARCHAR(150),
+    boleto VARCHAR(100),
+    vencimento DATE,
+    lembrete_em DATE,
+    pago BOOLEAN NOT NULL DEFAULT TRUE,
+    data_pagamento DATE,
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_maq_abastecimentos_data ON maq_abastecimentos(data_abastecimento DESC);
+CREATE INDEX IF NOT EXISTS idx_maq_abastecimentos_pago ON maq_abastecimentos(pago, vencimento);
+
+CREATE TABLE IF NOT EXISTS maq_precos_diesel (
+    id SERIAL PRIMARY KEY,
+    nivel VARCHAR(20) NOT NULL,
+    municipio VARCHAR(100) NOT NULL,
+    uf VARCHAR(2),
+    produto VARCHAR(40) NOT NULL DEFAULT 'DIESEL S10',
+    data_coleta DATE NOT NULL,
+    preco_medio NUMERIC(12,4) NOT NULL,
+    preco_min NUMERIC(12,4),
+    preco_max NUMERIC(12,4),
+    amostras INTEGER DEFAULT 0,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (nivel, municipio, data_coleta)
+);
+CREATE INDEX IF NOT EXISTS idx_maq_precos_diesel_data ON maq_precos_diesel(data_coleta DESC, nivel);
+
+CREATE TABLE IF NOT EXISTS maq_gastos (
+    id SERIAL PRIMARY KEY,
+    data_gasto DATE NOT NULL DEFAULT CURRENT_DATE,
+    descricao VARCHAR(200) NOT NULL,
+    categoria VARCHAR(60),
+    maquina_id INTEGER REFERENCES maq_maquinas(id),
+    valor NUMERIC(14,2) NOT NULL,
+    local_compra VARCHAR(150),
+    fornecedor VARCHAR(150),
+    nota_fiscal VARCHAR(80),
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_maq_gastos_data ON maq_gastos(data_gasto DESC);

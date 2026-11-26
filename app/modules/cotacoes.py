@@ -8,6 +8,7 @@ Fontes:
 - Banco Central do Brasil: PTAX (dados abertos, OData)
 - AwesomeAPI: dólar comercial USD/BRL
 - Climatempo: previsão pública (incluído apenas no monitor de integrações)
+- ANP: preço semanal do Diesel S10 (incluído apenas no monitor de integrações)
 
 Atualização preguiçosa com cache de 30 minutos (COTACOES_CACHE_MINUTOS) e botão
 para forçar no painel admin. Cada coleta grava um snapshot no banco para histórico.
@@ -20,7 +21,7 @@ from datetime import datetime, timedelta
 
 import requests
 
-from app.modules import clima
+from app.modules import clima, maquinario
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query, executar_transacao, get_config
@@ -91,6 +92,11 @@ FONTES = [
         'nome': 'AwesomeAPI',
         'url': 'https://docs.awesomeapi.com.br/api-de-moedas',
         'descricao': 'Dólar comercial USD/BRL intraday (compra e venda).',
+    },
+    {
+        'nome': 'ANP Diesel S10',
+        'url': maquinario.ANP_URL,
+        'descricao': 'Preço médio semanal de revenda do Diesel S10 (dados abertos).',
     },
 ]
 
@@ -323,6 +329,13 @@ MONITORAMENTO = {
         'url': f"{clima.BASE_URL}/cidade/{clima.CIDADE_ID}/{clima.CIDADE_SLUG}",
         'coletor': clima.verificar_fonte,
     },
+    'anp_diesel': {
+        'fonte': 'ANP Diesel S10',
+        'url': FONTES[5]['url'],
+        'coletor': maquinario.verificar_fonte,
+        # A ANP publica por semana: 10 dias evitam "aviso" apenas pela defasagem natural.
+        'max_dias': 10,
+    },
 }
 
 
@@ -356,14 +369,14 @@ def _data_origem(texto):
     return None
 
 
-def _avaliar_datas(registros):
+def _avaliar_datas(registros, max_dias=2):
     """Distingue fonte respondendo de fonte respondendo com dados defasados."""
     datas = [d for d in (_data_origem(r.get('data_origem')) for r in registros.values()) if d]
     if not datas:
         return 'aviso', 'A fonte respondeu, mas não informou a data da cotação.'
     mais_recente = max(datas)
     dias = (datetime.now().date() - mais_recente).days
-    if dias > 2:
+    if dias > max_dias:
         return 'aviso', (f'Última data publicada: {mais_recente.strftime("%d/%m/%Y")} '
                          f'({dias} dias atrás).')
     return 'ok', (f'{len(registros)} registro(s) recebido(s) · '
@@ -414,7 +427,7 @@ def _monitorar(item, rethrow=False):
         registros = item['coletor']()
         if not registros:
             raise ValueError('nenhuma cotação reconhecida')
-        status, mensagem = _avaliar_datas(registros)
+        status, mensagem = _avaliar_datas(registros, item.get('max_dias', 2))
         datas = [str(r.get('data_origem')) for r in registros.values() if r.get('data_origem')]
         data_origem = max(datas) if datas else None
         quantidade = len(registros)

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block titulo %}Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Maquinário</li>
+{% endblock %}
+{% block conteudo %}
+{% include 'maquinario/_nav.html' %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-wrench me-2"></i>Maquinário</h1>
+        <p class="page-subtitle">Estoque isolado, máquinas, manutenção, combustível e gastos</p>
+    </div>
+</div>
+
+{% if alertas %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    <strong>{{ alertas|length }} alerta(s)</strong>
+    <ul class="mb-0 mt-2 small">
+        {% for alerta in alertas %}
+        <li>
+            <a class="alert-link" href="{{ url_for(alerta.url) }}">{{ alerta.titulo }}</a>
+            — {{ alerta.detalhe }}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-icon bg-primary-soft"><i class="bi bi-box-seam"></i></div>
+            <div class="stat-label">Peças em cadastro</div>
+            <div class="stat-value">{{ estoque.total or 0 }}</div>
+            <div class="stat-desc">{{ estoque.baixos or 0 }} abaixo do mínimo</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-icon bg-success-soft"><i class="bi bi-tractor"></i></div>
+            <div class="stat-label">Máquinas ativas</div>
+            <div class="stat-value">{{ maquinas|length }}</div>
+            <div class="stat-desc">{{ manutencoes.ultimos_30d or 0 }} manutenção(ões) em 30 dias</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-icon bg-accent-soft"><i class="bi bi-fuel-pump"></i></div>
+            <div class="stat-label">Diesel registrado</div>
+            <div class="stat-value">{{ '%.0f'|format(combustivel.litros or 0) }} L</div>
+            <div class="stat-desc">média R$ {{ '%.3f'|format(combustivel.preco_pago or 0) }}/L</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-icon bg-danger-soft"><i class="bi bi-cash-coin"></i></div>
+            <div class="stat-label">Gastos acumulados</div>
+            <div class="stat-value">R$ {{ '%.2f'|format(gastos.valor or 0) }}</div>
+            <div class="stat-desc">R$ {{ '%.2f'|format(gastos.mes_atual or 0) }} no mês</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header card-header-split">
+                <div><i class="bi bi-lightning-charge me-2"></i><strong>Acesso rápido</strong></div>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.movimentacao_nova') }}"><i class="bi bi-plus-circle me-2"></i>Entrada/saída de peças, óleo ou filtros</a>
+                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.maquina_novo') }}"><i class="bi bi-plus-circle me-2"></i>Cadastrar trator ou máquina</a>
+                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.manutencao_nova') }}"><i class="bi bi-plus-circle me-2"></i>Registrar revisão, reparo ou troca de óleo</a>
+                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.abastecimento_novo') }}"><i class="bi bi-plus-circle me-2"></i>Registrar entrega de Diesel S10</a>
+                <a class="btn btn-outline-primary text-start" href="{{ url_for('maquinario.gasto_novo') }}"><i class="bi bi-plus-circle me-2"></i>Registrar gasto com maquinário</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header card-header-split">
+                <div><i class="bi bi-truck me-2"></i><strong>Contas e manutenções</strong></div>
+                <a href="{{ url_for('maquinario.abastecimentos') }}" class="small">Ver todas</a>
+            </div>
+            <div class="card-body">
+                {% set pendentes = [] %}
+                {% for item in alertas %}{% if 'Boleto' in item.titulo %}{% set _ = pendentes.append(item) %}{% endif %}{% endfor %}
+                {% if pendentes %}
+                    {% for item in pendentes %}
+                    <div class="alert alert-{{ item.tipo }} py-2 small mb-2">{{ item.titulo }} — {{ item.detalhe }}</div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted small mb-0">Nenhum boleto ou revisão próxima do vencimento.</p>
+                {% endif %}
+                <hr>
+                <p class="small text-muted mb-0">Gastos com manutenção: <strong>R$ {{ '%.2f'|format(manutencoes.valor or 0) }}</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

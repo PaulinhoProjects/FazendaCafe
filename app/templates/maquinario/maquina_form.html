@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar máquina' if maquina else 'Nova máquina' }} — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.maquinas') }}">Máquinas</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if maquina else 'Nova' }}</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tractor me-2"></i>{{ 'Editar máquina' if maquina else 'Nova máquina' }}</h1>
+        <p class="page-subtitle">Dados de identificação e horímetro atual</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="nome" class="form-label">Nome / identificação <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ maquina.nome if maquina else '' }}" placeholder="Ex.: Trator MF 4291" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="marca" class="form-label">Marca</label>
+                    <input type="text" class="form-control" id="marca" name="marca" value="{{ maquina.marca if maquina and maquina.marca else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="modelo" class="form-label">Modelo</label>
+                    <input type="text" class="form-control" id="modelo" name="modelo" value="{{ maquina.modelo if maquina and maquina.modelo else '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="ano" class="form-label">Ano</label>
+                    <input type="text" class="form-control" id="ano" name="ano" value="{{ maquina.ano if maquina and maquina.ano else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="numero_serie" class="form-label">Número de série</label>
+                    <input type="text" class="form-control" id="numero_serie" name="numero_serie" value="{{ maquina.numero_serie if maquina and maquina.numero_serie else '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="placa" class="form-label">Placa</label>
+                    <input type="text" class="form-control" id="placa" name="placa" value="{{ maquina.placa if maquina and maquina.placa else '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="horas_atuais" class="form-label">Horímetro (h)</label>
+                    <input type="number" class="form-control" id="horas_atuais" name="horas_atuais" step="0.1" min="0" value="{{ maquina.horas_atuais if maquina else 0 }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="data_aquisicao" class="form-label">Data de aquisição</label>
+                    <input type="date" class="form-control" id="data_aquisicao" name="data_aquisicao" value="{{ maquina.data_aquisicao if maquina and maquina.data_aquisicao else '' }}">
+                </div>
+                <div class="col-12">
+                    <label for="observacoes" class="form-label">Observações importantes</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ maquina.observacoes if maquina and maquina.observacoes else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+                <a href="{{ url_for('maquinario.maquinas') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

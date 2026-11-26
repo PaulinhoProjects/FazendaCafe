@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titulo %}Integridade das cotações{% endblock %}
+{% block titulo %}Integridade das integrações{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('cotacoes.index') }}">Cotações</a></li>
@@ -15,7 +15,7 @@
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-shield-check me-2"></i>Integridade das integrações</h1>
-        <p class="page-subtitle">Fontes externas consultadas pelo sistema — cotações, câmbio e clima</p>
+        <p class="page-subtitle">Fontes externas consultadas pelo sistema — cotações, câmbio, clima e preço de combustível</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('cotacoes.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Cotações</a>
@@ -62,7 +62,7 @@
         </table>
     </div>
     <div class="card-footer small text-muted">
-        "Falha" = a fonte não respondeu, mudou o formato ou a cidade configurada; "Aviso" = respondeu, mas os dados podem estar defasados. Os dois casos disparam log no sistema.
+        "Falha" = a fonte não respondeu, mudou o formato ou a cidade configurada; "Aviso" = respondeu, mas os dados podem estar defasados (a ANP publica semanalmente). Os dois casos disparam log no sistema.
     </div>
 </div>
 {% else %}

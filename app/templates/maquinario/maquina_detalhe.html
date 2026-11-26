@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block titulo %}{{ maquina.nome }} — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.maquinas') }}">Máquinas</a></li>
+<li class="breadcrumb-item active">{{ maquina.nome }}</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tractor me-2"></i>{{ maquina.nome }}</h1>
+        <p class="page-subtitle">{{ [maquina.marca, maquina.modelo]|select|join(' / ') or 'Dados não informados' }}{% if maquina.ano %} · {{ maquina.ano }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('maquinario.maquina_editar', id=maquina.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Editar</a>
+        <a href="{{ url_for('maquinario.manutencao_nova') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova manutenção</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Horímetro</div><div class="stat-value">{{ '%.1f'|format(maquina.horas_atuais or 0) }} h</div></div></div>
+    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Manutenções</div><div class="stat-value">{{ maquina.total_manutencoes or 0 }}</div></div></div>
+    <div class="col-md-3"><div class="stat-card h-100"><div class="stat-label">Última manutenção</div><div class="stat-value h6">{{ maquina.ultima_manutencao or '—' }}</div></div></div>
+    <div class="col-md-3">
+        <div class="stat-card h-100">
+            <div class="stat-label">Próxima revisão</div>
+            <div class="stat-value h6">{% if maquina.proxima_data %}{{ maquina.proxima_data }}{% else %}—{% endif %}</div>
+            {% if maquina.proximas_horas %}<div class="stat-desc">{{ '%.0f'|format(maquina.proximas_horas) }} h</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i><strong>Dados da máquina</strong></div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-5">Número de série</dt><dd class="col-sm-7">{{ maquina.numero_serie or '—' }}</dd>
+                    <dt class="col-sm-5">Placa</dt><dd class="col-sm-7">{{ maquina.placa or '—' }}</dd>
+                    <dt class="col-sm-5">Aquisição</dt><dd class="col-sm-7">{{ maquina.data_aquisicao or '—' }}</dd>
+                    <dt class="col-sm-5">Observações</dt><dd class="col-sm-7">{{ maquina.observacoes or '—' }}</dd>
+                </dl>
+                <hr>
+                <form method="POST" action="{{ url_for('maquinario.horimetro', id=maquina.id) }}" class="row g-2 align-items-end">
+                    <div class="col-7">
+                        <label for="horas_atuais" class="form-label small mb-1">Atualizar horímetro (h)</label>
+                        <input type="number" class="form-control form-control-sm" id="horas_atuais" name="horas_atuais" step="0.1" min="0" value="{{ maquina.horas_atuais or 0 }}" required>
+                    </div>
+                    <div class="col-5"><button class="btn btn-sm btn-outline-primary w-100" type="submit"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header"><i class="bi bi-wrench me-2"></i><strong>Últimas manutenções</strong></div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light"><tr><th>Data</th><th>Serviço</th><th class="text-end">Horas</th><th class="text-end">Valor</th></tr></thead>
+                    <tbody>
+                    {% for mt in manutencoes[:8] %}
+                    <tr>
+                        <td>{{ mt.data_servico }}</td>
+                        <td>{{ mt.tipo }}{% if mt.descricao %} <span class="text-muted small">— {{ mt.descricao|truncate(50) }}</span>{% endif %}</td>
+                        <td class="text-end">{{ '%.1f'|format(mt.horimetro or 0) if mt.horimetro else '—' }}</td>
+                        <td class="text-end">R$ {{ '%.2f'|format(mt.valor or 0) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">Nenhuma manutenção registrada.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header"><i class="bi bi-fuel-pump me-2"></i><strong>Abastecimentos recentes</strong></div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0"><thead class="table-light"><tr><th>Data</th><th class="text-end">Litros</th><th class="text-end">Total</th></tr></thead><tbody>
+                {% for a in abastecimentos[:8] %}<tr><td>{{ a.data_abastecimento }}</td><td class="text-end">{{ '%.2f'|format(a.quantidade_litros or 0) }}</td><td class="text-end">R$ {{ '%.2f'|format(a.valor_total or 0) }}</td></tr>{% else %}<tr><td colspan="3" class="text-center text-muted py-3">Nenhum abastecimento.</td></tr>{% endfor %}
+                </tbody></table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header"><i class="bi bi-cash-coin me-2"></i><strong>Gastos recentes</strong></div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0"><thead class="table-light"><tr><th>Data</th><th>Descrição</th><th class="text-end">Valor</th></tr></thead><tbody>
+                {% for g in gastos[:8] %}<tr><td>{{ g.data_gasto }}</td><td>{{ g.descricao }}</td><td class="text-end">R$ {{ '%.2f'|format(g.valor or 0) }}</td></tr>{% else %}<tr><td colspan="3" class="text-center text-muted py-3">Nenhum gasto registrado.</td></tr>{% endfor %}
+                </tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

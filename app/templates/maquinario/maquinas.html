@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titulo %}Máquinas — Maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item active">Máquinas</li>
+{% endblock %}
+{% block conteudo %}
+{% include 'maquinario/_nav.html' %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tractor me-2"></i>Tratores e máquinas</h1>
+        <p class="page-subtitle">Cadastro, horímetro e histórico de manutenção</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('maquinario.manutencoes') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-wrench me-1"></i>Manutenções</a>
+        <a href="{{ url_for('maquinario.maquina_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova máquina</a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tabelaMaquinas">
+            <thead class="table-light">
+                <tr><th>Máquina</th><th>Marca / modelo</th><th>Ano</th><th class="text-end">Horas</th><th>Última manutenção</th><th>Próxima</th><th class="text-end">Ações</th></tr>
+            </thead>
+            <tbody>
+            {% for m in maquinas %}
+            <tr>
+                <td><a href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}"><strong>{{ m.nome }}</strong></a>{% if m.placa %} <span class="badge bg-secondary">{{ m.placa }}</span>{% endif %}</td>
+                <td>{{ [m.marca, m.modelo]|select|join(' / ') or '—' }}</td>
+                <td>{{ m.ano or '—' }}</td>
+                <td class="text-end">{{ '%.1f'|format(m.horas_atuais or 0) }} h</td>
+                <td>{{ m.ultima_manutencao or '—' }}</td>
+                <td>
+                    {% if m.proxima_data %}{{ m.proxima_data }}{% endif %}
+                    {% if m.proximas_horas %}{{ ' · ' if m.proxima_data else '' }}{{ '%.0f'|format(m.proximas_horas) }} h{% endif %}
+                    {% if not m.proxima_data and not m.proximas_horas %}—{% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                    <a href="{{ url_for('maquinario.maquina_detalhe', id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Detalhes"><i class="bi bi-eye"></i></a>
+                    <a href="{{ url_for('maquinario.maquina_editar', id=m.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                    {% if session.get('tipo') == 'admin' %}
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('{{ m.nome }}', '{{ url_for('maquinario.maquina_excluir', id=m.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma máquina cadastrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaMaquinas', 20); });</script>
+{% endblock %}

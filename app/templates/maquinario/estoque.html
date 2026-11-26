@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titulo %}Estoque de maquinário{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('maquinario.dashboard') }}">Maquinário</a></li>
+<li class="breadcrumb-item active">Estoque</li>
+{% endblock %}
+{% block conteudo %}
+{% include 'maquinario/_nav.html' %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>Estoque de maquinário</h1>
+        <p class="page-subtitle">Peças, óleos, filtros e materiais — separado do estoque de insumos</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('maquinario.movimentacoes') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-right me-1"></i>Movimentações</a>
+        <a href="{{ url_for('maquinario.produto_novo') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Novo item</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Itens ativos</div><div class="stat-value">{{ resumo.total or 0 }}</div></div></div>
+    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Abaixo do mínimo</div><div class="stat-value text-warning">{{ resumo.baixos or 0 }}</div></div></div>
+    <div class="col-md-4"><div class="stat-card h-100"><div class="stat-label">Movimentações em 30 dias</div><div class="stat-value">{{ resumo.movimentacoes_30d or 0 }}</div></div></div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-list-ul me-2"></i><strong>Itens</strong></div>
+        <span class="text-muted small">Use a busca da tabela para filtrar</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tabelaMaqEstoque">
+            <thead class="table-light">
+                <tr><th>Item</th><th>Categoria</th><th class="text-end">Saldo</th><th class="text-end">Mínimo</th><th>Local</th><th class="text-end">Ações</th></tr>
+            </thead>
+            <tbody>
+            {% for p in produtos %}
+                {% set baixo = p.estoque_minimo and p.quantidade_atual <= p.estoque_minimo %}
+                <tr>
+                    <td><strong>{{ p.nome }}</strong>{% if baixo %} <span class="badge bg-warning text-dark">baixo</span>{% endif %}</td>
+                    <td>{{ p.categoria or '—' }}</td>
+                    <td class="text-end">{{ '%.2f'|format(p.quantidade_atual or 0) }} {{ p.unidade or '' }}</td>
+                    <td class="text-end">{{ '%.2f'|format(p.estoque_minimo or 0) }}</td>
+                    <td>{{ p.local_armazenagem or '—' }}</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ url_for('maquinario.produto_editar', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
+                        {% if session.get('tipo') == 'admin' %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarExclusaoGlobal('{{ p.nome }}', '{{ url_for('maquinario.produto_excluir', id=p.id) }}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum item cadastrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/paginacao.js') }}"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { paginarTabela('tabelaMaqEstoque', 20); });</script>
+{% endblock %}
