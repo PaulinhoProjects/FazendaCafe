@@ -95,6 +95,16 @@
         <button class="topbar-toggle theme-toggle" type="button" onclick="alternarTema()" aria-label="Alternar tema claro/escuro" title="Alternar tema claro/escuro">
             <i class="bi bi-moon-stars"></i><i class="bi bi-sun"></i>
         </button>
+        <div class="dropdown">
+            <button class="topbar-toggle alertas-btn" type="button" id="botaoAlertas" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Alertas" title="Alertas">
+                <i class="bi bi-bell"></i>
+                <span class="alertas-contador" id="alertasContador" hidden></span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end alertas-menu" aria-labelledby="botaoAlertas">
+                <div class="alertas-topo"><span>Alertas</span><a href="{{ url_for('dashboard.index') }}#painel-alertas" class="small fw-medium">Ver painel</a></div>
+                <div class="alertas-lista" id="alertasLista"><div class="alertas-vazio">Carregando…</div></div>
+            </div>
+        </div>
         <div class="topbar-user dropdown">
             <button class="topbar-user-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                 <span class="avatar">{{ nome_usuario[0]|upper }}</span>
@@ -226,9 +236,44 @@ document.addEventListener('DOMContentLoaded', function() {
 function buscarGlobal() {
     const termo = document.getElementById('buscaGlobal').value.trim();
     if (termo) {
-        window.location.href = '{{ url_for("dashboard.index") }}?busca=' + encodeURIComponent(termo);
+        window.location.href = '{{ url_for("dashboard.busca") }}?q=' + encodeURIComponent(termo);
     }
 }
+// Central de alertas (sino da topbar): carrega uma vez ao abrir a página e a cada 5 minutos
+function carregarAlertas() {
+    const lista = document.getElementById('alertasLista');
+    const contador = document.getElementById('alertasContador');
+    if (!lista) return;
+    fetch('{{ url_for("dashboard.api_alertas") }}', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error(r.status); return r.json(); })
+        .then(function (dados) {
+            contador.hidden = !dados.total;
+            contador.textContent = dados.total > 9 ? '9+' : dados.total;
+            lista.innerHTML = '';
+            if (!dados.total) {
+                lista.innerHTML = '<div class="alertas-vazio"><i class="bi bi-check2-circle d-block fs-4 mb-1"></i>Nada pendente por aqui.</div>';
+                return;
+            }
+            dados.itens.forEach(function (a) {
+                const item = document.createElement('a');
+                item.className = 'alerta-item';
+                item.href = a.url;
+                item.innerHTML = '<span class="alerta-icone"><i class="bi"></i></span><span class="min-w-0"><span class="d-block alerta-titulo"></span><span class="d-block alerta-texto text-truncate"></span></span>';
+                item.querySelector('.alerta-icone').classList.add(a.cor);
+                item.querySelector('.alerta-icone i').classList.add(a.icone);
+                item.querySelector('.alerta-titulo').textContent = a.titulo;
+                item.querySelector('.alerta-texto').textContent = a.texto;
+                lista.appendChild(item);
+            });
+        })
+        .catch(function () {
+            lista.innerHTML = '<div class="alertas-vazio">Não foi possível carregar os alertas.</div>';
+        });
+}
+document.addEventListener('DOMContentLoaded', function () {
+    carregarAlertas();
+    setInterval(carregarAlertas, 5 * 60 * 1000);
+});
 </script>
 
 <div class="modal fade" id="modalExcluirGlobal" tabindex="-1" aria-hidden="true">

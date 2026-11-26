@@ -13,11 +13,17 @@ from pathlib import Path
 
 # CONFIGURAÇÕES - ALTERE AQUI CONFORME SUA INSTALAÇÃO
 # ---------------------------------------------------
-DB_NAME = "fazenda_cafe"
-DB_USER = "postgres"
-DB_PASSWORD = "Pcaf123."  # ALTERE PARA SUA SENHA
-DB_HOST = "localhost"
-DB_PORT = "5432"
+# Conexão lida do .env (mesmo arquivo usado pelo sistema). Nunca escreva a senha aqui.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+DB_NAME = os.environ.get("DB_NAME", "fazenda_cafe")
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5432")
 
 # CAMINHO DO POSTGRESQL - VERIFIQUE QUAL É O SEU!
 # Opções comuns:

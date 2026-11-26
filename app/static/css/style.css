@@ -2128,6 +2128,66 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* -------------------------------------------------------------------------
+   16c. CONFIGURAÇÕES, BUSCA E ALERTAS
+   ------------------------------------------------------------------------- */
+.config-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.config-nav { position: sticky; top: calc(var(--topbar-height) + 1rem); gap: 2px; }
+.config-nav .nav-link {
+    display: flex; align-items: center; gap: 0.65rem;
+    border: 0; border-radius: var(--radius-md); background: none;
+    color: var(--text-2); font-weight: 500; font-size: 0.875rem; padding: 0.55rem 0.75rem; text-align: left;
+}
+.config-nav .nav-link i { color: var(--text-3); font-size: 1rem; }
+.config-nav .nav-link:hover { background: var(--surface-3); color: var(--text); }
+.config-nav .nav-link.active { background: var(--surface); color: var(--primary-text); font-weight: 600; box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--border); }
+.config-nav .nav-link.active i { color: var(--primary-text); }
+.config-conteudo { min-width: 0; }
+.config-niveis { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.5rem 1.25rem; font-size: 0.8rem; color: var(--text-3); }
+.config-niveis .badge { margin-right: 0.35rem; }
+.kpi-grid.kpi-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-grid.kpi-grid-2 > * { grid-column: auto !important; }
+.diag-icone {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+.diag-icone.ok { background: var(--success-50); color: var(--success); }
+.diag-icone.atencao { background: var(--warning-50); color: var(--warning); }
+@media (max-width: 991.98px) {
+    .config-layout { grid-template-columns: 1fr; }
+    .config-nav { position: static; flex-direction: row !important; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 0.25rem; }
+    .config-nav .nav-link { white-space: nowrap; }
+}
+
+/* Sino de alertas na topbar */
+.alertas-btn { position: relative; }
+.alertas-contador {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+    background: var(--marca-cereja); color: #fff;
+    font-size: 0.62rem; font-weight: 700; line-height: 16px; text-align: center;
+    box-shadow: 0 0 0 2px var(--surface);
+}
+.alertas-menu { width: 340px; max-width: calc(100vw - 2rem); padding: 0; overflow: hidden; }
+.alertas-menu .alertas-topo { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.alertas-lista { max-height: 360px; overflow-y: auto; }
+.alerta-item { display: flex; gap: 0.75rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); text-decoration: none; }
+.alerta-item:last-child { border-bottom: 0; }
+.alerta-item:hover { background: var(--surface-2); color: var(--text); }
+.alerta-item .alerta-icone { width: 32px; height: 32px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.alerta-item .alerta-titulo { font-size: 0.84rem; font-weight: 600; }
+.alerta-item .alerta-texto { font-size: 0.78rem; color: var(--text-3); }
+.alertas-vazio { padding: 1.5rem 1rem; text-align: center; color: var(--text-3); font-size: 0.85rem; }
+
+/* Resultados da busca global */
+.busca-grupo { margin-bottom: 1.5rem; }
+.busca-grupo h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); font-weight: 700; margin-bottom: 0.6rem; display: flex; gap: 0.5rem; align-items: center; }
+.busca-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.75rem 1rem; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); }
+.busca-item:last-child { border-bottom: 0; }
+.busca-item:hover { background: var(--surface-2); color: var(--text); }
+.busca-item .busca-icone { width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.busca-item mark { background: var(--warning-50); color: inherit; padding: 0 1px; border-radius: 3px; }
+
+/* -------------------------------------------------------------------------
    17. RESPONSIVO
    ------------------------------------------------------------------------- */
 .sidebar-overlay {

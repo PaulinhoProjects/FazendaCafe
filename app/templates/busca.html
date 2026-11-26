@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}Busca{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Busca</li>
+{% endblock %}
+
+{% macro destacar(texto, termo) -%}
+{%- if texto and termo -%}
+    {%- set baixo = texto|lower -%}
+    {%- set pos = baixo.find(termo|lower) -%}
+    {%- if pos >= 0 -%}{{ texto[:pos] }}<mark>{{ texto[pos:pos + termo|length] }}</mark>{{ texto[pos + termo|length:] }}{%- else -%}{{ texto }}{%- endif -%}
+{%- else -%}{{ texto or '' }}{%- endif -%}
+{%- endmacro %}
+
+{% block conteudo %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="bi bi-search me-2"></i>Busca</h1>
+        <p class="page-subtitle">
+            {% if termo and total %}{{ total }} resultado(s) para “{{ termo }}”
+            {% elif termo and termo|length < 2 %}Digite pelo menos 2 letras
+            {% elif termo %}Nada encontrado para “{{ termo }}”
+            {% else %}Procure talhões, produtos, receitas e notas fiscais{% endif %}
+        </p>
+    </div>
+</div>
+
+<form method="GET" action="{{ url_for('dashboard.busca') }}" class="mb-4" role="search">
+    <div class="input-icon">
+        <i class="bi bi-search"></i>
+        <input type="search" name="q" class="form-control form-control-lg" value="{{ termo }}" placeholder="Ex.: Catuaí, Sede, Cuprozeb, 1234" autofocus minlength="2" aria-label="Termo de busca">
+    </div>
+</form>
+
+{% if grupos %}
+    {% for g in grupos %}
+    <section class="busca-grupo">
+        <h2><i class="bi {{ g.icone }}"></i>{{ g.rotulo }} <span class="badge bg-light">{{ g.itens|length }}</span></h2>
+        <div class="card">
+            {% for item in g.itens %}
+            <a class="busca-item" href="{{ item.url }}">
+                <span class="busca-icone {{ g.cor }}"><i class="bi {{ g.icone }}"></i></span>
+                <span class="min-w-0">
+                    <span class="d-block fw-semibold text-truncate">{{ destacar(item.titulo, termo) }}</span>
+                    {% if item.detalhe %}<span class="d-block small text-muted text-truncate">{{ destacar(item.detalhe, termo) }}</span>{% endif %}
+                </span>
+                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+{% elif termo and termo|length >= 2 %}
+    <div class="card"><div class="empty-state">
+        <i class="bi bi-search"></i>
+        <h5 class="mb-1">Nenhum resultado</h5>
+        <p>Confira a grafia ou tente uma parte do nome (ex.: “cupro” em vez de “Cuprozeb WP”).</p>
+    </div></div>
+{% else %}
+    <div class="card"><div class="empty-state">
+        <i class="bi bi-lightbulb"></i>
+        <h5 class="mb-1">Dica</h5>
+        <p>Use <kbd>Ctrl</kbd> + <kbd>K</kbd> em qualquer tela para ir direto à busca.</p>
+    </div></div>
+{% endif %}
+{% endblock %}

@@ -4,3 +4,4 @@ __pycache__/
 logs/
 database/backups/
 app/static/uploads/
+config/.secret_key

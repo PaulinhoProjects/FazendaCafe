@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 from config.database import executar_query
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
@@ -18,19 +19,33 @@ class Usuario(UserMixin):
     def get_id(self):
         return str(self.id)
 
+def _eh_hash_moderno(valor):
+    """Hash do werkzeug (pbkdf2/scrypt) — o formato seguro usado hoje."""
+    return isinstance(valor, str) and (valor.startswith('pbkdf2:') or valor.startswith('scrypt:'))
+
+
+def _eh_sha256_legado(valor):
+    return isinstance(valor, str) and len(valor) == 64 and all(c in '0123456789abcdef' for c in valor.lower())
+
+
 def verificar_senha(hash_armazenado, senha):
+    """Confere a senha. Aceita os formatos antigos (SHA-256 sem sal ou texto puro)
+    apenas para converter no primeiro login; o hash nunca vale como senha."""
     if not hash_armazenado or not senha:
         return False
-    try:
-        if check_password_hash(hash_armazenado, senha):
-            return True
-    except Exception:
-        pass
-    if hashlib.sha256(senha.encode()).hexdigest() == hash_armazenado:
-        return True
-    if hash_armazenado == senha:
-        return True
-    return False
+    if _eh_hash_moderno(hash_armazenado):
+        try:
+            return check_password_hash(hash_armazenado, senha)
+        except Exception:
+            return False
+    if _eh_sha256_legado(hash_armazenado):
+        return hmac.compare_digest(hashlib.sha256(senha.encode()).hexdigest(), hash_armazenado.lower())
+    # Texto puro (instalações antigas)
+    return hmac.compare_digest(hash_armazenado.encode(), senha.encode())
+
+
+def precisa_atualizar_hash(hash_armazenado):
+    return not _eh_hash_moderno(hash_armazenado)
 
 def criar_tabela_usuarios():
     query = """
@@ -86,6 +101,12 @@ def autenticar_usuario(login, senha):
     if not verificar_senha(hash_banco, senha):
         return None, "Senha incorreta"
     try:
+        if precisa_atualizar_hash(hash_banco):
+            # Converte senha antiga (texto puro/SHA-256) para o formato seguro
+            executar_query(
+                "UPDATE usuarios SET senha_hash = %s WHERE id = %s",
+                (generate_password_hash(senha), usuario_data['id'])
+            )
         executar_query("UPDATE usuarios SET ultimo_acesso = %s WHERE id = %s", (datetime.now(), usuario_data['id']))
     except Exception:
         pass

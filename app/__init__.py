@@ -224,4 +224,66 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: mapas_importados: {e}")
 
+    # Segurança: registro de acessos e regras padrão
+    try:
+        from app.modules import seguranca
+        seguranca.criar_tabela_acessos()
+        seguranca.garantir_configs_padrao()
+    except Exception as e:
+        print(f"Aviso: seguranca: {e}")
+
+    registrar_protecoes_de_sessao(app)
     return app
+
+
+def registrar_protecoes_de_sessao(app):
+    """Expira sessão ociosa, revalida o usuário no banco e envia cabeçalhos de segurança."""
+    from datetime import datetime
+    from flask import session, request, redirect, url_for, flash
+
+    ROTAS_LIVRES = ('auth.login', 'auth.logout', 'static')
+    ROTAS_AUTOMATICAS = ('dashboard.api_alertas',)
+
+    @app.before_request
+    def verificar_sessao():
+        if not session.get('user_id') or request.endpoint in ROTAS_LIVRES:
+            return None
+        from app.modules import seguranca
+        agora = datetime.now().timestamp()
+
+        # 1) Expira por inatividade
+        ultima = session.get('ultima_atividade')
+        if ultima is None:
+            ultima = agora
+        if agora - ultima > seguranca.sessao_horas() * 3600:
+            session.clear()
+            flash('Sua sessão expirou por inatividade. Entre de novo.', 'warning')
+            return redirect(url_for('auth.login', next=request.full_path.rstrip('?')) if request.method == 'GET'
+                            else url_for('auth.login'))
+        # Consultas automáticas (sino de alertas) não contam como uso
+        if request.endpoint not in ROTAS_AUTOMATICAS:
+            session['ultima_atividade'] = agora
+
+        # 2) A cada 5 min confere se o usuário segue ativo e com o mesmo nível
+        if agora - (session.get('verificado_em') or 0) > 300:
+            atual = seguranca.usuario_ainda_ativo(session['user_id'])
+            if not atual:
+                session.clear()
+                flash('Seu acesso foi desativado. Fale com o administrador.', 'error')
+                return redirect(url_for('auth.login'))
+            if atual.get('tipo'):
+                session['tipo'] = atual['tipo']
+                session['usuario'] = atual.get('nome') or session.get('usuario')
+            session['verificado_em'] = agora
+        return None
+
+    @app.after_request
+    def cabecalhos_de_seguranca(resposta):
+        resposta.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        resposta.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        resposta.headers.setdefault('Referrer-Policy', 'same-origin')
+        resposta.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), payment=()')
+        # Páginas com dados da fazenda não ficam no cache do navegador após sair
+        if session.get('user_id') and resposta.mimetype == 'text/html':
+            resposta.headers.setdefault('Cache-Control', 'no-store')
+        return resposta

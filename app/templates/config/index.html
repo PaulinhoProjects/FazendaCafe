@@ -4,188 +4,329 @@
 {{ super() }}
 <li class="breadcrumb-item active">Configurações</li>
 {% endblock %}
+
+{% macro campos(grupo, valores) %}
+<div class="row g-4">
+    {% for chave, rotulo, ajuda, tipo, padrao in grupos[grupo] %}
+    <div class="col-md-6">
+        <label class="form-label" for="cfg_{{ chave }}">{{ rotulo }}</label>
+        <input type="{{ tipo }}" class="form-control" id="cfg_{{ chave }}" name="{{ chave }}"
+               value="{{ valores.get(chave) if valores.get(chave) is not none else padrao }}"
+               {% if tipo == 'number' %}min="0" step="1" inputmode="numeric"{% endif %}
+               {% if chave == 'estado' %}maxlength="2" style="text-transform:uppercase"{% endif %}>
+        <div class="form-text">{{ ajuda }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
+
 {% block conteudo %}
-<div class="page-header mb-4">
+<div class="page-header">
     <div>
         <h1 class="page-title"><i class="bi bi-gear me-2"></i>Configurações</h1>
-        <p class="page-subtitle">Sistema e gestão de usuários</p>
+        <p class="page-subtitle">Dados da fazenda, segurança, usuários e backups do Kaldi</p>
     </div>
 </div>
 
+{% set pendencias = diagnostico|rejectattr('ok')|list %}
 
-<ul class="nav nav-tabs mb-4" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sistema" type="button" role="tab">
-            <i class="bi bi-sliders me-1"></i>Sistema
+<div class="config-layout">
+    <nav class="config-nav nav flex-column" role="tablist" aria-label="Seções de configuração">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#fazenda" type="button" role="tab"><i class="bi bi-house-gear"></i>Fazenda</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#seguranca" type="button" role="tab">
+            <i class="bi bi-shield-lock"></i>Segurança
+            {% if pendencias %}<span class="badge bg-warning rounded-pill ms-auto">{{ pendencias|length }}</span>{% endif %}
         </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab">
-            <i class="bi bi-people me-1"></i>Usuários <span class="badge bg-secondary">{{ usuarios|length }}</span>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#acessos" type="button" role="tab">
+            <i class="bi bi-door-open"></i>Acessos
+            {% if resumo_acessos.falha %}<span class="badge bg-danger rounded-pill ms-auto">{{ resumo_acessos.falha }}</span>{% endif %}
         </button>
-    </li>
-</ul>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab"><i class="bi bi-people"></i>Usuários<span class="badge bg-secondary rounded-pill ms-auto">{{ usuarios|length }}</span></button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#backups" type="button" role="tab"><i class="bi bi-database-down"></i>Backups</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sistema" type="button" role="tab"><i class="bi bi-sliders"></i>Sistema</button>
+    </nav>
 
-<div class="tab-content">
-    <!-- ABA SISTEMA -->
-    <div class="tab-pane fade show active" id="sistema" role="tabpanel">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white"><h5 class="mb-0">Configurações do Sistema</h5></div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('config.salvar') }}">
-                    <div class="row g-4">
-                        {% for chave, info in configs.items() if chave != 'api_clima_key' %}
-                        <div class="col-md-6">
-                            <label class="form-label" for="valor_{{ chave }}">{{ info.descricao or chave }}</label>
-                            <input type="text" class="form-control" id="valor_{{ chave }}" name="valor_{{ chave }}" value="{{ info.valor or '' }}">
-                            <small class="text-muted">Chave: <code>{{ chave }}</code></small>
+    <div class="tab-content config-conteudo">
+
+        <!-- FAZENDA -->
+        <section class="tab-pane fade show active" id="fazenda" role="tabpanel">
+            <form method="POST" action="{{ url_for('config.salvar', grupo='fazenda') }}" class="card">
+                <div class="card-header card-header-split">
+                    <div><h6>Dados da fazenda</h6><small class="text-muted fw-normal">Identificação usada nos relatórios e na previsão do tempo</small></div>
+                </div>
+                <div class="card-body">{{ campos('fazenda', valores) }}</div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- SEGURANÇA -->
+        <section class="tab-pane fade" id="seguranca" role="tabpanel">
+            <div class="card mb-4">
+                <div class="card-header card-header-split">
+                    <div><h6>Verificação de segurança</h6><small class="text-muted fw-normal">Situação atual do sistema</small></div>
+                    {% if pendencias %}<span class="badge bg-warning">{{ pendencias|length }} ponto(s) de atenção</span>{% else %}<span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Tudo certo</span>{% endif %}
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in diagnostico %}
+                    <li class="list-group-item d-flex gap-3 align-items-start">
+                        <span class="diag-icone {{ 'ok' if item.ok else 'atencao' }}"><i class="bi {{ 'bi-check-lg' if item.ok else 'bi-exclamation-lg' }}"></i></span>
+                        <div class="min-w-0">
+                            <div class="fw-semibold">{{ item.titulo }}</div>
+                            <div class="small text-muted">{{ item.detalhe }}</div>
                         </div>
-                        {% endfor %}
-                    </div>
-                    <input type="hidden" name="chaves" value="">
-                    {% for chave, info in configs.items() if chave != 'api_clima_key' %}
-                    <input type="hidden" name="chaves" value="{{ chave }}">
+                    </li>
                     {% endfor %}
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar Configurações</button>
-                    </div>
-                </form>
+                </ul>
             </div>
-        </div>
-    </div>
+            <form method="POST" action="{{ url_for('config.salvar', grupo='seguranca') }}" class="card">
+                <div class="card-header card-header-split">
+                    <div><h6>Regras de acesso</h6><small class="text-muted fw-normal">Valem para todos os usuários</small></div>
+                </div>
+                <div class="card-body">{{ campos('seguranca', valores) }}</div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar regras</button>
+                </div>
+            </form>
+        </section>
 
-    <!-- ABA USUÁRIOS -->
-    <div class="tab-pane fade" id="usuarios" role="tabpanel">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Usuários do Sistema</h5>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
-                    <i class="bi bi-person-plus me-1"></i>Novo Usuário
-                </button>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Nome</th><th>Login</th><th>Nível</th><th>Status</th><th>Último acesso</th><th class="text-end">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for u in usuarios %}
-                            <tr>
-                                <td class="fw-semibold">{{ u.nome }}</td>
-                                <td><code>{{ u.login }}</code></td>
-                                <td>
-                                    {% if u.tipo == 'admin' %}<span class="badge bg-danger">Administrador</span>
-                                    {% elif u.tipo == 'operador' %}<span class="badge bg-info text-dark">Operador</span>
-                                    {% elif u.tipo == 'agronomista' %}<span class="badge bg-success">Agrônomo</span>
-                                    {% else %}<span class="badge bg-secondary">Usuário</span>{% endif %}
-                                </td>
-                                <td>
-                                    {% if u.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-dark">Inativo</span>{% endif %}
-                                </td>
-                                <td>{{ u.ultimo_acesso.strftime('%d/%m/%Y %H:%M') if u.ultimo_acesso else 'Nunca' }}</td>
-                                <td class="text-end">
-                                    {% if u.id != session.get('user_id') %}
-                                    <form method="POST" action="{{ url_for('config.usuario_nivel', user_id=u.id) }}" class="d-inline-block">
-                                        <select name="tipo" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()" title="Alterar nível">
-                                            <option value="admin" {% if u.tipo=='admin' %}selected{% endif %}>Administrador</option>
-                                            <option value="operador" {% if u.tipo=='operador' %}selected{% endif %}>Operador</option>
-                                            <option value="agronomista" {% if u.tipo=='agronomista' %}selected{% endif %}>Agrônomo</option>
-                                            <option value="user" {% if u.tipo=='user' %}selected{% endif %}>Usuário</option>
-                                        </select>
-                                    </form>
-                                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalSenha{{ u.id }}" title="Redefinir senha"><i class="bi bi-key"></i></button>
-                                    {% if u.ativo %}
-                                    <form method="POST" action="{{ url_for('config.usuario_desativar', user_id=u.id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desativar" onclick="return confirm('Desativar este usuário?')"><i class="bi bi-person-x"></i></button>
-                                    </form>
-                                    {% else %}
-                                    <form method="POST" action="{{ url_for('config.usuario_ativar', user_id=u.id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar"><i class="bi bi-person-check"></i></button>
-                                    </form>
-                                    {% endif %}
-                                    {% else %}
-                                    <span class="text-muted small">(você)</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        {% if not usuarios %}
-                            <tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário cadastrado.</td></tr>
-                        {% endif %}
-                        </tbody>
-                    </table>
+        <!-- ACESSOS -->
+        <section class="tab-pane fade" id="acessos" role="tabpanel">
+            <div class="kpi-grid kpi-grid-2 mb-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success-soft"><i class="bi bi-box-arrow-in-right"></i></div>
+                    <div class="stat-info"><div class="stat-label">Entradas nos últimos 7 dias</div><div class="stat-value">{{ resumo_acessos.sucesso }}</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-danger-soft"><i class="bi bi-shield-exclamation"></i></div>
+                    <div class="stat-info"><div class="stat-label">Tentativas recusadas (7 dias)</div><div class="stat-value">{{ resumo_acessos.falha }}</div></div>
                 </div>
             </div>
-        </div>
+            <div class="card">
+                <div class="card-header card-header-split">
+                    <div><h6>Registro de acessos</h6><small class="text-muted fw-normal">Últimas 100 tentativas de login</small></div>
+                    <input type="search" class="form-control form-control-sm w-auto" id="filtroAcessos" placeholder="Filtrar por usuário ou IP">
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="tabelaAcessos">
+                            <thead><tr><th>Data e hora</th><th>Usuário</th><th>Resultado</th><th>IP</th><th>Navegador</th></tr></thead>
+                            <tbody>
+                            {% for a in acessos %}
+                                <tr>
+                                    <td class="tabular text-nowrap">{{ a.data_hora.strftime('%d/%m/%Y %H:%M:%S') if a.data_hora else '-' }}</td>
+                                    <td><code>{{ a.login or '-' }}</code></td>
+                                    <td>
+                                        {% if a.sucesso %}<span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Entrou</span>
+                                        {% elif a.motivo == 'bloqueado' %}<span class="badge bg-danger"><i class="bi bi-lock me-1"></i>Bloqueado</span>
+                                        {% else %}<span class="badge bg-warning"><i class="bi bi-x me-1"></i>Senha errada</span>{% endif %}
+                                    </td>
+                                    <td class="tabular">{{ a.ip or '-' }}</td>
+                                    <td class="small text-muted text-truncate" style="max-width: 280px;" title="{{ a.navegador }}">{{ a.navegador or '-' }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="5"><div class="empty-state py-4"><i class="bi bi-door-open"></i><p>Nenhum acesso registrado ainda. Os próximos logins aparecem aqui.</p></div></td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        {% for u in usuarios %}
-        <div class="modal fade" id="modalSenha{{ u.id }}" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <form method="POST" action="{{ url_for('config.usuario_senha', user_id=u.id) }}">
+        <!-- USUÁRIOS -->
+        <section class="tab-pane fade" id="usuarios" role="tabpanel">
+            <div class="card">
+                <div class="card-header card-header-split">
+                    <div><h6>Usuários do sistema</h6><small class="text-muted fw-normal">Quem acessa o Kaldi e com qual nível</small></div>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+                        <i class="bi bi-person-plus me-1"></i>Novo usuário
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead><tr><th>Nome</th><th>Login</th><th>Nível</th><th>Status</th><th>Último acesso</th><th class="text-end">Ações</th></tr></thead>
+                            <tbody>
+                            {% for u in usuarios %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="avatar">{{ (u.nome or '?')[0]|upper }}</span>
+                                            <span class="fw-semibold">{{ u.nome }}</span>
+                                        </div>
+                                    </td>
+                                    <td><code>{{ u.login }}</code></td>
+                                    <td>
+                                        {% if u.tipo == 'admin' %}<span class="badge bg-primary">Administrador</span>
+                                        {% elif u.tipo == 'operador' %}<span class="badge bg-info">Operador</span>
+                                        {% elif u.tipo == 'agronomista' %}<span class="badge bg-success">Agrônomo</span>
+                                        {% else %}<span class="badge bg-secondary">Usuário</span>{% endif %}
+                                    </td>
+                                    <td>{% if u.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
+                                    <td class="tabular">{{ u.ultimo_acesso.strftime('%d/%m/%Y %H:%M') if u.ultimo_acesso else 'Nunca' }}</td>
+                                    <td class="text-end text-nowrap">
+                                        {% if u.id != session.get('user_id') %}
+                                        <form method="POST" action="{{ url_for('config.usuario_nivel', user_id=u.id) }}" class="d-inline-block">
+                                            <select name="tipo" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()" aria-label="Alterar nível de {{ u.nome }}">
+                                                <option value="admin" {% if u.tipo=='admin' %}selected{% endif %}>Administrador</option>
+                                                <option value="operador" {% if u.tipo=='operador' %}selected{% endif %}>Operador</option>
+                                                <option value="agronomista" {% if u.tipo=='agronomista' %}selected{% endif %}>Agrônomo</option>
+                                                <option value="user" {% if u.tipo=='user' %}selected{% endif %}>Usuário</option>
+                                            </select>
+                                        </form>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalSenha{{ u.id }}" title="Redefinir senha"><i class="bi bi-key"></i></button>
+                                        {% if u.ativo %}
+                                        <form method="POST" action="{{ url_for('config.usuario_desativar', user_id=u.id) }}" class="d-inline" onsubmit="return confirm('Desativar o acesso de {{ u.nome }}? Ele sai do sistema em até 5 minutos.')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Desativar"><i class="bi bi-person-x"></i></button>
+                                        </form>
+                                        {% else %}
+                                        <form method="POST" action="{{ url_for('config.usuario_ativar', user_id=u.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar"><i class="bi bi-person-check"></i></button>
+                                        </form>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="badge bg-light">Você</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6"><div class="empty-state py-4"><i class="bi bi-people"></i><p>Nenhum usuário cadastrado.</p></div></td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="config-niveis mt-3">
+                <div><span class="badge bg-primary">Administrador</span> acesso total, inclusive Configurações e exclusões.</div>
+                <div><span class="badge bg-info">Operador</span> registra aplicações, estoque e fila de campo.</div>
+                <div><span class="badge bg-success">Agrônomo</span> receitas, análises e avaliação de eficácia.</div>
+                <div><span class="badge bg-secondary">Usuário</span> consulta.</div>
+            </div>
+
+            {% for u in usuarios %}
+            <div class="modal fade" id="modalSenha{{ u.id }}" tabindex="-1" aria-labelledby="tituloSenha{{ u.id }}">
+                <div class="modal-dialog modal-dialog-centered">
+                    <form method="POST" action="{{ url_for('config.usuario_senha', user_id=u.id) }}" class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title"><i class="bi bi-key me-2"></i>Redefinir senha — {{ u.nome }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <h5 class="modal-title" id="tituloSenha{{ u.id }}"><i class="bi bi-key me-2"></i>Redefinir senha de {{ u.nome }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                         </div>
                         <div class="modal-body">
-                            <label class="form-label">Nova senha *</label>
-                            <input type="password" name="nova_senha" class="form-control" minlength="6" required>
-                            <small class="text-muted">Mínimo de 6 caracteres.</small>
+                            <label class="form-label" for="novaSenha{{ u.id }}">Nova senha</label>
+                            <input type="password" id="novaSenha{{ u.id }}" name="nova_senha" class="form-control" minlength="{{ senha_minimo }}" autocomplete="new-password" required>
+                            <div class="form-text">Mínimo de {{ senha_minimo }} caracteres. Informe a senha ao usuário por um canal seguro.</div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-warning">Redefinir senha</button>
+                            <button type="submit" class="btn btn-primary">Redefinir senha</button>
                         </div>
                     </form>
                 </div>
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
+        </section>
+
+        <!-- BACKUPS -->
+        <section class="tab-pane fade" id="backups" role="tabpanel">
+            <div class="card">
+                <div class="card-header card-header-split">
+                    <div><h6>Cópias de segurança do banco</h6><small class="text-muted fw-normal">Pasta database/backups · o sistema mantém as 7 mais recentes geradas pelo backup automático</small></div>
+                    <form method="POST" action="{{ url_for('config.backup_agora') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<span class=&quot;spinner-border spinner-border-sm me-1&quot;></span>Gerando...';">
+                        <button type="submit" class="btn btn-primary btn-sm text-nowrap"><i class="bi bi-database-add me-1"></i>Fazer backup agora</button>
+                    </form>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead><tr><th>Arquivo</th><th>Data</th><th class="text-end">Tamanho</th><th class="text-end">Ações</th></tr></thead>
+                            <tbody>
+                            {% for b in backups %}
+                                <tr>
+                                    <td><i class="bi bi-file-earmark-zip me-2 text-muted"></i><code>{{ b.nome }}</code>{% if loop.first %} <span class="badge bg-success ms-1">Mais recente</span>{% endif %}</td>
+                                    <td class="tabular">{{ b.data.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td class="text-end tabular">{{ '%.1f'|format(b.tamanho_kb / 1024) ~ ' MB' if b.tamanho_kb > 1024 else '%.0f'|format(b.tamanho_kb) ~ ' KB' }}</td>
+                                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('config.baixar_backup', nome=b.nome) }}"><i class="bi bi-download me-1"></i>Baixar</a></td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="4"><div class="empty-state py-4"><i class="bi bi-database"></i><p>Nenhum backup encontrado. Faça o primeiro agora.</p></div></td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if backups %}
+                <div class="card-footer small text-muted">
+                    Guarde uma cópia fora deste computador (pendrive ou nuvem) pelo menos uma vez por semana.
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- SISTEMA -->
+        <section class="tab-pane fade" id="sistema" role="tabpanel">
+            <form method="POST" action="{{ url_for('config.salvar', grupo='sistema') }}" class="card mb-4">
+                <div class="card-header card-header-split">
+                    <div><h6>Preferências do sistema</h6><small class="text-muted fw-normal">Textos e listagens</small></div>
+                </div>
+                <div class="card-body">{{ campos('sistema', valores) }}</div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar</button>
+                </div>
+            </form>
+            <div class="card">
+                <div class="card-header"><h6 class="mb-0">Sobre esta instalação</h6></div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Versão do Kaldi</span><strong>2.0</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Banco de dados</span>
+                        <strong>{% if banco.ok %}<span class="badge bg-success me-1">Conectado</span>{% else %}<span class="badge bg-danger me-1">Sem conexão</span>{% endif %}{{ banco.versao }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Tamanho do banco</span><strong class="tabular">{{ banco.tamanho }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Usuários ativos</span><strong class="tabular">{{ usuarios|selectattr('ativo')|list|length }} de {{ usuarios|length }}</strong></li>
+                </ul>
+            </div>
+        </section>
     </div>
 </div>
 
 <!-- Modal novo usuário -->
-<div class="modal fade" id="modalNovoUsuario" tabindex="-1">
+<div class="modal fade" id="modalNovoUsuario" tabindex="-1" aria-labelledby="tituloNovoUsuario">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('config.usuario_novo') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Novo Usuário</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <form method="POST" action="{{ url_for('config.usuario_novo') }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloNovoUsuario"><i class="bi bi-person-plus me-2"></i>Novo usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="novoNome">Nome</label>
+                    <input type="text" id="novoNome" name="nome" class="form-control" required>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Nome *</label>
-                        <input type="text" name="nome" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Login *</label>
-                        <input type="text" name="login" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Senha *</label>
-                        <input type="password" name="senha" class="form-control" minlength="6" required>
-                        <small class="text-muted">Mínimo de 6 caracteres.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nível de acesso</label>
-                        <select name="tipo" class="form-select">
-                            <option value="user">Usuário</option>
-                            <option value="agronomista">Agrônomo</option>
-                            <option value="operador">Operador</option>
-                            <option value="admin">Administrador</option>
-                        </select>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label" for="novoLogin">Login</label>
+                    <input type="text" id="novoLogin" name="login" class="form-control" autocomplete="off" required>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Criar usuário</button>
+                <div class="mb-3">
+                    <label class="form-label" for="novoSenha">Senha</label>
+                    <input type="password" id="novoSenha" name="senha" class="form-control" minlength="{{ senha_minimo }}" autocomplete="new-password" required>
+                    <div class="form-text">Mínimo de {{ senha_minimo }} caracteres.</div>
                 </div>
-            </form>
-        </div>
+                <div>
+                    <label class="form-label" for="novoTipo">Nível de acesso</label>
+                    <select id="novoTipo" name="tipo" class="form-select">
+                        <option value="user">Usuário (consulta)</option>
+                        <option value="agronomista">Agrônomo</option>
+                        <option value="operador">Operador</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar usuário</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
@@ -193,10 +334,24 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Abre a aba indicada no endereço (#usuarios, #backups...) e mantém o endereço em sincronia
     var hash = window.location.hash;
     if (hash) {
-        var trigger = document.querySelector('[data-bs-target="' + hash + '"]');
-        if (trigger) { new bootstrap.Tab(trigger).show(); }
+        var alvo = document.querySelector('.config-nav [data-bs-target="' + hash + '"]');
+        if (alvo) { new bootstrap.Tab(alvo).show(); }
+    }
+    document.querySelectorAll('.config-nav [data-bs-toggle="tab"]').forEach(function (b) {
+        b.addEventListener('shown.bs.tab', function () { history.replaceState(null, '', b.dataset.bsTarget); });
+    });
+    // Filtro do registro de acessos
+    var filtro = document.getElementById('filtroAcessos');
+    if (filtro) {
+        filtro.addEventListener('input', function () {
+            var termo = filtro.value.toLowerCase();
+            document.querySelectorAll('#tabelaAcessos tbody tr').forEach(function (tr) {
+                tr.hidden = termo && tr.textContent.toLowerCase().indexOf(termo) === -1;
+            });
+        });
     }
 });
 </script>

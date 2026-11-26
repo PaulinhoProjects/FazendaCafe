@@ -77,7 +77,12 @@ def moldura_kaldi(canvas, doc):
     canvas.drawString(esquerda + 24, base_y + 1, 'kaldi')
     canvas.setFillColor(COR_CINZA)
     canvas.setFont('Helvetica', 7.5)
-    canvas.drawRightString(direita, base_y + 3, 'Tecnologia que Colhe Resultados')
+    try:
+        from config.database import get_config
+        texto_direita = (get_config('nome_fazenda', '') or '').strip() or 'Tecnologia que Colhe Resultados'
+    except Exception:
+        texto_direita = 'Tecnologia que Colhe Resultados'
+    canvas.drawRightString(direita, base_y + 3, texto_direita[:80])
     canvas.setStrokeColor(COR_LINHA)
     canvas.setLineWidth(0.6)
     canvas.line(esquerda, altura - 1.7 * cm, direita, altura - 1.7 * cm)

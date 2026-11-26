@@ -69,6 +69,7 @@
             {% endwith %}
 
             <form method="POST" action="{{ url_for('auth.login') }}">
+                {% if proximo %}<input type="hidden" name="next" value="{{ proximo }}">{% endif %}
                 <div class="mb-3">
                     <label class="form-label" for="campoUsuario">Usuário</label>
                     <div class="input-icon">

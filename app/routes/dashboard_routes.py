@@ -71,3 +71,47 @@ def index():
             data_atual=datetime.now().strftime('%d/%m/%Y'),
             get_icone_clima=get_icone_clima
         )
+
+
+@dashboard_bp.route('/busca')
+@login_required
+def busca():
+    """Busca global: talhões, produtos, receitas e notas fiscais."""
+    from flask import request
+    from app.modules import busca as busca_modulo
+    termo = (request.args.get('q') or request.args.get('busca') or '').strip()
+    grupos = busca_modulo.buscar(termo) if termo else []
+    destinos = {
+        'talhoes': 'talhoes.detalhe',
+        'produtos': 'estoque.detalhe_produto',
+        'receitas': 'pulverizacao.detalhe_receita',
+        'notas': 'notas_fiscais.detalhe',
+    }
+    for grupo in grupos:
+        for item in grupo['itens']:
+            try:
+                item['url'] = url_for(destinos[grupo['chave']], id=item['id'])
+            except Exception as e:
+                logger.error(f"dashboard_routes.busca url ({grupo['chave']}): {e}")
+                item['url'] = '#'
+    total = sum(len(g['itens']) for g in grupos)
+    return render_template('busca.html', termo=termo, grupos=grupos, total=total)
+
+
+@dashboard_bp.route('/api/alertas')
+@login_required
+def api_alertas():
+    """Alertas do sino da barra do topo (JSON)."""
+    from flask import jsonify
+    from app.modules import alertas as alertas_modulo
+    itens = []
+    for a in alertas_modulo.coletar():
+        endpoint, ancora = a.pop('destino')
+        try:
+            a['url'] = url_for(endpoint) + ancora
+        except Exception:
+            a['url'] = url_for('dashboard.index')
+        itens.append(a)
+    resposta = jsonify({'total': len(itens), 'itens': itens})
+    resposta.headers['Cache-Control'] = 'no-store'
+    return resposta

@@ -45,13 +45,21 @@ def load_user(user_id):
 # DECORATORS DE PROTEÇÃO DE ROTA
 # =====================================================
 
+def _redirecionar_login():
+    """Manda para o login guardando a página pedida (só em GET) para voltar depois."""
+    from flask import request
+    if request.method == 'GET':
+        return redirect(url_for('auth.login', next=request.full_path.rstrip('?')))
+    return redirect(url_for('auth.login'))
+
+
 def login_required(f):
     """Decorator que verifica se o usuário está logado."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('user_id'):
             flash('Faça login para acessar esta página.', 'warning')
-            return redirect(url_for('auth.login'))
+            return _redirecionar_login()
         return f(*args, **kwargs)
     return decorated_function
 
@@ -61,7 +69,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not session.get('user_id'):
             flash('Faça login para acessar esta página.', 'warning')
-            return redirect(url_for('auth.login'))
+            return _redirecionar_login()
         if session.get('tipo') != 'admin':
             flash('Acesso restrito a administradores.', 'error')
             return redirect(url_for('dashboard.index'))
