@@ -55,6 +55,20 @@ def create_app(config_class=Config):
         except Exception:
             return dict()
 
+    # Usuário da sessão disponível para todos os templates (current_user).
+    @app.context_processor
+    def usuario_processor():
+        from flask import session
+        from app.modules.login_manager import Usuario
+        if not session.get('user_id'):
+            return {'current_user': None}
+        return {'current_user': Usuario(
+            session.get('user_id'),
+            session.get('usuario') or '',
+            session.get('login') or '',
+            session.get('tipo') or 'user',
+        )}
+
     # Registrar Blueprints - TODOS
     from app.routes.dashboard_routes import dashboard_bp
     app.register_blueprint(dashboard_bp)
