@@ -7,6 +7,7 @@ transação, com rollback se qualquer passo falhar.
 """
 
 import logging
+import math
 import os
 import sys
 from datetime import datetime, date
@@ -18,6 +19,37 @@ logger = logging.getLogger(__name__)
 
 STATUS_PENDENTE = 'pendente'
 STATUS_APLICADA = 'aplicada'
+
+
+class SaldoInsuficienteError(ValueError):
+    """Saldo do estoque menor que o consumo da tarefa."""
+
+
+_FATORES_UNIDADE = {
+    ('ml', 'l'): 0.001,
+    ('l', 'ml'): 1000.0,
+    ('g', 'kg'): 0.001,
+    ('kg', 'g'): 1000.0,
+}
+
+
+def _fator_para(origem, destino):
+    """Converte a quantidade da unidade da dose para a unidade do estoque."""
+    origem = _texto(origem).lower()
+    destino = _texto(destino).lower()
+    if origem == destino:
+        return 1.0
+    fator = _FATORES_UNIDADE.get((origem, destino))
+    if fator is None:
+        raise ValueError(
+            f"Unidades incompatíveis: a receita usa {origem or '—'} e o estoque usa {destino or '—'}."
+        )
+    return fator
+
+
+def _formatar_numero(valor, casas=3):
+    texto = f'{float(valor or 0):.{casas}f}'.rstrip('0').rstrip('.')
+    return (texto or '0').replace('.', ',')
 
 
 def desativar_pendentes(cursor, receita_id, selecionados=None):
@@ -285,25 +317,42 @@ def marcar_aplicada(tarefa_id, responsavel, observacoes, usuario, clima_atual=No
                 )
             quantidade = float(item['quantidade'] or 0)
             cursor.execute("""
-                SELECT quantidade_atual FROM produtos_estoque
+                SELECT quantidade_atual, unidade FROM produtos_estoque
                 WHERE id = %s AND ativo = TRUE FOR UPDATE
             """, (item['produto_id'],))
             produto = cursor.fetchone()
             if not produto:
                 raise ValueError(f"Produto {item['produto_nome']} não está ativo no estoque.")
+            unidade_estoque = produto['unidade'] or item['unidade']
+            quantidade_estoque = quantidade * _fator_para(item['unidade'], unidade_estoque)
+            if quantidade_estoque <= 0:
+                raise ValueError(f"Quantidade inválida para {item['produto_nome']}.")
+
             saldo_anterior = float(produto['quantidade_atual'] or 0)
-            saldo_posterior = saldo_anterior - quantidade
+            if saldo_anterior + 0.000001 < quantidade_estoque:
+                raise SaldoInsuficienteError(
+                    f"Saldo insuficiente de {item['produto_nome']}: "
+                    f"precisa de {_formatar_numero(quantidade_estoque)} {unidade_estoque} e "
+                    f"há {_formatar_numero(saldo_anterior)} {unidade_estoque}. "
+                    "Faça a entrada rápida antes de confirmar."
+                )
+            saldo_posterior = saldo_anterior - quantidade_estoque
 
             cursor.execute("""
                 UPDATE produtos_estoque SET quantidade_atual = %s WHERE id = %s
             """, (saldo_posterior, item['produto_id']))
 
+            detalhe_unidade = (
+                '' if _texto(item['unidade']).lower() == _texto(unidade_estoque).lower()
+                else f" ({_formatar_numero(quantidade)} {item['unidade']})"
+            )
             cursor.execute("""
                 INSERT INTO movimentacoes_estoque
                     (produto_id, tipo, quantidade, unidade, data_movimento, observacoes)
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (item['produto_id'], 'saída', quantidade, item['unidade'], hoje,
-                  f"Consumo da tarefa #{tarefa_id} — {tarefa['receita_nome']} / {tarefa['talhao_nome']}"))
+            """, (item['produto_id'], 'saída', quantidade_estoque, unidade_estoque, hoje,
+                  f"Consumo da tarefa #{tarefa_id} — {tarefa['receita_nome']} / "
+                  f"{tarefa['talhao_nome']}{detalhe_unidade}"))
 
             cursor.execute("""
                 UPDATE aplicacao_tarefa_itens
@@ -412,4 +461,130 @@ def atualizar_tarefa(tarefa_id, dados, usuario):
             return True
     except Exception as e:
         logger.error(f"fila_aplicacao.atualizar_tarefa: {e}")
+        raise
+
+
+def produtos_para_entrada_rapida(tarefa_id):
+    """Produtos da tarefa cujo saldo não cobre o consumo, já na unidade do estoque."""
+    try:
+        registros = executar_query("""
+            SELECT i.produto_id, i.produto_nome, i.quantidade, i.unidade AS unidade_item,
+                   p.nome AS nome_produto, p.unidade AS unidade_produto,
+                   p.quantidade_atual AS saldo
+            FROM aplicacao_tarefa_itens i
+            JOIN produtos_estoque p ON p.id = i.produto_id AND p.ativo = TRUE
+            WHERE i.tarefa_id = %s AND i.ativo = TRUE
+            ORDER BY i.id
+        """, (tarefa_id,), fetch_all=True, dict_cursor=True)
+    except Exception as e:
+        logger.error(f"fila_aplicacao.produtos_para_entrada_rapida: {e}")
+        return []
+
+    faltantes = []
+    for r in registros or []:
+        try:
+            unidade = r['unidade_produto'] or r['unidade_item']
+            necessario = float(r['quantidade'] or 0) * _fator_para(r['unidade_item'], unidade)
+        except ValueError:
+            continue
+        saldo = float(r['saldo'] or 0)
+        falta = max(0.0, necessario - saldo)
+        if falta <= 0.000001:
+            continue
+        sugerido = math.ceil(falta * 100) / 100
+        faltantes.append({
+            'produto_id': r['produto_id'],
+            'nome': r['nome_produto'] or r['produto_nome'] or 'Sem nome',
+            'unidade': unidade,
+            'saldo_txt': _formatar_numero(saldo),
+            'necessario_txt': _formatar_numero(necessario),
+            'falta_txt': _formatar_numero(falta),
+            'sugerido_txt': _formatar_numero(sugerido, 2),
+            'sugerido_input': f'{sugerido:.2f}',
+        })
+    return faltantes
+
+
+def registrar_entrada_rapida(tarefa_id, entradas, nome_confirmado, login_confirmado, usuario_sessao):
+    """
+    Entra com produtos faltantes em UMA transação, exige confirmação validada
+    na rota e registra tudo no histórico da tarefa.
+    """
+    login = _texto(login_confirmado)
+    nome = _texto(nome_confirmado) or login
+    if not login:
+        raise ValueError('Informe o login para confirmar a entrada.')
+
+    soma = {}
+    for produto_id, quantidade in entradas or []:
+        try:
+            pid = int(produto_id)
+            qtd = float(str(quantidade).strip().replace(',', '.'))
+        except (TypeError, ValueError):
+            raise ValueError('Quantidade inválida na entrada rápida.')
+        if not math.isfinite(qtd) or qtd <= 0 or qtd > 999999999.99:
+            raise ValueError('A quantidade deve estar entre 0,01 e 999999999,99.')
+        if round(qtd, 2) != qtd:
+            raise ValueError('A quantidade deve ter no máximo 2 casas decimais.')
+        soma[pid] = soma.get(pid, 0.0) + qtd
+    if not soma:
+        raise ValueError('Selecione pelo menos um produto para a entrada rápida.')
+
+    def operacao(cursor):
+        cursor.execute("""
+            SELECT at.status, t.nome AS talhao_nome
+            FROM aplicacao_tarefas at
+            JOIN talhoes t ON t.id = at.talhao_id
+            WHERE at.id = %s AND at.ativo = TRUE FOR UPDATE OF at
+        """, (tarefa_id,))
+        tarefa = cursor.fetchone()
+        if not tarefa:
+            raise ValueError('Tarefa não encontrada.')
+        if tarefa['status'] != STATUS_PENDENTE:
+            raise ValueError('Esta tarefa já foi marcada como aplicada.')
+
+        detalhes_itens = []
+        for produto_id, quantidade in soma.items():
+            cursor.execute("""
+                SELECT nome, unidade FROM produtos_estoque
+                WHERE id = %s AND ativo = TRUE FOR UPDATE
+            """, (produto_id,))
+            produto = cursor.fetchone()
+            if not produto:
+                raise ValueError('Um dos produtos não está ativo no estoque.')
+            unidade = produto['unidade'] or ''
+            cursor.execute("""
+                INSERT INTO movimentacoes_estoque
+                    (produto_id, tipo, quantidade, unidade, data_movimento, observacoes,
+                     origem, confirmado_por, tarefa_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (produto_id, 'entrada', quantidade, unidade, date.today().isoformat(),
+                  f"Entrada rápida — confirmada por {nome} ({login}) — "
+                  f"tarefa #{tarefa_id} / {tarefa['talhao_nome']}",
+                  'entrada_rapida', login, tarefa_id))
+            cursor.execute("""
+                UPDATE produtos_estoque
+                SET quantidade_atual = quantidade_atual + %s WHERE id = %s
+            """, (quantidade, produto_id))
+            detalhes_itens.append(
+                f"{produto['nome']}: +{_formatar_numero(quantidade, 2)} {unidade}"
+            )
+
+        detalhes = (
+            f"Entrada rápida confirmada por {nome} ({login})"
+            f" — tarefa #{tarefa_id} / {tarefa['talhao_nome']}: "
+            + '; '.join(detalhes_itens)
+            + ". Pendente de vínculo com nota fiscal."
+        )
+        cursor.execute("""
+            INSERT INTO aplicacao_tarefa_log (tarefa_id, acao, detalhes, usuario)
+            VALUES (%s, %s, %s, %s)
+        """, (tarefa_id, 'entrada_rapida', detalhes, login or _texto(usuario_sessao) or None))
+        return detalhes_itens
+
+    try:
+        with transacao() as cursor:
+            return operacao(cursor)
+    except Exception as e:
+        logger.error(f"fila_aplicacao.registrar_entrada_rapida: {e}")
         raise

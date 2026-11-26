@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 from app.modules import notas_fiscais
 from app.modules import estoque
 from app.modules.login_manager import login_required, admin_required
@@ -75,11 +75,28 @@ def detalhe(id):
             flash('Nota nao encontrada.', 'warning')
             return redirect(url_for('notas_fiscais.listar'))
         movimentacoes = notas_fiscais.listar_movimentacoes_por_nota(id)
-        return render_template('notas_fiscais/detalhe.html', nota=nota, movimentacoes=movimentacoes)
+        pendentes = notas_fiscais.listar_entradas_rapidas_pendentes()
+        return render_template('notas_fiscais/detalhe.html', nota=nota,
+                               movimentacoes=movimentacoes, pendentes=pendentes)
     except Exception as e:
         logger.error(f"notas_fiscais_routes.detalhe: {e}")
         flash('Erro ao carregar nota.', 'error')
         return redirect(url_for('notas_fiscais.listar'))
+
+@notas_fiscais_bp.route('/<int:id>/entradas-rapidas/vincular', methods=['POST'])
+@login_required
+def vincular_entradas_rapidas(id):
+    ids = request.form.getlist('entrada_ids[]')
+    try:
+        vinculadas = notas_fiscais.vincular_entradas_rapidas(
+            id, ids, session.get('usuario')
+        )
+        flash('Entradas rápidas vinculadas à nota (estoque não foi alterado): '
+              + '; '.join(vinculadas) + '.', 'success')
+    except Exception as e:
+        logger.error(f"notas_fiscais_routes.vincular_entradas_rapidas: {e}")
+        flash(str(e), 'error')
+    return redirect(url_for('notas_fiscais.detalhe', id=id))
 
 @notas_fiscais_bp.route('/<int:id>/excluir', methods=['POST'])
 @login_required

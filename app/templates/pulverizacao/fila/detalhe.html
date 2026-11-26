@@ -3,19 +3,19 @@
 {% block styles %}
 <style>
     .btn-apliquei { min-height: 64px; font-size: 1.25rem; font-weight: 700; }
-    .clima-linha { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #eee; }
+    .clima-linha { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); }
     .clima-linha:last-child { border-bottom: 0; }
 </style>
 {% endblock %}
 {% block conteudo %}
 <div class="container-fluid" style="max-width: 960px;">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div class="page-header">
         <div>
             <a href="{{ url_for('pulverizacao.fila_aplicacao', status=tarefa.status) }}" class="btn btn-outline-secondary btn-sm mb-2">
                 <i class="bi bi-arrow-left me-1"></i>Fila de aplicação
             </a>
-            <h2 class="mb-0"><i class="bi bi-geo-alt me-2"></i>{{ tarefa.talhao_nome }}</h2>
-            <p class="text-muted mb-0">
+            <h1 class="page-title"><i class="bi bi-geo-alt me-2"></i>{{ tarefa.talhao_nome }}</h1>
+            <p class="page-subtitle">
                 {{ '%.2f'|format(tarefa.area) }} ha ·
                 {% if tarefa.status == 'aplicada' %}
                     Aplicada em {{ tarefa.data_aplicacao }} às {{ tarefa.hora_aplicacao }}
@@ -29,10 +29,6 @@
         </span>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}
-    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    {% endfor %}{% endif %}{% endwith %}
 
     <div class="card shadow-sm mb-3">
         <div class="card-header"><strong>Receita: {{ tarefa.receita_nome }}</strong></div>
@@ -102,6 +98,13 @@
                             <i class="bi bi-check2-circle me-2"></i>Apliquei
                         </button>
                         <div class="form-text text-center">Ao confirmar, a data, a hora e o clima são gravados e o estoque é baixado.</div>
+                        <button type="button" class="btn btn-outline-warning btn-sm w-100 mt-3"
+                                data-bs-toggle="modal" data-bs-target="#modalEntradaRapida">
+                            <i class="bi bi-box-arrow-in-down me-1"></i>Entrada rápida de produtos
+                        </button>
+                        <div class="form-text text-center">
+                            {% if faltantes %}Faltam {{ faltantes|length }} produto(s) no estoque.{% else %}Saldo suficiente para esta tarefa.{% endif %}
+                        </div>
                     </form>
                 </div>
             </div>
@@ -185,4 +188,84 @@
         <i class="bi bi-journal-text me-1"></i>Ver receita completa e compras
     </a>
 </div>
+
+{% if tarefa.status == 'pendente' %}
+<div class="modal fade" id="modalEntradaRapida" tabindex="-1" aria-labelledby="modalEntradaRapidaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('pulverizacao.entrada_rapida_tarefa', id=tarefa.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEntradaRapidaLabel">
+                        <i class="bi bi-box-arrow-in-down me-2"></i>Entrada rápida — tarefa #{{ tarefa.id }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Para produtos comprados e ainda não lançados no estoque. O saldo entra agora; depois vincule esta movimentação à nota fiscal.
+                    </p>
+                    {% if faltantes %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-3">
+                            <thead><tr><th>Produto</th><th>Saldo</th><th>Necessário</th><th>Entrar com</th></tr></thead>
+                            <tbody>
+                                {% for p in faltantes %}
+                                <tr>
+                                    <td>
+                                        {{ p.nome }}
+                                        <input type="hidden" name="produto_ids[]" value="{{ p.produto_id }}">
+                                    </td>
+                                    <td>{{ p.saldo_txt }} {{ p.unidade }}</td>
+                                    <td>{{ p.necessario_txt }} {{ p.unidade }}</td>
+                                    <td style="min-width:130px">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" name="quantidades[]"
+                                                   step="0.01" min="0.01" max="999999999.99"
+                                                   value="{{ p.sugerido_input }}" required>
+                                            <span class="input-group-text">{{ p.unidade }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">Não falta saldo nesta tarefa. Para uma compra avulsa, use a entrada normal de estoque.</div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Login para confirmar</label>
+                            <input type="text" name="nome" class="form-control" autocomplete="username" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Senha</label>
+                            <input type="password" name="senha" class="form-control" autocomplete="current-password" required>
+                        </div>
+                    </div>
+                    <div class="form-text">Quem confirmar ficará registrado no histórico da tarefa.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check2 me-1"></i>Confirmar entrada
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        {% if abrir_modal and faltantes %}
+        var modal = new bootstrap.Modal(document.getElementById('modalEntradaRapida'));
+        modal.show();
+        {% endif %}
+    });
+</script>
 {% endblock %}

@@ -402,3 +402,9 @@ CREATE TABLE IF NOT EXISTS avaliacoes_eficacia (
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Entradas rápidas feitas no campo: origem, quem confirmou e tarefa vinculada
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS origem VARCHAR(20);
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS confirmado_por VARCHAR(100);
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS tarefa_id INTEGER REFERENCES aplicacao_tarefas(id);
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_origem ON movimentacoes_estoque(origem);

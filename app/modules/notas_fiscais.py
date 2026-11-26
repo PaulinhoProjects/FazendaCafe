@@ -127,6 +127,85 @@ def vincular_movimentacao_nota(movimentacao_id, nota_id):
         print(f"Erro ao vincular movimentação: {e}")
         return False
 
+def listar_entradas_rapidas_pendentes():
+    """Entradas feitas no campo que ainda não foram vinculadas a uma nota."""
+    query = """
+    SELECT m.id, m.quantidade, m.unidade, m.data_movimento, m.confirmado_por,
+           p.nome AS produto_nome, t.id AS tarefa_id, tal.nome AS talhao_nome
+    FROM movimentacoes_estoque m
+    JOIN produtos_estoque p ON p.id = m.produto_id
+    LEFT JOIN aplicacao_tarefas t ON t.id = m.tarefa_id
+    LEFT JOIN talhoes tal ON tal.id = t.talhao_id
+    WHERE m.tipo = 'entrada' AND m.origem = 'entrada_rapida'
+      AND m.nota_fiscal_id IS NULL AND m.ativo = TRUE
+    ORDER BY m.data_movimento DESC, m.id DESC
+    """
+    try:
+        registros = executar_query(query, fetch_all=True, dict_cursor=True)
+        return [{
+            'id': r['id'],
+            'produto_nome': r['produto_nome'],
+            'quantidade': float(r['quantidade'] or 0),
+            'unidade': r['unidade'] or '',
+            'data_movimento': r['data_movimento'],
+            'confirmado_por': r['confirmado_por'] or '—',
+            'tarefa_id': r['tarefa_id'],
+            'talhao_nome': r['talhao_nome'] or '—',
+        } for r in registros or []]
+    except Exception as e:
+        print(f"Erro ao listar entradas rápidas: {e}")
+        return []
+
+
+def vincular_entradas_rapidas(nota_id, ids, usuario):
+    """
+    Faz a entrada rápida constar como item da nota, sem mexer no saldo:
+    o produto já entrou no estoque quando foi confirmada no campo.
+    """
+    if not ids:
+        raise ValueError('Selecione pelo menos uma entrada rápida.')
+
+    def operacao(cursor):
+        vinculadas = []
+        for bruto in ids:
+            try:
+                mov_id = int(bruto)
+            except (TypeError, ValueError):
+                raise ValueError('Entrada rápida inválida.')
+            cursor.execute("""
+                SELECT m.id, m.quantidade, m.unidade, m.nota_fiscal_id,
+                       p.nome AS produto_nome
+                FROM movimentacoes_estoque m
+                JOIN produtos_estoque p ON p.id = m.produto_id
+                WHERE m.id = %s AND m.ativo = TRUE AND m.tipo = 'entrada'
+                  AND m.origem = 'entrada_rapida' FOR UPDATE OF m
+            """, (mov_id,))
+            movimento = cursor.fetchone()
+            if not movimento:
+                raise ValueError(f'Entrada rápida #{mov_id} não encontrada.')
+            if movimento['nota_fiscal_id'] is not None:
+                raise ValueError(f'Entrada rápida #{mov_id} já está vinculada a outra nota.')
+            cursor.execute("""
+                UPDATE movimentacoes_estoque
+                SET nota_fiscal_id = %s,
+                    observacoes = COALESCE(observacoes, '') || %s
+                WHERE id = %s
+            """, (nota_id,
+                  f" | Vinculada à nota #{nota_id} por {usuario or 'sistema'}",
+                  mov_id))
+            vinculadas.append(
+                f"{movimento['produto_nome']}: {float(movimento['quantidade']):.2f} "
+                f"{movimento['unidade'] or ''}".strip()
+            )
+        return vinculadas
+
+    try:
+        return executar_transacao(operacao)
+    except Exception as e:
+        print(f"Erro ao vincular entradas rápidas: {e}")
+        raise
+
+
 def listar_movimentacoes_por_nota(nota_id):
     """Lista todas as movimentações (produtos) de uma nota fiscal"""
     query = """

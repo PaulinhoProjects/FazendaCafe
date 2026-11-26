@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from app.modules import (pulverizacao, receitas, estoque, talhoes,
                          clima, fila_aplicacao as fila, eficacia,
-                         historico_manejo as historico)
+                         historico_manejo as historico, auth)
 from app.modules.login_manager import login_required, admin_required
 from datetime import datetime
 import io
@@ -171,24 +171,15 @@ def excluir_aplicacao(id):
 @login_required
 @admin_required
 def excluir_periodo(id):
-    try:
-        sucesso, msg = pulverizacao.excluir_periodo(id)
-        flash(msg, 'success' if sucesso else 'warning')
-    except Exception as e:
-        logger.error(f"pulverizacao_routes.excluir_periodo: {e}")
-        flash('Erro ao excluir período.', 'error')
+    # Períodos e pragas/doenças fazem parte do cadastro base do sistema.
+    flash('Períodos da lavoura são cadastrados pelo sistema e não podem ser excluídos.', 'warning')
     return redirect(url_for('pulverizacao.dashboard'))
 
 @pulverizacao_bp.route('/pragas/<int:id>/excluir', methods=['POST'])
 @login_required
 @admin_required
 def excluir_praga(id):
-    try:
-        sucesso, msg = pulverizacao.excluir_praga(id)
-        flash(msg, 'success' if sucesso else 'warning')
-    except Exception as e:
-        logger.error(f"pulverizacao_routes.excluir_praga: {e}")
-        flash('Erro ao excluir praga/doença.', 'error')
+    flash('Pragas e doenças fazem parte do cadastro base e não podem ser excluídas.', 'warning')
     return redirect(url_for('pulverizacao.dashboard'))
 
 # =====================================================
@@ -439,6 +430,8 @@ def detalhe_tarefa(id):
             pode_avaliar=session.get('tipo') in ('admin', 'agronomista'),
             avaliacao=eficacia.buscar_avaliacao(id),
             log=fila.listar_log(id),
+            faltantes=fila.produtos_para_entrada_rapida(id) if pendente else [],
+            abrir_modal=request.args.get('entrada') == '1',
         )
     except Exception as e:
         logger.error(f"pulverizacao_routes.detalhe_tarefa: {e}")
@@ -467,8 +460,52 @@ def marcar_tarefa_aplicada(id):
             clima_atual,
         )
         flash('Aplicação registrada: data, hora e clima capturados; estoque baixado.', 'success')
+    except fila.SaldoInsuficienteError as e:
+        logger.error(f"pulverizacao_routes.marcar_tarefa_aplicada: {e}")
+        flash(str(e), 'error')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id, entrada=1))
     except Exception as e:
         logger.error(f"pulverizacao_routes.marcar_tarefa_aplicada: {e}")
+        flash(str(e), 'error')
+    return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+
+@pulverizacao_bp.route('/fila/<int:id>/entrada-rapida', methods=['POST'])
+@login_required
+def entrada_rapida_tarefa(id):
+    tarefa = fila.buscar_tarefa(id)
+    if not tarefa:
+        flash('Tarefa não encontrada.', 'warning')
+        return redirect(url_for('pulverizacao.fila_aplicacao'))
+    if tarefa['status'] != 'pendente':
+        flash('Esta tarefa já foi marcada como aplicada.', 'warning')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
+
+    produto_ids = request.form.getlist('produto_ids[]')
+    quantidades = request.form.getlist('quantidades[]')
+    if not produto_ids or len(produto_ids) != len(quantidades):
+        flash('Informe a quantidade de pelo menos um produto.', 'error')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id, entrada=1))
+
+    login = request.form.get('nome')
+    senha = request.form.get('senha')
+    usuario, erro = auth.autenticar_usuario(login, senha)
+    if not usuario:
+        logger.warning(
+            f"pulverizacao_routes.entrada_rapida_tarefa: confirmação negada "
+            f"para '{login}' na tarefa {id}: {erro}"
+        )
+        flash('Login ou senha incorretos. A entrada não foi registrada.', 'error')
+        return redirect(url_for('pulverizacao.detalhe_tarefa', id=id, entrada=1))
+
+    entradas = list(zip(produto_ids, quantidades))
+    try:
+        itens = fila.registrar_entrada_rapida(
+            id, entradas, usuario['nome'], login, session.get('usuario')
+        )
+        flash('Entrada rápida registrada e confirmada: ' + '; '.join(itens) + '.', 'success')
+    except Exception as e:
+        logger.error(f"pulverizacao_routes.entrada_rapida_tarefa: {e}")
         flash(str(e), 'error')
     return redirect(url_for('pulverizacao.detalhe_tarefa', id=id))
 
