@@ -203,4 +203,11 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: categorias_estoque: {e}")
 
+    # Tabela da camada KML/KMZ do mapa da fazenda
+    try:
+        from app.modules.mapa import criar_tabela_mapa
+        criar_tabela_mapa()
+    except Exception as e:
+        print(f"Aviso: mapas_importados: {e}")
+
     return app

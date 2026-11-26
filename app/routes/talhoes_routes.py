@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
-from app.modules import talhoes
+from app.modules import talhoes, mapa
 from datetime import datetime
 import io
 import csv
@@ -17,10 +17,51 @@ def listar():
     """Lista todos os talhões."""
     try:
         lista_talhoes = talhoes.listar_talhoes()
-        return render_template('talhoes/lista.html', talhoes=lista_talhoes)
+        dados_mapa = mapa.obter_dados_mapa()
+        return render_template('talhoes/lista.html', talhoes=lista_talhoes, dados_mapa=dados_mapa)
     except Exception as e:
-        print(f"Erro ao listar talhões: {e}")
-        return render_template('talhoes/lista.html', talhoes=[])
+        logger.error(f"talhoes_routes.listar: {e}")
+        return render_template('talhoes/lista.html', talhoes=[],
+                               dados_mapa={'talhoes': [], 'elementos': [], 'importacao': None})
+
+
+@talhoes_bp.route('/mapa/importar', methods=['POST'])
+@login_required
+@admin_required
+def importar_mapa():
+    """Importa camada KML/KMZ exportada do Google Earth."""
+    arquivo = request.files.get('arquivo')
+    if not arquivo or not arquivo.filename:
+        flash('Selecione um arquivo KML ou KMZ.', 'error')
+        return redirect(url_for('talhoes.listar'))
+    try:
+        sucesso, mensagem, _ = mapa.salvar_mapa(arquivo.filename, arquivo.read())
+        if sucesso:
+            flash(f'Mapa importado: {mensagem}.', 'success')
+        else:
+            flash(f'Erro ao importar mapa: {mensagem}', 'error')
+    except Exception as e:
+        logger.error(f"talhoes_routes.importar_mapa: {e}")
+        flash('Erro ao importar mapa.', 'error')
+    return redirect(url_for('talhoes.listar'))
+
+
+@talhoes_bp.route('/mapa/remover', methods=['POST'])
+@login_required
+@admin_required
+def remover_mapa():
+    """Desativa a camada importada sem apagar o histórico."""
+    try:
+        sucesso, mensagem = mapa.desativar_mapa()
+        if sucesso:
+            flash('Camadas do mapa removidas da visualização.', 'success')
+        else:
+            flash(f'Erro ao remover camadas: {mensagem}', 'error')
+    except Exception as e:
+        logger.error(f"talhoes_routes.remover_mapa: {e}")
+        flash('Erro ao remover camadas do mapa.', 'error')
+    return redirect(url_for('talhoes.listar'))
+
 
 @talhoes_bp.route('/novo', methods=['GET', 'POST'])
 @login_required
