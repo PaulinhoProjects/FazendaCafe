@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import requests
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query, executar_transacao
+from database import executar_query, executar_transacao, get_config
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,18 @@ except (TypeError, ValueError):
     CACHE_MINUTOS = 30
 
 _DADOS = {"valor": None, "timestamp": None}
+_SAUDE = {"valor": None, "timestamp": None}
+SAUDE_CACHE_MINUTOS = 5
+
+try:
+    HISTORICO_MAX = max(50, int(os.getenv("COTACOES_HISTORICO_MAX", "2000")))
+except (TypeError, ValueError):
+    HISTORICO_MAX = 2000
+
+try:
+    SAUDE_MAX = max(20, int(os.getenv("COTACOES_SAUDE_MAX", "500")))
+except (TypeError, ValueError):
+    SAUDE_MAX = 500
 
 FONTES = [
     {
@@ -277,6 +289,246 @@ def _coletar_cocatrel():
     return registros
 
 
+MONITORAMENTO = {
+    'cooxupe': {
+        'fonte': 'Cooxupé / Hub do Café',
+        'url': FONTES[0]['url'],
+        'coletor': _coletar_cooxupe,
+    },
+    'ptax': {
+        'fonte': 'Banco Central do Brasil',
+        'url': FONTES[3]['url'],
+        'coletor': _coletar_ptax,
+    },
+    'awesome': {
+        'fonte': 'AwesomeAPI',
+        'url': FONTES[4]['url'],
+        'coletor': _coletar_awesome,
+    },
+    'coopercam': {
+        'fonte': 'Coopercam',
+        'url': COOPERCAM_URL,
+        'coletor': _coletar_coopercam,
+    },
+    'cocatrel': {
+        'fonte': 'Cocatrel',
+        'url': COCATREL_URL,
+        'coletor': _coletar_cocatrel,
+    },
+}
+
+
+def _limite_config(chave, padrao):
+    """Limite de retenção configurável em Configurações > Sistema."""
+    try:
+        return max(1, int(get_config(chave, str(padrao))))
+    except (TypeError, ValueError):
+        return padrao
+
+
+def _data_origem(texto):
+    """Extrai uma data de formatos comuns das fontes (dd/mm/aaaa ou ISO)."""
+    if not texto:
+        return None
+    texto = str(texto)
+    encontrado = re.search(r'(\d{4})-(\d{2})-(\d{2})', texto)
+    if encontrado:
+        try:
+            return datetime(int(encontrado.group(1)), int(encontrado.group(2)),
+                            int(encontrado.group(3))).date()
+        except ValueError:
+            return None
+    encontrado = re.search(r'(\d{2})/(\d{2})/(\d{4})', texto)
+    if encontrado:
+        try:
+            return datetime(int(encontrado.group(3)), int(encontrado.group(2)),
+                            int(encontrado.group(1))).date()
+        except ValueError:
+            return None
+    return None
+
+
+def _avaliar_datas(registros):
+    """Distingue fonte respondendo de fonte respondendo com dados defasados."""
+    datas = [d for d in (_data_origem(r.get('data_origem')) for r in registros.values()) if d]
+    if not datas:
+        return 'aviso', 'A fonte respondeu, mas não informou a data da cotação.'
+    mais_recente = max(datas)
+    dias = (datetime.now().date() - mais_recente).days
+    if dias > 2:
+        return 'aviso', (f'Última data publicada: {mais_recente.strftime("%d/%m/%Y")} '
+                         f'({dias} dias atrás).')
+    return 'ok', (f'{len(registros)} cotação(ões) recebida(s) · '
+                  f'{mais_recente.strftime("%d/%m/%Y")}.')
+
+
+def _geral(itens):
+    estados = [item.get('status') for item in itens]
+    if 'erro' in estados:
+        return 'erro'
+    if any(estado in ('aviso', 'pendente') for estado in estados):
+        return 'aviso'
+    return 'ok'
+
+
+def _registrar_saude(fonte, status, mensagem, quantidade=0, data_origem=None,
+                     duracao_ms=0, url=None):
+    """Grava o resultado de uma consulta e mantém apenas os eventos ativos recentes."""
+    limite = _limite_config('cotacoes_saude_max', SAUDE_MAX)
+
+    def operacao(cursor):
+        cursor.execute("""
+            INSERT INTO cotacoes_saude
+                (fonte, status, mensagem, quantidade, data_origem, duracao_ms, url)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (fonte, status, (mensagem or '')[:255], quantidade, data_origem, duracao_ms, url))
+        cursor.execute("""
+            UPDATE cotacoes_saude SET ativo = FALSE
+            WHERE ativo = TRUE
+              AND id NOT IN (
+                  SELECT id FROM cotacoes_saude
+                  WHERE ativo = TRUE
+                  ORDER BY verificado_em DESC, id DESC
+                  LIMIT %s
+              )
+        """, (limite,))
+
+    try:
+        executar_transacao(operacao)
+    except Exception as e:
+        logger.error(f"cotacoes._registrar_saude ({fonte}): {e}")
+
+
+def _monitorar(item, rethrow=False):
+    """Executa um coletor, registra o resultado e opcionalmente propaga a falha."""
+    inicio = datetime.now()
+    try:
+        registros = item['coletor']()
+        if not registros:
+            raise ValueError('nenhuma cotação reconhecida')
+        status, mensagem = _avaliar_datas(registros)
+        datas = [str(r.get('data_origem')) for r in registros.values() if r.get('data_origem')]
+        data_origem = max(datas) if datas else None
+        quantidade = len(registros)
+    except Exception as e:
+        logger.error(f"cotacoes._monitorar ({item['fonte']}): {e}")
+        status, mensagem = 'erro', str(e)[:240]
+        registros, quantidade, data_origem = {}, 0, None
+        duracao_ms = int((datetime.now() - inicio).total_seconds() * 1000)
+        _registrar_saude(item['fonte'], status, mensagem, quantidade, data_origem,
+                         duracao_ms, item.get('url'))
+        if rethrow:
+            raise
+        return {
+            'fonte': item['fonte'], 'url': item.get('url'), 'status': status,
+            'mensagem': mensagem, 'quantidade': 0, 'data_origem': None,
+            'duracao_ms': duracao_ms,
+        }
+
+    duracao_ms = int((datetime.now() - inicio).total_seconds() * 1000)
+    _registrar_saude(item['fonte'], status, mensagem, quantidade, data_origem,
+                     duracao_ms, item.get('url'))
+    return {
+        'fonte': item['fonte'], 'url': item.get('url'), 'status': status,
+        'mensagem': mensagem, 'quantidade': quantidade, 'data_origem': data_origem,
+        'duracao_ms': duracao_ms, 'registros': registros,
+    }
+
+
+def verificar_fontes(force=False):
+    """Testa todas as fontes agora e devolve o estado de cada uma."""
+    if (not force and _SAUDE['valor'] is not None and _SAUDE['timestamp'] is not None
+            and (datetime.now() - _SAUDE['timestamp']).total_seconds() < SAUDE_CACHE_MINUTOS * 60):
+        return _SAUDE['valor']
+
+    itens = []
+    for item in MONITORAMENTO.values():
+        resultado = _monitorar(item)
+        itens.append({k: v for k, v in resultado.items() if k != 'registros'})
+
+    valor = {
+        'geral': _geral(itens),
+        'itens': itens,
+        'verificado_em': datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+    }
+    _SAUDE.update(valor=valor, timestamp=datetime.now())
+    return valor
+
+
+def resumo_saude():
+    """Último estado gravado de cada fonte, sem consultar a rede."""
+    itens = []
+    try:
+        linhas = executar_query("""
+            SELECT DISTINCT ON (fonte) fonte, status, mensagem, quantidade,
+                   data_origem, duracao_ms, url, verificado_em
+            FROM cotacoes_saude
+            WHERE ativo = TRUE
+            ORDER BY fonte, verificado_em DESC, id DESC
+        """, fetch_all=True, dict_cursor=True) or []
+        for linha in linhas:
+            itens.append({
+                'fonte': linha['fonte'], 'status': linha['status'],
+                'mensagem': linha['mensagem'], 'quantidade': linha['quantidade'],
+                'data_origem': linha['data_origem'], 'duracao_ms': linha['duracao_ms'],
+                'url': linha['url'], 'verificado_em': linha['verificado_em'],
+            })
+    except Exception as e:
+        logger.error(f"cotacoes.resumo_saude: {e}")
+
+    conhecidas = {item['fonte'] for item in MONITORAMENTO.values()}
+    mapa = {item['fonte'] for item in itens}
+    for item in MONITORAMENTO.values():
+        if item['fonte'] not in mapa:
+            itens.append({
+                'fonte': item['fonte'], 'status': 'pendente',
+                'mensagem': 'Ainda sem verificação registrada.', 'quantidade': 0,
+                'data_origem': None, 'duracao_ms': 0, 'url': item.get('url'),
+                'verificado_em': None,
+            })
+    # Fontes antigas que não estão mais no monitor também aparecem, marcadas.
+    for item in itens:
+        if item['fonte'] not in conhecidas:
+            item['status'] = 'pendente'
+
+    ordem = {item['fonte']: posicao for posicao, item in enumerate(MONITORAMENTO.values())}
+    itens.sort(key=lambda item: (ordem.get(item['fonte'], 99), item['fonte']))
+    return {
+        'geral': _geral(itens),
+        'itens': itens,
+        'verificado_em': max([item['verificado_em'] for item in itens
+                              if item['verificado_em']] or [None]),
+    }
+
+
+def listar_saude_eventos(limite=20, offset=0):
+    """Eventos de integridade paginados, mais recentes primeiro."""
+    try:
+        return executar_query("""
+            SELECT fonte, status, mensagem, quantidade, data_origem, duracao_ms,
+                   url, verificado_em
+            FROM cotacoes_saude
+            WHERE ativo = TRUE
+            ORDER BY verificado_em DESC, id DESC
+            LIMIT %s OFFSET %s
+        """, (limite, offset), fetch_all=True, dict_cursor=True) or []
+    except Exception as e:
+        logger.error(f"cotacoes.listar_saude_eventos: {e}")
+        return []
+
+
+def contar_saude_eventos():
+    try:
+        registro = executar_query(
+            "SELECT COUNT(*) AS total FROM cotacoes_saude WHERE ativo = TRUE",
+            fetch_one=True, dict_cursor=True,
+        )
+        return int(registro['total']) if registro else 0
+    except Exception as e:
+        logger.error(f"cotacoes.contar_saude_eventos: {e}")
+        return 0
+
+
 def _salvar_snapshots(registros):
     def operacao(cursor):
         for r in registros.values():
@@ -290,6 +542,17 @@ def _salvar_snapshots(registros):
                 r.get('valor'), r.get('valor_compra'), r.get('unidade'),
                 r.get('variacao'), r.get('variacao_percentual'), r.get('data_origem'),
             ))
+        # Retenção lógica: mantém ativos apenas os snapshots mais recentes.
+        cursor.execute("""
+            UPDATE cotacoes_snapshots SET ativo = FALSE
+            WHERE ativo = TRUE
+              AND id NOT IN (
+                  SELECT id FROM cotacoes_snapshots
+                  WHERE ativo = TRUE
+                  ORDER BY coletado_em DESC, id DESC
+                  LIMIT %s
+              )
+        """, (_limite_config('cotacoes_historico_max', HISTORICO_MAX),))
 
     try:
         executar_transacao(operacao)
@@ -304,6 +567,7 @@ def _carregar_ultimos():
                    valor_compra, unidade, variacao, variacao_percentual,
                    data_origem, coletado_em
             FROM cotacoes_snapshots
+            WHERE ativo = TRUE
             ORDER BY chave, coletado_em DESC
         """, fetch_all=True, dict_cursor=True) or []
         return {r['chave']: r for r in linhas}
@@ -320,7 +584,7 @@ def _carregar_prefixo(prefixo):
                    valor_compra, unidade, variacao, variacao_percentual,
                    data_origem, coletado_em
             FROM cotacoes_snapshots
-            WHERE chave LIKE %s
+            WHERE ativo = TRUE AND chave LIKE %s
             ORDER BY chave, coletado_em DESC
         """, (prefixo + '%',), fetch_all=True, dict_cursor=True) or []
         return {r['chave']: r for r in linhas}
@@ -454,22 +718,21 @@ def obter_cotacoes(force=False):
         return _DADOS['valor']
 
     try:
-        registros = _coletar_cooxupe()
-        registros.update(_coletar_ptax())
+        registros = _monitorar(MONITORAMENTO['cooxupe'], rethrow=True)['registros']
+        registros.update(_monitorar(MONITORAMENTO['ptax'], rethrow=True)['registros'])
         reaproveitados = set()
-        for coletor, prefixo in (
-            (_coletar_awesome, None),
-            (_coletar_coopercam, 'coopercam_'),
-            (_coletar_cocatrel, 'cocatrel_'),
+        for chave, prefixo in (
+            ('awesome', None),
+            ('coopercam', 'coopercam_'),
+            ('cocatrel', 'cocatrel_'),
         ):
-            try:
-                registros.update(coletor())
-            except Exception as e:
-                logger.error(f"cotacoes.obter_cotacoes ({coletor.__name__}): {e}")
-                if prefixo:
-                    for chave, registro in _carregar_prefixo(prefixo).items():
-                        registros[chave] = registro
-                        reaproveitados.add(chave)
+            descobertos = _monitorar(MONITORAMENTO[chave])['registros']
+            if descobertos:
+                registros.update(descobertos)
+            elif prefixo:
+                for chave_snapshot, registro in _carregar_prefixo(prefixo).items():
+                    registros[chave_snapshot] = registro
+                    reaproveitados.add(chave_snapshot)
 
         if not registros.get('kc') and not registros.get('ptax'):
             raise ValueError('nenhuma cotação principal foi obtida')
@@ -490,16 +753,29 @@ def obter_cotacoes(force=False):
         return dados
 
 
-def listar_historico(limite=40):
-    """Últimos snapshots coletados, para a tabela da página de cotações."""
+def listar_historico(limite=20, offset=0):
+    """Snapshots ativos paginados, para a tabela da página de cotações."""
     try:
         return executar_query("""
             SELECT chave, fonte, papel, valor, valor_compra, unidade,
                    data_origem, coletado_em
             FROM cotacoes_snapshots
+            WHERE ativo = TRUE
             ORDER BY coletado_em DESC, id DESC
-            LIMIT %s
-        """, (limite,), fetch_all=True, dict_cursor=True) or []
+            LIMIT %s OFFSET %s
+        """, (limite, offset), fetch_all=True, dict_cursor=True) or []
     except Exception as e:
         logger.error(f"cotacoes.listar_historico: {e}")
         return []
+
+
+def contar_historico():
+    try:
+        registro = executar_query(
+            "SELECT COUNT(*) AS total FROM cotacoes_snapshots WHERE ativo = TRUE",
+            fetch_one=True, dict_cursor=True,
+        )
+        return int(registro['total']) if registro else 0
+    except Exception as e:
+        logger.error(f"cotacoes.contar_historico: {e}")
+        return 0

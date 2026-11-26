@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import (Blueprint, render_template, request, redirect, url_for, flash, session,
                    current_app, send_from_directory)
 from app.modules.login_manager import login_required, admin_required
-from app.modules import auth, seguranca
+from app.modules import auth, cotacoes, seguranca
 from config.database import get_config, set_config, executar_query
 from app.models import get_logger
 
@@ -23,6 +23,8 @@ GRUPOS = {
         ('nome_sistema', 'Nome do sistema', 'Nome exibido em telas de configuração.', 'text', 'Kaldi'),
         ('slogan', 'Slogan', 'Frase exibida no login e nos rodapés.', 'text', 'Tecnologia que Colhe Resultados'),
         ('itens_por_pagina', 'Itens por página', 'Quantidade de linhas nas listagens.', 'number', '20'),
+        ('cotacoes_historico_max', 'Máx. de coletas de cotações', 'Snapshots ativos mantidos no histórico (padrão 2000).', 'number', '2000'),
+        ('cotacoes_saude_max', 'Máx. de eventos de integridade', 'Eventos ativos mantidos no monitor das fontes (padrão 500).', 'number', '500'),
     ],
     'seguranca': [
         ('seguranca_sessao_horas', 'Sessão expira após (horas sem uso)', 'Entre 1 e 720 horas.', 'number', '12'),
@@ -97,6 +99,7 @@ def index():
         resumo_acessos=seguranca.resumo_acessos(7),
         backups=_listar_backups(),
         banco=_status_banco(),
+        cotacoes_saude=cotacoes.resumo_saude(),
         senha_minimo=seguranca.senha_minimo(),
     )
 

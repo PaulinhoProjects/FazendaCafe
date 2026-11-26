@@ -222,6 +222,8 @@ def criar_tabela_configuracoes():
             ('cidade', 'Campos Gerais', 'Cidade para clima'),
             ('estado', 'MG', 'Estado para clima'),
             ('itens_por_pagina', '20', 'Itens por página nas listagens'),
+            ('cotacoes_historico_max', '2000', 'Snapshots ativos mantidos nas cotações'),
+            ('cotacoes_saude_max', '500', 'Eventos ativos mantidos no monitor das fontes'),
         ]
         for chave, valor, desc in configs_padrao:
             verificar = executar_query("SELECT id FROM configuracoes_sistema WHERE chave = %s", (chave,), fetch_one=True)

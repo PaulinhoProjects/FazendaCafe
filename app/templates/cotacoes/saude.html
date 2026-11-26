@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block titulo %}Integridade das cotações{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('cotacoes.index') }}">Cotações</a></li>
+<li class="breadcrumb-item active">Integridade</li>
+{% endblock %}
+{% block conteudo %}
+{% set rotulos = {
+    'ok': ('success', 'OK'),
+    'erro': ('danger', 'Falha'),
+    'aviso': ('warning', 'Aviso'),
+    'pendente': ('secondary', 'Sem dados')
+} %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-shield-check me-2"></i>Integridade das fontes de cotação</h1>
+        <p class="page-subtitle">Monitor das APIs e tabelas públicas consultadas pelo sistema</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('cotacoes.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Cotações</a>
+        <form method="POST" action="{{ url_for('cotacoes.saude_verificar') }}">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Verificar agora</button>
+        </form>
+    </div>
+</div>
+
+{% if saude %}
+<div class="alert alert-{{ rotulos.get(saude.geral, ('secondary', ''))[0] }}">
+    <i class="bi bi-{{ 'check-circle' if saude.geral == 'ok' else ('exclamation-triangle' if saude.geral == 'aviso' else 'x-circle') }} me-1"></i>
+    <strong>{{ rotulos.get(saude.geral, ('secondary', saude.geral))[1] }}</strong>
+    {% if saude.geral == 'ok' %}Todas as fontes responderam normalmente.
+    {% elif saude.geral == 'aviso' %}Uma ou mais fontes responderam com dados defasados ou sem data.
+    {% else %}Uma ou mais fontes falharam na última verificação.{% endif %}
+    <span class="text-muted">Verificado em {{ saude.verificado_em or '—' }}.</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-diagram-3 me-2"></i><strong>Situação por fonte</strong></div>
+        <span class="text-muted small">resultados em cache por 5 minutos</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle">
+            <thead><tr><th>Fonte</th><th>Status</th><th>Data origem</th><th class="text-end">Itens</th><th class="text-end">Tempo</th><th>Detalhe</th></tr></thead>
+            <tbody>
+            {% for item in saude.itens %}
+            <tr>
+                <td>
+                    {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.fonte }} <i class="bi bi-box-arrow-up-right small"></i></a>{% else %}{{ item.fonte }}{% endif %}
+                </td>
+                <td><span class="badge bg-{{ rotulos.get(item.status, ('secondary', item.status))[0] }}">{{ rotulos.get(item.status, ('secondary', item.status))[1] }}</span></td>
+                <td>{{ item.data_origem or '—' }}</td>
+                <td class="text-end">{{ item.quantidade or 0 }}</td>
+                <td class="text-end">{{ item.duracao_ms or 0 }} ms</td>
+                <td class="small text-muted">{{ item.mensagem or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma fonte configurada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer small text-muted">
+        "Falha" = a fonte não respondeu ou mudou o formato; "Aviso" = respondeu, mas os dados podem estar defasados. Os dois casos disparam log no sistema.
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger">Não foi possível carregar o monitor de integridade.</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <div><i class="bi bi-clock-history me-2"></i><strong>Histórico de verificações</strong></div>
+        <span class="text-muted small">{{ total_registros }} registros · página {{ pagina }} de {{ total_paginas }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle">
+            <thead><tr><th>Data/hora</th><th>Fonte</th><th>Status</th><th>Data origem</th><th class="text-end">Itens</th><th>Mensagem</th></tr></thead>
+            <tbody>
+            {% for item in eventos %}
+            <tr>
+                <td>{{ item.verificado_em }}</td>
+                <td>{{ item.fonte }}</td>
+                <td><span class="badge bg-{{ rotulos.get(item.status, ('secondary', item.status))[0] }}">{{ rotulos.get(item.status, ('secondary', item.status))[1] }}</span></td>
+                <td>{{ item.data_origem or '—' }}</td>
+                <td class="text-end">{{ item.quantidade or 0 }}</td>
+                <td class="small text-muted">{{ item.mensagem or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma verificação registrada ainda.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if total_paginas > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Paginação do histórico">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                <li class="page-item {% if pagina <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.saude', pagina=pagina - 1) }}">Anterior</a>
+                </li>
+                {% for p in range(1, total_paginas + 1) %}
+                <li class="page-item {% if p == pagina %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.saude', pagina=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if pagina >= total_paginas %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.saude', pagina=pagina + 1) }}">Próxima</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

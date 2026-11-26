@@ -11,9 +11,12 @@
         <p class="page-subtitle">Preços divulgados pela Cooxupé e dólar oficial — referência de mercado, não preço pago na cooperativa</p>
     </div>
     {% if session.get('tipo') == 'admin' %}
-    <form method="POST" action="{{ url_for('cotacoes.atualizar') }}" class="d-inline">
-        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar cotações novas agora"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
-    </form>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('cotacoes.saude') }}" class="btn btn-outline-secondary btn-sm" title="Verificar se as fontes estão funcionando"><i class="bi bi-shield-check me-1"></i>Integridade</a>
+        <form method="POST" action="{{ url_for('cotacoes.atualizar') }}">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar cotações novas agora"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
+        </form>
+    </div>
     {% endif %}
 </div>
 
@@ -137,7 +140,7 @@
 <div class="card mb-4">
     <div class="card-header card-header-split">
         <div><i class="bi bi-clock-history me-2"></i><strong>Histórico de coletas</strong></div>
-        <span class="text-muted small">{{ historico|length }} registros</span>
+        <span class="text-muted small">{{ total_registros }} registros · página {{ pagina }} de {{ total_paginas }} · {{ por_pagina }} por página</span>
     </div>
     <div class="table-responsive">
         <table class="table table-hover table-sm mb-0">
@@ -159,6 +162,25 @@
             </tbody>
         </table>
     </div>
+    {% if total_paginas > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Paginação do histórico de coletas">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                <li class="page-item {% if pagina <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=pagina - 1) }}">Anterior</a>
+                </li>
+                {% for p in range(1, total_paginas + 1) %}
+                <li class="page-item {% if p == pagina %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if pagina >= total_paginas %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('cotacoes.index', pagina=pagina + 1) }}">Próxima</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
 
 <div class="card">

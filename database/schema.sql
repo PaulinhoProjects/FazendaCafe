@@ -480,4 +480,24 @@ CREATE TABLE IF NOT EXISTS cotacoes_snapshots (
     coletado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE cotacoes_snapshots ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
+
 CREATE INDEX IF NOT EXISTS idx_cotacoes_snapshots_chave_data ON cotacoes_snapshots(chave, coletado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_cotacoes_snapshots_ativo_data ON cotacoes_snapshots(ativo, coletado_em DESC);
+
+-- Monitoramento das fontes externas: eventos de sucesso, falha e aviso
+CREATE TABLE IF NOT EXISTS cotacoes_saude (
+    id SERIAL PRIMARY KEY,
+    fonte VARCHAR(60) NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    mensagem VARCHAR(255),
+    quantidade INTEGER DEFAULT 0,
+    data_origem VARCHAR(60),
+    duracao_ms INTEGER DEFAULT 0,
+    url VARCHAR(255),
+    verificado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_cotacoes_saude_fonte_data ON cotacoes_saude(fonte, verificado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_cotacoes_saude_ativo_data ON cotacoes_saude(ativo, verificado_em DESC);

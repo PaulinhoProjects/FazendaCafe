@@ -29,6 +29,7 @@
 </div>
 
 {% set pendencias = diagnostico|rejectattr('ok')|list %}
+{% set problemas_cotacoes = cotacoes_saude.itens|rejectattr('status', 'equalto', 'ok')|list %}
 
 <div class="config-layout">
     <nav class="config-nav nav flex-column" role="tablist" aria-label="Seções de configuração">
@@ -43,6 +44,10 @@
         </button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab"><i class="bi bi-people"></i>Usuários<span class="badge bg-secondary rounded-pill ms-auto">{{ usuarios|length }}</span></button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#backups" type="button" role="tab"><i class="bi bi-database-down"></i>Backups</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#integracoes" type="button" role="tab">
+            <i class="bi bi-diagram-3"></i>Integrações
+            {% if problemas_cotacoes %}<span class="badge bg-warning rounded-pill ms-auto">{{ problemas_cotacoes|length }}</span>{% endif %}
+        </button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sistema" type="button" role="tab"><i class="bi bi-sliders"></i>Sistema</button>
     </nav>
 
@@ -262,6 +267,45 @@
                     Guarde uma cópia fora deste computador (pendrive ou nuvem) pelo menos uma vez por semana.
                 </div>
                 {% endif %}
+            </div>
+        </section>
+
+        <!-- INTEGRAÇÕES -->
+        <section class="tab-pane fade" id="integracoes" role="tabpanel">
+            <div class="card">
+                <div class="card-header card-header-split">
+                    <div>
+                        <h6>Integridade das fontes de cotação</h6>
+                        <small class="text-muted fw-normal">APIs e tabelas públicas consultadas pelo painel de cotações</small>
+                    </div>
+                    {% if problemas_cotacoes %}
+                    <span class="badge bg-warning">{{ problemas_cotacoes|length }} ponto(s) de atenção</span>
+                    {% else %}
+                    <span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Tudo certo</span>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead><tr><th>Fonte</th><th>Status</th><th>Data origem</th><th>Última verificação</th><th>Detalhe</th></tr></thead>
+                        <tbody>
+                        {% for item in cotacoes_saude.itens %}
+                        <tr>
+                            <td>{{ item.fonte }}</td>
+                            <td><span class="badge bg-{{ 'success' if item.status == 'ok' else ('danger' if item.status == 'erro' else ('warning' if item.status == 'aviso' else 'secondary')) }}">{{ item.status|capitalize }}</span></td>
+                            <td>{{ item.data_origem or '—' }}</td>
+                            <td>{{ item.verificado_em or '—' }}</td>
+                            <td class="small text-muted">{{ item.mensagem or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5"><div class="empty-state py-4"><i class="bi bi-diagram-3"></i><p>Nenhuma verificação registrada ainda.</p></div></td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center gap-2">
+                    <span class="small text-muted">Um evento é gravado a cada coleta; falhas também ficam no log do sistema.</span>
+                    <a href="{{ url_for('cotacoes.saude') }}" class="btn btn-sm btn-outline-secondary text-nowrap">Abrir monitor <i class="bi bi-arrow-right ms-1"></i></a>
+                </div>
             </div>
         </section>
 
