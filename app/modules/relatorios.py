@@ -9,33 +9,50 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.graphics.shapes import Drawing, Rect, Ellipse, Circle, Group
+from reportlab.graphics.shapes import Drawing, Rect, Circle, Group, Path, Line
 from datetime import datetime
 
-# Cores da marca Florada
-COR_PRIMARIA = HexColor('#1F5C3E')
-COR_MIOLO = HexColor('#E2B04B')
+# Cores da marca Kaldi
+COR_PRIMARIA = HexColor('#1A5A3B')
+COR_CEREJA = HexColor('#D9381F')
 COR_ACENT = HexColor('#D4A373')
 COR_CINZA = HexColor('#6C757D')
 COR_CINZA_CLARO = HexColor('#F8F9FA')
 COR_BRANCO = HexColor('#FFFFFF')
+COR_FOLHA = HexColor('#E6F4EA')
 
-def _logo_florada(tamanho=26):
-    """Desenha o ícone da Florada (selo verde com a flor de 5 pétalas) em pontos."""
-    escala = tamanho / 64.0
-    desenho = Drawing(tamanho, tamanho)
+
+def _logo_kaldi(tamanho=26):
+    """Desenha o selo da Kaldi (K formado por haste, folha e ramo com frutos) em pontos.
+    Mesmo desenho de static/img/kaldi-icone.svg, com o eixo Y invertido do PDF."""
+    def y(v):
+        return 64 - v
+
     marca = Group()
-    marca.add(Rect(0, 0, 64, 64, rx=16, ry=16, fillColor=COR_PRIMARIA, strokeColor=None))
-    flor = Group()
-    for i in range(5):
-        petala = Group(Ellipse(0, 12.5, 5.2, 12, fillColor=COR_BRANCO, strokeColor=None))
-        petala.rotate(72 * i)
-        flor.add(petala)
-    flor.translate(32, 32)
-    flor.scale(0.78, 0.78)
-    marca.add(flor)
-    marca.add(Circle(32, 32, 4.2, fillColor=COR_MIOLO, strokeColor=None))
+    marca.add(Rect(0, 0, 64, 64, rx=18, ry=18, fillColor=COR_PRIMARIA, strokeColor=None))
+    # Haste do K
+    marca.add(Rect(17, y(51), 7.5, 38, rx=3.75, ry=3.75, fillColor=COR_BRANCO, strokeColor=None))
+    # Folha (braço de cima)
+    folha = Path(fillColor=COR_FOLHA, strokeColor=None)
+    folha.moveTo(24, y(33))
+    folha.curveTo(27, y(21), 36, y(13.5), 48.5, y(12.5))
+    folha.curveTo(47.5, y(24), 38, y(31.5), 24, y(33))
+    folha.closePath()
+    marca.add(folha)
+    nervura = Path(fillColor=None, strokeColor=COR_PRIMARIA, strokeWidth=1.3, strokeLineCap=1)
+    nervura.moveTo(26.5, y(31))
+    nervura.curveTo(32, y(26), 38, y(20.5), 45.5, y(15.5))
+    marca.add(nervura)
+    # Ramo (braço de baixo) com dois frutos
+    marca.add(Line(24, y(33), 38.5, y(45), strokeColor=COR_BRANCO, strokeWidth=6, strokeLineCap=1))
+    marca.add(Circle(44, y(47.5), 7.2, fillColor=COR_CEREJA, strokeColor=None))
+    marca.add(Circle(41.6, y(45), 1.8, fillColor=COR_BRANCO, strokeColor=None, fillOpacity=0.7))
+    marca.add(Circle(33.5, y(51.5), 4.6, fillColor=COR_CEREJA, strokeColor=None))
+    marca.add(Circle(32.2, y(50), 1.1, fillColor=COR_BRANCO, strokeColor=None, fillOpacity=0.65))
+
+    escala = tamanho / 64.0
     marca.scale(escala, escala)
+    desenho = Drawing(tamanho, tamanho)
     desenho.add(marca)
     return desenho
 
@@ -109,8 +126,8 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
 
     # Cabeçalho
     marca = Table(
-        [[_logo_florada(26), Paragraph("florada", ParagraphStyle(
-            'LogoFlorada',
+        [[_logo_kaldi(26), Paragraph("kaldi", ParagraphStyle(
+            'LogoKaldi',
             parent=styles['Title'],
             fontSize=22,
             leading=26,
@@ -118,7 +135,7 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
             fontName='Helvetica-Bold',
             alignment=TA_LEFT
         ))]],
-        colWidths=[34, 100]
+        colWidths=[34, 70]
     )
     marca.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -225,7 +242,7 @@ def gerar_pdf(titulo, subtitulo, dados, colunas, nome_arquivo, orientacao='retra
                 ParagraphStyle('RodapeData', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA)
             ),
             Paragraph(
-                "Florada · Tecnologia que Colhe Resultados",
+                "Kaldi · Tecnologia que Colhe Resultados",
                 ParagraphStyle('RodapeMarca', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA, alignment=TA_RIGHT)
             )
         ]],

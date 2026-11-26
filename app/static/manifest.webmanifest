@@ -1,15 +1,15 @@
 {
-  "name": "Florada",
-  "short_name": "Florada",
+  "name": "Kaldi",
+  "short_name": "Kaldi",
   "description": "Gestão do cafezal: talhões, manejo, insumos e clima.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F5F6F3",
-  "theme_color": "#1F5C3E",
+  "theme_color": "#1A5A3B",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/static/img/florada-icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/static/img/florada-icone-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/static/img/florada-icone-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/static/img/kaldi-icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/static/img/kaldi-icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/img/kaldi-icone-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

@@ -217,7 +217,7 @@ def criar_tabela_configuracoes():
         executar_query(query)
         # Inserir configurações padrão se não existirem
         configs_padrao = [
-            ('nome_sistema', 'Florada', 'Nome do sistema'),
+            ('nome_sistema', 'Kaldi', 'Nome do sistema'),
             ('slogan', 'Tecnologia que Colhe Resultados', 'Slogan do sistema'),
             ('cidade', 'Campos Gerais', 'Cidade para clima'),
             ('estado', 'MG', 'Estado para clima'),

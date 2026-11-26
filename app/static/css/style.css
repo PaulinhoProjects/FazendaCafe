@@ -452,16 +452,42 @@ kbd {
 
 .logo-text { display: flex; flex-direction: column; line-height: 1.15; }
 
-/* Marca Florada: palavra em minúsculas (Manrope) e flor branca dentro do selo verde */
-.logo-text,
-.auth-brand-name {
+/* Marca Kaldi: selo com o "K" de galho de café + palavra em minúsculas
+   com o pingo do "i" trocado por uma cereja de café */
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: block;
+    border-radius: 9px;
+    box-shadow: 0 1px 2px rgba(16, 24, 20, 0.18), 0 4px 10px -4px rgba(15, 53, 36, 0.45);
+}
+.logo-icon-lg { width: 44px; height: 44px; border-radius: 12px; }
+.auth-form-head .logo-icon-lg { width: 48px; height: 48px; }
+
+.marca-palavra {
     font-family: 'Manrope', var(--bs-body-font-family);
     font-weight: 800;
-    letter-spacing: -0.04em;
-    font-size: 1.15rem;
+    letter-spacing: -0.05em;
+    font-size: 1.3rem;
+    line-height: 1;
+    white-space: nowrap;
+    display: inline-block;
 }
-.logo-mark img { width: 70%; height: 70%; display: block; }
-.logo-mark-lg img { width: 68%; height: 68%; }
+.marca-i { position: relative; display: inline-block; line-height: 1; }
+.marca-i::after {
+    content: '';
+    position: absolute;
+    left: 47%;
+    top: -0.01em;
+    width: 0.2em;
+    height: 0.2em;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    background: radial-gradient(circle at 35% 30%, #FF8A6B 0 15%, #D9381F 55%, #8C1C10 100%);
+    box-shadow: 0 0 0 0.02em rgba(15, 53, 36, 0.25);
+}
+.auth-brand-name.marca-palavra { font-size: 1.6rem; }
 
 .sidebar-header .subtitle {
     font-size: 0.68rem;

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kaldi">
+  <title>Kaldi</title>
+  <defs>
+    <linearGradient id="kFundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E8A5C"/>
+      <stop offset="0.55" stop-color="#1A5A3B"/>
+      <stop offset="1" stop-color="#0F3524"/>
+    </linearGradient>
+    <linearGradient id="kBrilho" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="kFolha" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D6F0DF"/>
+    </linearGradient>
+    <radialGradient id="kCereja" cx="0.36" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#FF8A6B"/>
+      <stop offset="0.45" stop-color="#D9381F"/>
+      <stop offset="1" stop-color="#8C1C10"/>
+    </radialGradient>
+  </defs>
+  <!-- Selo -->
+  <rect width="64" height="64" rx="18" fill="url(#kFundo)"/>
+  <rect x="1" y="1" width="62" height="31" rx="17" fill="url(#kBrilho)"/>
+  <!-- Haste do K -->
+  <rect x="17" y="13" width="7.5" height="38" rx="3.75" fill="#FFFFFF"/>
+  <!-- Braço de cima: folha do cafeeiro -->
+  <path d="M24 33 C 27 21, 36 13.5, 48.5 12.5 C 47.5 24, 38 31.5, 24 33 Z" fill="url(#kFolha)"/>
+  <path d="M26.5 31 C 32 26, 38 20.5, 45.5 15.5" stroke="#1A5A3B" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.55"/>
+  <!-- Braço de baixo: ramo com os frutos -->
+  <path d="M24 33 L 38.5 45" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="44" cy="47.5" r="7.2" fill="url(#kCereja)"/>
+  <circle cx="44" cy="47.5" r="7.2" fill="none" stroke="#0F3524" stroke-opacity="0.35" stroke-width="1"/>
+  <circle cx="41.6" cy="45" r="1.8" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="33.5" cy="51.5" r="4.6" fill="url(#kCereja)"/>
+  <circle cx="32.2" cy="50" r="1.1" fill="#FFFFFF" opacity="0.65"/>
+</svg>

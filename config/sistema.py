@@ -1,8 +1,8 @@
 """
-Configuração central do sistema Florada.
+Configuração central do sistema Kaldi.
 Todos os módulos e templates usam estes valores.
 """
-SISTEMA_NOME = "Florada"
+SISTEMA_NOME = "Kaldi"
 SISTEMA_SLOGAN = "Tecnologia que Colhe Resultados"
 SISTEMA_VERSAO = "2.0"
 SISTEMA_AUTOR = "Paulo César"
