@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block titulo %}Histórico de Preços — {{ produto.nome }}{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.listar_produtos') }}">Produtos</a></li>
+<li class="breadcrumb-item active">Preços de {{ produto.nome }}</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-graph-up me-2"></i>Histórico de Preços</h1>
+        <p class="page-subtitle">{{ produto.nome }} — saldo {{ produto.quantidade_atual }} {{ produto.unidade or '' }}</p>
+    </div>
+    <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card shadow-sm border-0"><div class="card-body">
+        <div class="small text-muted">Último preço</div>
+        <h5 class="mb-0">R$ {{ '%.4f'|format(historico.ultimo) if historico.ultimo else '—' }}</h5>
+    </div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm border-0"><div class="card-body">
+        <div class="small text-muted">Menor preço</div>
+        <h5 class="mb-0 text-success">R$ {{ '%.4f'|format(historico.menor) if historico.menor else '—' }}</h5>
+    </div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm border-0"><div class="card-body">
+        <div class="small text-muted">Maior preço</div>
+        <h5 class="mb-0 text-danger">R$ {{ '%.4f'|format(historico.maior) if historico.maior else '—' }}</h5>
+    </div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm border-0"><div class="card-body">
+        <div class="small text-muted">Preço médio</div>
+        <h5 class="mb-0">R$ {{ '%.4f'|format(historico.medio) if historico.medio else '—' }}</h5>
+    </div></div></div>
+</div>
+
+{% if embalagens %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light"><h6 class="mb-0"><i class="bi bi-box-seam me-2"></i>Embalagens</h6></div>
+    <div class="card-body"><div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Embalagem</th><th>Capacidade</th><th>Preço</th><th>Fechadas</th><th>Aberta</th></tr></thead>
+        <tbody>
+        {% for e in embalagens %}
+        <tr>
+            <td>{{ e.descricao }}</td>
+            <td>{{ e.capacidade }} {{ e.unidade }}</td>
+            <td>R$ {{ '%.2f'|format(e.preco) if e.preco else '—' }}</td>
+            <td>{{ e.quantidade_fechada }} de {{ e.quantidade_total }}</td>
+            <td>{{ e.volume_aberta or 0 }} {{ produto.unidade or '' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table></div></div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light"><h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Compras registradas</h6></div>
+    <div class="card-body">
+        {% if historico.itens %}
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Data</th><th>Fornecedor</th><th>Nota</th><th>Quantidade</th><th>Embalagem</th><th>Preço unitário</th><th>Preço na base</th></tr></thead>
+            <tbody>
+            {% for i in historico.itens %}
+            <tr>
+                <td>{{ i.data|format_data if i.data else '—' }}</td>
+                <td>{{ i.fornecedor }}</td>
+                <td>{{ i.numero_nota }}</td>
+                <td>{{ '%.2f'|format(i.quantidade) }} {{ i.unidade }}</td>
+                <td>{{ i.embalagem }}{% if i.embalagens %} ({{ i.embalagens }}){% endif %}</td>
+                <td>R$ {{ '%.2f'|format(i.valor_unitario) }}</td>
+                <td><strong>R$ {{ '%.4f'|format(i.preco_base) }}</strong></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhuma compra com preço registrada para este produto.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

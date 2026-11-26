@@ -117,12 +117,19 @@ def adicionar_item(id):
     if request.method == 'POST':
         try:
             dados = {
+                'produto_id': request.form.get('produto_id'),
                 'nome_produto': request.form.get('nome_produto'),
+                'confirmar_nome': request.form.get('confirmar_nome'),
                 'quantidade': request.form.get('quantidade'),
                 'valor_unitario': request.form.get('valor_unitario'),
                 'unidade': request.form.get('unidade', 'L'),
                 'categoria': request.form.get('categoria', 'Outros'),
-                'observacoes': request.form.get('observacoes', '')
+                'observacoes': request.form.get('observacoes', ''),
+                'embalagem_descricao': request.form.get('embalagem_descricao'),
+                'embalagem_capacidade': request.form.get('embalagem_capacidade'),
+                'embalagem_unidade': request.form.get('embalagem_unidade'),
+                'embalagem_quantidade': request.form.get('embalagem_quantidade'),
+                'embalagem_preco': request.form.get('embalagem_preco'),
             }
             mov_id, msg = notas_fiscais.adicionar_item_nota(id, dados)
             if mov_id:
@@ -141,7 +148,9 @@ def adicionar_item(id):
             flash('Nota nao encontrada.', 'warning')
             return redirect(url_for('notas_fiscais.listar'))
         categorias = estoque.listar_categorias() if hasattr(estoque, 'listar_categorias') else []
-        return render_template('notas_fiscais/adicionar_item.html', nota=nota, categorias=categorias)
+        return render_template('notas_fiscais/adicionar_item.html', nota=nota,
+                               categorias=categorias,
+                               produtos=notas_fiscais.listar_produtos_para_selecao())
     except Exception as e:
         logger.error(f"notas_fiscais_routes.adicionar_item: {e}")
         flash('Erro ao carregar formulario.', 'error')

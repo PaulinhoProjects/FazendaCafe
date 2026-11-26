@@ -24,6 +24,9 @@
         <a href="{{ url_for('estoque.exportar_pdf_produtos') }}" class="btn btn-outline-danger">
             <i class="bi bi-file-earmark-pdf me-1"></i>PDF
         </a>
+        <a href="{{ url_for('estoque.duplicados') }}" class="btn btn-outline-warning">
+            <i class="bi bi-people me-1"></i>Revisar duplicados
+        </a>
         <a href="{{ url_for('estoque.novo_produto') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i>Novo Produto
         </a>
@@ -101,6 +104,10 @@
                                 <a href="{{ url_for('estoque.editar_produto', id=p.id) }}"
                                     class="btn btn-outline-warning" title="Editar">
                                     <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('estoque.precos_produto', id=p.id) }}"
+                                    class="btn btn-outline-info" title="Histórico de preços e embalagens">
+                                    <i class="bi bi-graph-up"></i>
                                 </a>
                                 {% if session.get('tipo') == 'admin' %}
                                 <button type="button" class="btn btn-outline-danger" title="Excluir"

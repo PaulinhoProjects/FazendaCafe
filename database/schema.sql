@@ -408,3 +408,39 @@ ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS origem VARCHAR(20);
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS confirmado_por VARCHAR(100);
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS tarefa_id INTEGER REFERENCES aplicacao_tarefas(id);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_origem ON movimentacoes_estoque(origem);
+
+-- Embalagens: permite comprar 10 galões de 20 L e controlar a abertura de cada um
+CREATE TABLE IF NOT EXISTS produto_embalagens (
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produtos_estoque(id),
+    descricao VARCHAR(100) NOT NULL,
+    capacidade NUMERIC(12,2) NOT NULL,
+    unidade VARCHAR(20) NOT NULL,
+    preco NUMERIC(14,2),
+    nota_fiscal_id INTEGER REFERENCES notas_fiscais(id),
+    quantidade_total INTEGER NOT NULL DEFAULT 0,
+    quantidade_fechada INTEGER NOT NULL DEFAULT 0,
+    volume_aberta NUMERIC(12,2) DEFAULT 0,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS movimento_embalagens (
+    id SERIAL PRIMARY KEY,
+    movimento_id INTEGER NOT NULL REFERENCES movimentacoes_estoque(id),
+    embalagem_id INTEGER NOT NULL REFERENCES produto_embalagens(id),
+    tipo VARCHAR(10) NOT NULL,
+    quantidade INTEGER NOT NULL,
+    litros NUMERIC(12,2) NOT NULL,
+    observacoes TEXT,
+    data_movimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Preço por unidade base em cada compra: histórico para alta/baixa
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS preco_unitario_base NUMERIC(14,4);
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS embalagem_id INTEGER REFERENCES produto_embalagens(id);
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS embalagens_quantidade INTEGER;
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS embalagens_abertas INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto_data ON movimentacoes_estoque(produto_id, data_movimento DESC);
+CREATE INDEX IF NOT EXISTS idx_embalagens_produto ON produto_embalagens(produto_id);

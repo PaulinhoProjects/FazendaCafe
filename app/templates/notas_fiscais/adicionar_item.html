@@ -22,42 +22,55 @@
     </div>
 </div>
 
-
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="alert alert-info border-0">
             <i class="bi bi-info-circle me-2"></i>
-            Ao adicionar um item, o sistema cria o produto no estoque (se não existir) e registra a entrada automaticamente.
+            Escolha um produto já cadastrado para somar estoque e preço, ou digite um nome para criar um novo. Se a compra veio em galão/barril, preencha os dados da embalagem: o estoque entra em litros e as embalagens passam a ser controladas na baixa.
         </div>
-        <form method="POST" action="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}">
+        <form method="POST" action="{{ url_for('notas_fiscais.adicionar_item', id=nota.id) }}" id="formItemNota">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Nome do Produto *</label>
-                    <input type="text" name="nome_produto" class="form-control" required
+                    <label class="form-label">Produto cadastrado</label>
+                    <select name="produto_id" id="produto_id" class="form-select">
+                        <option value="">— Novo produto / digitar nome —</option>
+                        {% for p in produtos %}
+                        <option value="{{ p.id }}" data-nome="{{ p.nome }}" data-unidade="{{ p.unidade }}">
+                            {{ p.nome }} — {{ p.quantidade_atual }} {{ p.unidade or '' }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Selecione para não criar produto duplicado.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nome do novo produto</label>
+                    <input type="text" name="nome_produto" id="nome_produto" class="form-control"
                         placeholder="Ex: Tiametoxam 250 SC">
-                    <div class="form-text">Se o produto não existir, será criado automaticamente.</div>
+                    <div class="form-text" id="avisoNome"></div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Quantidade *</label>
-                    <input type="number" name="quantidade" class="form-control" step="0.01" min="0" required>
+                    <label class="form-label">Quantidade na unidade base *</label>
+                    <input type="number" name="quantidade" id="quantidade" class="form-control" step="0.01" min="0.01" required>
+                    <div class="form-text">Preencha manualmente ou deixe a embalagem calcular.</div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Unidade</label>
-                    <select name="unidade" class="form-select">
-                        <option value="un">Unidades (un)</option>
+                    <label class="form-label">Unidade base</label>
+                    <select name="unidade" id="unidade" class="form-select">
                         <option value="L">Litros (L)</option>
                         <option value="kg">Quilos (kg)</option>
                         <option value="mL">Mililitros (mL)</option>
                         <option value="g">Gramas (g)</option>
+                        <option value="un">Unidades (un)</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Valor Unitário (R$)</label>
-                    <input type="number" name="valor_unitario" class="form-control" step="0.01" min="0">
+                <div class="col-md-3">
+                    <label class="form-label">Preço por unidade base (R$)</label>
+                    <input type="number" name="valor_unitario" id="valor_unitario" class="form-control" step="0.0001" min="0">
+                    <div class="form-text">Se usar embalagem, é calculado automaticamente.</div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">Categoria</label>
-                    <select name="categoria" class="form-select">
+                    <select name="categoria" id="categoria" class="form-select">
                         {% if categorias %}
                         {% for c in categorias %}
                         <option value="{{ c.nome }}">{{ c.nome }}</option>
@@ -67,16 +80,46 @@
                         <option value="Fungicida">Fungicida</option>
                         <option value="Inseticida">Inseticida</option>
                         <option value="Herbicida">Herbicida</option>
-                        <option value="Fertilizante">Fertilizante</option>
-                        <option value="Adubo">Adubo</option>
                         {% endif %}
                     </select>
                 </div>
-                <div class="col-md-12">
-                    <label class="form-label">Observações</label>
-                    <textarea name="observacoes" class="form-control" rows="2"
-                        placeholder="Opcional"></textarea>
+            </div>
+
+            <hr class="my-4">
+            <h6 class="mb-3"><i class="bi bi-box-seam me-2"></i>Compra em embalagem (opcional)</h6>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Embalagem</label>
+                    <input type="text" name="embalagem_descricao" id="emb_descricao" class="form-control" placeholder="Ex: Galão">
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label">Capacidade</label>
+                    <input type="number" name="embalagem_capacidade" id="emb_capacidade" class="form-control" step="0.01" min="0.01" placeholder="20">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Unidade</label>
+                    <select name="embalagem_unidade" id="emb_unidade" class="form-select">
+                        <option value="L">L</option>
+                        <option value="mL">mL</option>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="un">un</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Qtd. embalagens</label>
+                    <input type="number" name="embalagem_quantidade" id="emb_quantidade" class="form-control" step="1" min="1" placeholder="10">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Preço por embalagem (R$)</label>
+                    <input type="number" name="embalagem_preco" id="emb_preco" class="form-control" step="0.01" min="0" placeholder="120,00">
+                </div>
+            </div>
+            <div class="form-text mt-2" id="resumoEmbalagem"></div>
+
+            <div class="col-md-12 mt-3">
+                <label class="form-label">Observações</label>
+                <textarea name="observacoes" class="form-control" rows="2" placeholder="Opcional"></textarea>
             </div>
             <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn btn-primary">
@@ -87,4 +130,74 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    const sel = document.getElementById('produto_id');
+    const nome = document.getElementById('nome_produto');
+    const unidade = document.getElementById('unidade');
+    const categoria = document.getElementById('categoria');
+    const aviso = document.getElementById('avisoNome');
+    const nomes = Array.from(sel.options).map(o => ({
+        nome: (o.dataset.nome || '').toLowerCase(), id: o.value
+    })).filter(o => o.id);
+    function normalizar(s) {
+        return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+    function verificar() {
+        const alvo = normalizar(nome.value);
+        const igual = nomes.find(n => normalizar(n.nome) === alvo);
+        if (igual) {
+            aviso.innerHTML = '<span class="text-warning">Já existe produto com esse nome. Selecione-o na lista para somar ao estoque.</span>';
+            document.getElementById('formItemNota').dataset.duplicado = '1';
+        } else {
+            aviso.textContent = '';
+            delete document.getElementById('formItemNota').dataset.duplicado;
+        }
+    }
+    sel.addEventListener('change', function () {
+        const o = sel.selectedOptions[0];
+        if (o && o.value) {
+            nome.value = o.dataset.nome || '';
+            unidade.value = (o.dataset.unidade || 'L').toLowerCase() === 'ml' ? 'mL' : o.dataset.unidade;
+            nome.readOnly = true;
+        } else {
+            nome.readOnly = false;
+        }
+        verificar();
+    });
+    nome.addEventListener('input', verificar);
+
+    const qtd = document.getElementById('quantidade');
+    const cap = document.getElementById('emb_capacidade');
+    const un = document.getElementById('emb_unidade');
+    const nemb = document.getElementById('emb_quantidade');
+    const preco = document.getElementById('emb_preco');
+    const valor = document.getElementById('valor_unitario');
+    const resumo = document.getElementById('resumoEmbalagem');
+    const fatores = {l: 1, ml: 0.001, kg: 1, g: 0.001, un: 1};
+    function calcular() {
+        const capacidade = parseFloat(cap.value) || 0;
+        const quantidade = parseInt(nemb.value) || 0;
+        const precoEmb = parseFloat(preco.value) || 0;
+        const fatorEmb = fatores[(un.value || '').toLowerCase()] || 1;
+        const fatorBase = fatores[(unidade.value || '').toLowerCase()] || 1;
+        if (!capacidade || !quantidade) { resumo.textContent = ''; return; }
+        const total = capacidade * quantidade * fatorEmb / fatorBase;
+        qtd.value = total.toFixed(2);
+        if (precoEmb > 0 && total > 0) {
+            valor.value = (precoEmb / total).toFixed(4);
+            resumo.innerHTML = '<span class="text-success">Total: <strong>' + total.toFixed(2) +
+                ' ' + unidade.value + '</strong> — preço por ' + unidade.value + ': R$ ' +
+                (precoEmb / total).toFixed(4) + '</span>';
+        } else {
+            resumo.innerHTML = 'Total: <strong>' + total.toFixed(2) + ' ' + unidade.value + '</strong>';
+        }
+    }
+    [cap, nemb, preco, un, unidade].forEach(el => el.addEventListener('input', calcular));
+})();
+</script>
 {% endblock %}

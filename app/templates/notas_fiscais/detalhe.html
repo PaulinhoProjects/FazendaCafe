@@ -171,8 +171,9 @@
                         <th>Produto</th>
                         <th>Quantidade</th>
                         <th>Unidade</th>
-                        <th>Valor Unit.</th>
+                        <th>Preço na base</th>
                         <th>Valor Total</th>
+                        <th>Observações</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
@@ -180,10 +181,11 @@
                     {% for m in movimentacoes %}
                     <tr>
                         <td>{{ m.produto_nome }}</td>
-                        <td>{{ m.quantidade }}</td>
+                        <td>{{ "%.2f"|format(m.quantidade) }}</td>
                         <td>{{ m.unidade or '—' }}</td>
-                        <td>{{ "R$ %.2f"|format(m.valor_unitario) if m.valor_unitario else '—' }}</td>
-                        <td>{{ "R$ %.2f"|format((m.quantidade or 0) * (m.valor_unitario or 0)) }}</td>
+                        <td>R$ {{ "%.4f"|format(m.preco_base or m.valor_unitario or 0) }}</td>
+                        <td>R$ {{ "%.2f"|format((m.quantidade or 0) * (m.preco_base or m.valor_unitario or 0)) }}</td>
+                        <td><small class="text-muted">{{ m.observacoes or '—' }}</small></td>
                         <td class="text-end">
                             {% if session.get('tipo') == 'admin' %}
                             <form method="POST" action="{{ url_for('notas_fiscais.remover_item', id=nota.id, item_id=m.id) }}"
@@ -197,7 +199,7 @@
                     </tr>
                     {% endfor %}
                     <tr class="table-light">
-                        <td colspan="4" class="text-end fw-semibold">Total:</td>
+                        <td colspan="5" class="text-end fw-semibold">Total:</td>
                         <td class="fw-semibold">R$ {{ "%.2f"|format(nota.valor_total or 0) }}</td>
                         <td></td>
                     </tr>

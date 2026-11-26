@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block titulo %}Produtos duplicados{% endblock %}
+
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('estoque.listar_produtos') }}">Produtos</a></li>
+<li class="breadcrumb-item active">Duplicados</li>
+{% endblock %}
+
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-people me-2"></i>Produtos com o mesmo nome</h1>
+        <p class="page-subtitle">Escolha qual nome deve ficar. O saldo e o histórico dos demais são somados a ele.</p>
+    </div>
+    <a href="{{ url_for('estoque.listar_produtos') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+</div>
+
+{% if grupos %}
+{% for grupo in grupos %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light"><h6 class="mb-0">{{ grupo[0].nome }}</h6></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('estoque.mesclar_produtos') }}">
+            <div class="table-responsive"><table class="table table-sm align-middle mb-3">
+                <thead><tr><th>Manter</th><th>ID</th><th>Nome</th><th>Unidade</th><th>Saldo</th></tr></thead>
+                <tbody>
+                {% for p in grupo %}
+                <tr>
+                    <td><input type="radio" class="form-check-input" name="principal_id" value="{{ p.id }}" {% if loop.first %}checked{% endif %}></td>
+                    <td>#{{ p.id }}</td>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.unidade }}</td>
+                    <td>{{ '%.2f'|format(p.quantidade_atual) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% for p in grupo %}
+            {% if not loop.first %}
+            <input type="hidden" name="secundario_ids[]" value="{{ p.id }}">
+            {% endif %}
+            {% endfor %}
+            <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Mesclar estes produtos? O histórico será mantido no produto escolhido.')">
+                <i class="bi bi-arrows-angle-contract me-1"></i>Mesclar neste grupo
+            </button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="alert alert-success">Nenhum produto duplicado encontrado.</div>
+{% endif %}
+{% endblock %}

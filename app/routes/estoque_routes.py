@@ -105,6 +105,52 @@ def editar_produto(id):
         flash('Erro ao carregar formulario.', 'error')
         return redirect(url_for('estoque.listar_produtos'))
 
+@estoque_bp.route('/produtos/<int:id>/precos')
+@login_required
+def precos_produto(id):
+    try:
+        produto = estoque.buscar_produto_por_id(id)
+        if not produto:
+            flash('Produto não encontrado.', 'warning')
+            return redirect(url_for('estoque.listar_produtos'))
+        historico = estoque.historico_precos(id)
+        embalagens = estoque.listar_embalagens(id)
+        return render_template('estoque/produtos/precos.html', produto=produto,
+                               historico=historico, embalagens=embalagens)
+    except Exception as e:
+        logger.error(f"estoque_routes.precos_produto: {e}")
+        flash('Erro ao carregar histórico de preços.', 'error')
+        return redirect(url_for('estoque.listar_produtos'))
+
+
+@estoque_bp.route('/produtos/duplicados')
+@login_required
+@admin_required
+def duplicados():
+    try:
+        return render_template('estoque/produtos/duplicados.html',
+                               grupos=estoque.listar_duplicados())
+    except Exception as e:
+        logger.error(f"estoque_routes.duplicados: {e}")
+        flash('Erro ao carregar duplicados.', 'error')
+        return redirect(url_for('estoque.listar_produtos'))
+
+
+@estoque_bp.route('/produtos/mesclar', methods=['POST'])
+@login_required
+@admin_required
+def mesclar_produtos():
+    try:
+        principal = request.form.get('principal_id')
+        secundarios = request.form.getlist('secundario_ids[]')
+        soma, nomes = estoque.mesclar_produtos(int(principal), [int(i) for i in secundarios])
+        flash(f'Produtos mesclados: {", ".join(nomes)} → saldo total {soma:.2f}.', 'success')
+    except Exception as e:
+        logger.error(f"estoque_routes.mesclar_produtos: {e}")
+        flash(str(e), 'error')
+    return redirect(url_for('estoque.duplicados'))
+
+
 @estoque_bp.route('/produtos/<int:id>/excluir', methods=['POST'])
 @login_required
 @admin_required
@@ -151,6 +197,9 @@ def nova_movimentacao():
                 return redirect(url_for('estoque.listar_movimentacoes'))
             else:
                 flash('Erro ao registrar.', 'error')
+        except ValueError as e:
+            logger.warning(f"estoque_routes.nova_movimentacao: {e}")
+            flash(str(e), 'warning')
         except Exception as e:
             logger.error(f"estoque_routes.nova_movimentacao: {e}")
             flash(f'Erro: {e}', 'error')

@@ -6,6 +6,8 @@ Versão completa com categorias e relatórios
 import sys
 import os
 import pandas as pd
+import re
+import unicodedata
 from io import BytesIO
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
@@ -16,7 +18,7 @@ from reportlab.lib.units import cm
 from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query, executar_query_dict, transacao
+from database import executar_query, executar_query_dict, executar_transacao, transacao
 
 # =====================================================
 # FUNÇÕES AUXILIARES
@@ -36,6 +38,129 @@ def get_ultimo_valor_produto(produto_id):
     except Exception as e:
         print(f"Erro ao buscar último valor: {e}")
         return None
+
+def normalizar_nome(nome):
+    """Remove acentos, caixa e espaços repetidos para comparar produtos iguais."""
+    if not nome:
+        return ''
+    texto = unicodedata.normalize('NFKD', str(nome))
+    texto = ''.join(c for c in texto if not unicodedata.combining(c))
+    return re.sub(r'\s+', ' ', texto).strip().lower()
+
+
+def historico_precos(produto_id):
+    """Compras do produto com preço, para acompanhar alta e baixa."""
+    query = """
+    SELECT m.id, m.data_movimento, m.quantidade, m.unidade, m.valor_unitario,
+           m.preco_unitario_base, m.embalagens_quantidade,
+           COALESCE(n.fornecedor, '—') AS fornecedor,
+           COALESCE(n.numero_nota, '—') AS numero_nota,
+           e.descricao AS embalagem_descricao
+    FROM movimentacoes_estoque m
+    LEFT JOIN notas_fiscais n ON n.id = m.nota_fiscal_id
+    LEFT JOIN produto_embalagens e ON e.id = m.embalagem_id
+    WHERE m.produto_id = %s AND m.tipo = 'entrada' AND m.ativo = TRUE
+      AND m.valor_unitario IS NOT NULL
+    ORDER BY m.data_movimento DESC, m.id DESC
+    """
+    registros = executar_query(query, (produto_id,), fetch_all=True, dict_cursor=True) or []
+    historico = []
+    precos = []
+    for r in registros:
+        preco = float(r['preco_unitario_base'] or r['valor_unitario'] or 0)
+        if preco > 0:
+            precos.append(preco)
+        historico.append({
+            'id': r['id'],
+            'data': r['data_movimento'],
+            'quantidade': float(r['quantidade'] or 0),
+            'unidade': r['unidade'] or '',
+            'valor_unitario': float(r['valor_unitario'] or 0),
+            'preco_base': preco,
+            'fornecedor': r['fornecedor'],
+            'numero_nota': r['numero_nota'],
+            'embalagem': r['embalagem_descricao'] or '—',
+            'embalagens': r['embalagens_quantidade'],
+        })
+    return {
+        'itens': historico,
+        'ultimo': precos[0] if precos else None,
+        'menor': min(precos) if precos else None,
+        'maior': max(precos) if precos else None,
+        'medio': sum(precos) / len(precos) if precos else None,
+    }
+
+
+def listar_produtos_parecidos(nome, excluir_id=None):
+    """Produtos já cadastrados com nome idêntico ou parecido."""
+    alvo = normalizar_nome(nome)
+    if not alvo:
+        return []
+    produtos = executar_query(
+        "SELECT id, nome, unidade, quantidade_atual FROM produtos_estoque WHERE ativo = TRUE",
+        fetch_all=True, dict_cursor=True) or []
+    exatos, parecidos = [], []
+    for p in produtos:
+        if excluir_id and p['id'] == excluir_id:
+            continue
+        atual = normalizar_nome(p['nome'])
+        item = {
+            'id': p['id'], 'nome': p['nome'], 'unidade': p['unidade'] or '',
+            'quantidade_atual': float(p['quantidade_atual'] or 0),
+        }
+        if atual == alvo:
+            exatos.append(item)
+        elif alvo in atual or atual in alvo:
+            parecidos.append(item)
+    return exatos + parecidos
+
+
+def listar_duplicados():
+    """Grupos de produtos ativos com o mesmo nome normalizado."""
+    produtos = executar_query(
+        "SELECT id, nome, unidade, quantidade_atual FROM produtos_estoque WHERE ativo = TRUE ORDER BY id",
+        fetch_all=True, dict_cursor=True) or []
+    grupos = {}
+    for p in produtos:
+        chave = normalizar_nome(p['nome'])
+        grupos.setdefault(chave, []).append({
+            'id': p['id'], 'nome': p['nome'], 'unidade': p['unidade'] or '',
+            'quantidade_atual': float(p['quantidade_atual'] or 0),
+        })
+    return [grupos[k] for k in sorted(grupos) if len(grupos[k]) > 1]
+
+
+def mesclar_produtos(principal_id, ids_secundarios):
+    """Soma saldo e move movimentações para o produto principal, em uma transação."""
+    if not ids_secundarios:
+        raise ValueError('Selecione ao menos um produto duplicado.')
+    if principal_id in ids_secundarios:
+        raise ValueError('O produto principal não pode também ser secundário.')
+
+    def operacao(cursor):
+        cursor.execute("SELECT nome, unidade, quantidade_atual FROM produtos_estoque WHERE id = %s AND ativo = TRUE FOR UPDATE", (principal_id,))
+        principal = cursor.fetchone()
+        if not principal:
+            raise ValueError('Produto principal não encontrado.')
+        soma = float(principal['quantidade_atual'] or 0)
+        nomes = []
+        for secundario in ids_secundarios:
+            cursor.execute("SELECT nome, unidade, quantidade_atual FROM produtos_estoque WHERE id = %s AND ativo = TRUE FOR UPDATE", (secundario,))
+            r = cursor.fetchone()
+            if not r:
+                raise ValueError(f'Produto #{secundario} não encontrado.')
+            if normalizar_nome(principal['nome']) != normalizar_nome(r['nome']):
+                raise ValueError(f'Os produtos precisam ter o mesmo nome para mesclar.')
+            soma += float(r['quantidade_atual'] or 0)
+            nomes.append(r['nome'])
+            cursor.execute("UPDATE movimentacoes_estoque SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
+            cursor.execute("UPDATE produto_embalagens SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
+            cursor.execute("UPDATE produtos_estoque SET ativo = FALSE, quantidade_atual = 0 WHERE id = %s", (secundario,))
+        cursor.execute("UPDATE produtos_estoque SET quantidade_atual = %s WHERE id = %s", (soma, principal_id))
+        return soma, nomes
+
+    return executar_transacao(operacao)
+
 
 # =====================================================
 # FUNÇÕES DE PRODUTOS
@@ -135,51 +260,213 @@ def atualizar_produto(id, dados):
         return False
 
 def excluir_produto(id):
-    """Exclui um produto (verifica se não há movimentações)"""
+    """Exclusão lógica. Histórico de movimentações e embalagens é preservado."""
     try:
-        # Verificar se há movimentações vinculadas
-        r = executar_query("SELECT COUNT(*) AS total FROM movimentacoes_estoque WHERE produto_id = %s", (id,), fetch_one=True, dict_cursor=True)
-        count = r['total']
-        if count > 0:
-            return False, f"Não é possível excluir: produto possui {count} movimentação(ões)"
-        
-        # Exclusão lógica
-        executar_query("UPDATE produtos_estoque SET ativo = FALSE WHERE id = %s", (id,))
-        return True, "Produto excluído com sucesso"
+        executar_query(
+            "UPDATE produtos_estoque SET ativo = FALSE, quantidade_atual = 0 WHERE id = %s",
+            (id,))
+        return True, "Produto excluído. O histórico de movimentações foi mantido."
     except Exception as e:
         print(f"Erro ao excluir produto: {e}")
         return False, f"Erro ao excluir: {str(e)}"
+
+
+# =====================================================
+# EMBALAGENS
+# =====================================================
+
+def fator_para_base(unidade, unidade_base):
+    """Converte L/ml e kg/g para a unidade de estoque do produto."""
+    origem = (unidade or '').strip().lower().replace('mililitros', 'ml')
+    destino = (unidade_base or '').strip().lower()
+    fatores = {'l': 1, 'ml': 0.001, 'kg': 1, 'g': 0.001, 'un': 1}
+    if origem not in fatores or destino not in fatores:
+        raise ValueError(f'Unidades incompatíveis: {unidade} e {unidade_base}.')
+    if origem == destino:
+        return 1
+    if {origem, destino} == {'l', 'ml'} or {origem, destino} == {'kg', 'g'}:
+        return fatores[origem] / fatores[destino]
+    raise ValueError(f'Unidades incompatíveis: {unidade} e {unidade_base}.')
+
+
+def listar_embalagens(produto_id):
+    query = """
+    SELECT id, descricao, capacidade, unidade, preco, quantidade_total,
+           quantidade_fechada, volume_aberta,
+           (SELECT unidade FROM produtos_estoque WHERE id = %s) AS unidade_base
+    FROM produto_embalagens
+    WHERE produto_id = %s AND ativo = TRUE
+    ORDER BY descricao, capacidade
+    """
+    return executar_query(query, (produto_id, produto_id), fetch_all=True, dict_cursor=True) or []
+
+
+def _listar_embalagens_para_baixa(produto_id):
+    query = """
+    SELECT id, descricao, capacidade, unidade, quantidade_total,
+           quantidade_fechada, volume_aberta,
+           (SELECT unidade FROM produtos_estoque WHERE id = %s) AS unidade_base
+    FROM produto_embalagens
+    WHERE produto_id = %s AND ativo = TRUE
+    ORDER BY descricao, capacidade
+    """
+    return executar_query(query, (produto_id, produto_id), fetch_all=True, dict_cursor=True) or []
+
+
+def registrar_embalagens(cursor, produto_id, dados):
+    """Cria ou reaproveita a embalagem e devolve os dados para a movimentação."""
+    descricao = (dados.get('descricao') or '').strip()
+    capacidade = float(dados.get('capacidade') or 0)
+    unidade = (dados.get('unidade') or 'L').strip()
+    quantidade = int(dados.get('quantidade') or 0)
+    preco = float(dados.get('preco') or 0) if dados.get('preco') else 0
+    if not descricao or capacidade <= 0 or quantidade <= 0:
+        raise ValueError('Preencha descrição, capacidade e quantidade da embalagem.')
+    cursor.execute("SELECT unidade FROM produtos_estoque WHERE id = %s", (produto_id,))
+    produto = cursor.fetchone()
+    fator = fator_para_base(unidade, produto['unidade'])
+    cursor.execute("""
+        SELECT id, quantidade_total, quantidade_fechada, volume_aberta
+        FROM produto_embalagens
+        WHERE produto_id = %s AND LOWER(descricao) = LOWER(%s)
+          AND capacidade = %s AND unidade = %s AND ativo = TRUE
+        FOR UPDATE
+    """, (produto_id, descricao, capacidade, unidade))
+    existing = cursor.fetchone()
+    if existing:
+        embalagem_id = existing['id']
+        total = existing['quantidade_total'] + quantidade
+        fechadas = existing['quantidade_fechada'] + quantidade
+        volume = float(existing['volume_aberta'] or 0)
+        cursor.execute("SELECT nota_fiscal_id, ativo FROM produto_embalagens WHERE id = %s", (embalagem_id,))
+        emb_atual = cursor.fetchone()
+        if emb_atual['ativo'] and emb_atual['nota_fiscal_id'] is None:
+            cursor.execute("UPDATE produto_embalagens SET nota_fiscal_id = %s WHERE id = %s",
+                           (dados.get('nota_fiscal_id'), embalagem_id))
+        cursor.execute("""
+            UPDATE produto_embalagens
+            SET quantidade_total = %s, quantidade_fechada = %s,
+                preco = COALESCE(%s, preco)
+            WHERE id = %s
+        """, (total, fechadas, preco or None, embalagem_id))
+    else:
+        cursor.execute("""
+            INSERT INTO produto_embalagens
+                (produto_id, descricao, capacidade, unidade, preco, nota_fiscal_id,
+                 quantidade_total, quantidade_fechada, volume_aberta)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0) RETURNING id
+        """, (produto_id, descricao, capacidade, unidade, preco or None,
+              dados.get('nota_fiscal_id'), quantidade, quantidade))
+        embalagem_id = cursor.fetchone()['id']
+        total, fechadas, volume = quantidade, quantidade, 0
+    return {
+        'id': embalagem_id,
+        'descricao': descricao,
+        'capacidade': capacidade,
+        'unidade': unidade,
+        'quantidade': quantidade,
+        'volume_base': capacidade * fator * quantidade,
+        'preco': preco,
+        'preco_base': preco / (capacidade * fator) if capacidade * fator > 0 else 0,
+        'total_fechadas': fechadas,
+        'total_volume_aberta': volume,
+    }
+
+
+def baixar_embalagens(cursor, produto_id, quantidade_base, embalagens, movimento_id=None):
+    """Abre embalagens para atender a baixa; devolve o volume não coberto."""
+    usadas = []
+    restante = float(quantidade_base)
+    for emb in embalagens:
+        if restante <= 0:
+            break
+        embalagem_id = emb['id']
+        capacidade = float(emb['capacidade'])
+        unidade = emb['unidade'] or 'L'
+        fator = fator_para_base(unidade, emb['unidade_base'])
+        capacidade_base = capacidade * fator
+        aberta = float(emb['volume_aberta'] or 0)
+        if aberta > 0:
+            retirar = min(restante, aberta)
+            restante -= retirar
+            aberta -= retirar
+        while restante > 0 and emb['quantidade_fechada'] > 0:
+            aberta = capacidade_base
+            emb['quantidade_fechada'] -= 1
+            retirar = min(restante, aberta)
+            restante -= retirar
+            aberta -= retirar
+        retirado = capacidade_base - aberta
+        if retirado <= 0.00001:
+            continue
+        usadas.append({
+            'id': embalagem_id,
+            'abertas': 1 if aberta > 0 else 0,
+            'retirado': retirado,
+            'saldo_aberta': aberta,
+        })
+        cursor.execute("""
+            UPDATE produto_embalagens
+            SET quantidade_fechada = %s, volume_aberta = %s
+            WHERE id = %s
+        """, (emb['quantidade_fechada'], aberta, embalagem_id))
+        cursor.execute("""
+            INSERT INTO movimento_embalagens
+                (movimento_id, embalagem_id, tipo, quantidade, litros, observacoes)
+            VALUES (%s, %s, 'abertura', 1, %s, %s)
+        """, (movimento_id, embalagem_id, round(retirado, 4),
+              f'Baixa de {round(float(quantidade_base), 4)} da embalagem {emb["descricao"]}'))
+    return round(restante, 4)
 
 # =====================================================
 # FUNÇÕES DE MOVIMENTAÇÕES
 # =====================================================
 
 def registrar_movimentacao(dados):
-    """Registra entrada/saída e atualiza o saldo do produto (ATÔMICO)"""
+    """Registra entrada/saída, abre embalagens quando preciso e nunca deixa saldo negativo."""
     try:
         with transacao() as cur:
-            query_mov = """
-            INSERT INTO movimentacoes_estoque 
+            produto_id = int(dados['produto_id'])
+            tipo = dados['tipo']
+            quantidade = float(dados['quantidade'])
+            unidade = dados.get('unidade')
+            valor = float(dados['valor_unitario']) if dados.get('valor_unitario') else None
+            cur.execute("SELECT unidade, quantidade_atual FROM produtos_estoque WHERE id = %s FOR UPDATE", (produto_id,))
+            produto = cur.fetchone()
+            if not produto:
+                raise ValueError('Produto não encontrado.')
+            fator = fator_para_base(unidade, produto['unidade']) if unidade else 1
+            total = quantidade * fator
+            if tipo == 'saida' and float(produto['quantidade_atual'] or 0) < total:
+                raise ValueError(f'Saldo insuficiente. Disponível: {float(produto["quantidade_atual"] or 0):.2f} {produto["unidade"]}.')
+
+            cur.execute("""
+            INSERT INTO movimentacoes_estoque
                 (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes)
             VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """
-            cur.execute(query_mov, (
-                dados['produto_id'], dados['tipo'], dados['quantidade'],
-                dados.get('unidade'), dados.get('data_movimento'),
-                dados.get('valor_unitario'), dados.get('observacoes')
-            ))
+            """, (produto_id, tipo, total, produto['unidade'],
+                  dados.get('data_movimento'), valor, dados.get('observacoes')))
             mov_id = cur.fetchone()['id']
 
-            if dados['tipo'] == 'entrada':
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                            (dados['quantidade'], dados['produto_id']))
-            else:
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                            (dados['quantidade'], dados['produto_id']))
+            if tipo == 'saida':
+                embalagens = _listar_embalagens_para_baixa(produto_id)
+                if embalagens:
+                    sem_embalagem = baixar_embalagens(cur, produto_id, total, embalagens, mov_id)
+                    if sem_embalagem > 0.00001:
+                        cur.execute("""
+                            UPDATE movimentacoes_estoque
+                            SET observacoes = COALESCE(observacoes, '') || %s
+                            WHERE id = %s
+                        """, (f' | Atenção: {sem_embalagem:.2f} {produto["unidade"]} '
+                              f'sem embalagem controlada', mov_id))
+
+            cur.execute(
+                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                (total if tipo == 'entrada' else -total, produto_id))
         return mov_id
     except Exception as e:
         print(f"Erro ao registrar movimentação: {e}")
-        return None
+        raise
 
 def listar_movimentacoes(produto_id=None):
     """Lista movimentações, mostrando produtos removidos como 'Produto removido'"""
