@@ -1,227 +1,348 @@
 """
-Módulo de Clima e Previsão do Tempo
-Integração com OpenWeatherMap API
+Módulo de Clima e Previsão do Tempo.
+
+Fonte: Climatempo (páginas públicas de previsão). Não exige chave de API.
+Os dados são buscados no máximo a cada 3 horas (configurável por
+CLIMATEMPO_CACHE_HORAS) e reaproveitados em todas as telas.
 """
 
-import requests
-from datetime import datetime, timedelta
+import html as htmlmod
+import json
+import logging
 import os
+import re
+from datetime import datetime
 
-# Configurações
-API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-CIDADE = "Campos Gerais"
-UF = "MG"
-PAIS = "BR"
+import requests
 
-# Cache de 30 minutos para reduzir chamadas à API
-_CACHE = {'clima': None, 'previsao': None, 'timestamp': None}
-TEMPO_CACHE_SEGUNDOS = 30 * 60
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://www.climatempo.com.br/previsao-do-tempo"
+CIDADE_ID = os.getenv("CLIMATEMPO_CIDADE_ID", "2037")
+CIDADE_SLUG = os.getenv("CLIMATEMPO_CIDADE_SLUG", "camposgerais-mg")
+CIDADE_NOME = os.getenv("CLIMATEMPO_CIDADE_NOME", "Campos Gerais/MG")
+FONTE = "Climatempo"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+}
+TIMEOUT_SEGUNDOS = 15
+
+try:
+    CACHE_HORAS = max(1, int(os.getenv("CLIMATEMPO_CACHE_HORAS", "3")))
+except (TypeError, ValueError):
+    CACHE_HORAS = 3
+
+_DADOS = {"metas": None, "dias": None, "timestamp": None}
+
+_METAS = (
+    "tmomento", "tmin", "tmax", "cmomento", "iconoi", "chuvamm",
+    "urmin", "urmax", "gust", "gustDirection", "uvmax", "idCidade",
+)
+
 
 def _cache_valido():
-    if _CACHE['timestamp'] is None:
+    if _DADOS["timestamp"] is None:
         return False
-    return (datetime.now() - _CACHE['timestamp']).total_seconds() < TEMPO_CACHE_SEGUNDOS
+    return (datetime.now() - _DADOS["timestamp"]).total_seconds() < CACHE_HORAS * 3600
 
-def get_coordenadas(cidade, uf, pais):
-    """Obtém coordenadas da cidade"""
-    try:
-        url = f"https://api.openweathermap.org/geo/1.0/direct?q={cidade},{uf},{pais}&limit=1&appid={API_KEY}"
-        response = requests.get(url)
-        data = response.json()
 
-        if data and len(data) > 0:
-            return {
-                'lat': data[0]['lat'],
-                'lon': data[0]['lon'],
-                'nome': data[0]['name']
-            }
+def limpar_cache():
+    """Força a próxima leitura a buscar dados novos do Climatempo."""
+    _DADOS.update(metas=None, dias=None, timestamp=None)
+
+
+def _buscar_pagina(url):
+    resposta = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SEGUNDOS)
+    resposta.raise_for_status()
+    resposta.encoding = "utf-8"
+    return resposta.text
+
+
+def _meta(pagina, nome):
+    padrao = r'<meta\s+name=["\']' + re.escape(nome) + r'["\']\s+content=["\']([^"\']*)["\']'
+    encontrado = re.search(padrao, pagina, re.IGNORECASE)
+    if not encontrado:
         return None
-    except Exception as e:
-        print(f"Erro ao obter coordenadas: {e}")
-        return None
+    return htmlmod.unescape(encontrado.group(1)).strip()
 
-def _vento_cardinal(graus):
-    """Converte graus (0-360) em direção cardinal (N, NE, L, SE...)."""
-    direcoes = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO']
-    if graus is None:
-        return '-'
+
+def _numero(valor):
+    if valor is None or valor == "":
+        return None
     try:
-        idx = int(((graus % 360) + 22.5) // 45) % 8
-        return direcoes[idx]
+        return float(str(valor).replace(",", "."))
     except (TypeError, ValueError):
-        return '-'
+        return None
 
-def get_clima_atual():
-    """Obtém clima atual com dados completos para o dashboard (cache de 30 min)."""
-    if _cache_valido() and _CACHE['clima'] is not None:
-        return _CACHE['clima']
+
+def _carregar(force=False):
+    """Carrega metas do tempo atual e o JSON dos 15 dias, com cache."""
+    if not force and _cache_valido() and _DADOS["metas"] and _DADOS["dias"]:
+        return _DADOS["metas"], _DADOS["dias"]
     try:
-        coords = get_coordenadas(CIDADE, UF, PAIS)
-        if not coords:
-            return None
+        pagina_hoje = _buscar_pagina(f"{BASE_URL}/cidade/{CIDADE_ID}/{CIDADE_SLUG}")
+        pagina_15_dias = _buscar_pagina(
+            f"{BASE_URL}/15-dias/cidade/{CIDADE_ID}/{CIDADE_SLUG}"
+        )
 
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={coords['lat']}&lon={coords['lon']}&appid={API_KEY}&units=metric&lang=pt_br"
-        response = requests.get(url, timeout=10)
-        data = response.json()
+        metas = {chave: _meta(pagina_hoje, chave) for chave in _METAS}
+        bloco = re.search(r'data-infos="([^"]+)"', pagina_15_dias)
+        if not bloco:
+            raise ValueError("bloco de previsão (data-infos) não encontrado no Climatempo")
+        dias = json.loads(htmlmod.unescape(bloco.group(1)))
+        if not isinstance(dias, list) or not dias:
+            raise ValueError("previsão do Climatempo veio vazia")
 
-        if response.status_code == 200:
-            vento_deg = data['wind'].get('deg')
-            clima = {
-                'cidade': coords['nome'],
-                'temperatura': round(data['main']['temp'], 1),
-                'sensacao': round(data['main']['feels_like'], 1),
-                'temp_min': round(data['main'].get('temp_min', data['main']['temp']), 1),
-                'temp_max': round(data['main'].get('temp_max', data['main']['temp']), 1),
-                'umidade': data['main']['humidity'],
-                'pressao': data['main']['pressure'],
-                'nebulosidade': data.get('clouds', {}).get('all', 0),
-                'vento_velocidade': round(data['wind']['speed'] * 3.6, 1),
-                'vento_direcao': vento_deg if vento_deg is not None else 0,
-                'vento_cardinal': _vento_cardinal(vento_deg),
-                'descricao': data['weather'][0]['description'].capitalize(),
-                'condition': data['weather'][0]['main'],
-                'nascer_sol': datetime.fromtimestamp(data['sys']['sunrise']).strftime('%H:%M'),
-                'por_sol': datetime.fromtimestamp(data['sys']['sunset']).strftime('%H:%M'),
-                'atualizacao': datetime.now().strftime('%H:%M')
-            }
-
-            clima['alertas'] = gerar_alertas(clima)
-            _CACHE['clima'] = clima
-            _CACHE['timestamp'] = datetime.now()
-            return clima
-        else:
-            print(f"Erro na API de clima. Código: {response.status_code}")
-            return None
-
+        _DADOS.update(metas=metas, dias=dias, timestamp=datetime.now())
+        return metas, dias
     except Exception as e:
-        print(f"Exceção ao buscar clima: {e}")
+        logger.error(f"clima._carregar: {e}")
+        if _DADOS["metas"] and _DADOS["dias"]:
+            return _DADOS["metas"], _DADOS["dias"]
+        return None, None
+
+
+def _condicao(texto):
+    """Normaliza a descrição do Climatempo para um código de ícone estável."""
+    descricao = (texto or "").lower()
+    if any(p in descricao for p in ("temporal", "trovoad", "raio")):
+        return "Thunderstorm"
+    if any(p in descricao for p in ("neve", "granizo")):
+        return "Snow"
+    if any(p in descricao for p in ("chuva", "chove", "pancad")):
+        return "Rain"
+    if any(p in descricao for p in ("neblina", "névoa", "nvoeir")):
+        return "Mist"
+    if any(p in descricao for p in ("nublado", "nuvens", "nuvem")):
+        return "Clouds"
+    if any(p in descricao for p in ("sol", "aberto", "limpo")):
+        return "Clear"
+    return "Clouds"
+
+
+def _descricao_dia(dia):
+    textos = (dia.get("textIcon") or {}).get("text") or {}
+    return textos.get("reducedPhrasePt") or textos.get("pt") or ""
+
+
+def _umidade_dia(dia):
+    umidade = dia.get("humidity") or {}
+    valores = [_numero(umidade.get("min")), _numero(umidade.get("max"))]
+    validos = [v for v in valores if v is not None]
+    return round(sum(validos) / len(validos)) if validos else None
+
+
+def get_clima_atual(force=False):
+    """Retorna o clima atual de Campos Gerais com dados do Climatempo."""
+    metas, dias = _carregar(force=force)
+    if not metas or not dias:
         return None
 
-def get_previsao():
-    """Obtém previsão para os próximos dias (cache de 30 min)."""
-    if _cache_valido() and _CACHE['previsao'] is not None:
-        return _CACHE['previsao']
-    try:
-        coords = get_coordenadas(CIDADE, UF, PAIS)
-        if not coords:
-            return None
+    hoje = dias[0]
+    temperaturas = hoje.get("temperature") or {}
+    vento = hoje.get("wind") or {}
+    chuva_dia = hoje.get("rain") or {}
+    sol = hoje.get("sun") or {}
+    sensacao_bruta = (hoje.get("thermalSensation") or {}).get("thermalSensation")
 
-        url = f"https://api.openweathermap.org/data/2.5/forecast?lat={coords['lat']}&lon={coords['lon']}&appid={API_KEY}&units=metric&lang=pt_br"
-        response = requests.get(url, timeout=10)
-        data = response.json()
+    temperatura = _numero(metas.get("tmomento"))
+    if temperatura is None:
+        temperatura = _numero(temperaturas.get("min")) or _numero(temperaturas.get("max"))
 
-        if response.status_code == 200:
-            previsoes = []
-            dias_vistos = set()
+    umidade_min = _numero(metas.get("urmin")) or _numero((hoje.get("humidity") or {}).get("min"))
+    umidade_max = _numero(metas.get("urmax")) or _numero((hoje.get("humidity") or {}).get("max"))
+    if umidade_min is not None and umidade_max is not None:
+        umidade = round((umidade_min + umidade_max) / 2)
+    else:
+        umidade = umidade_min if umidade_min is not None else umidade_max
 
-            for item in data['list']:
-                data_hora = datetime.fromtimestamp(item['dt'])
-                dia = data_hora.strftime('%Y-%m-%d')
-                if dia not in dias_vistos and 11 <= data_hora.hour <= 14:
-                    dias_vistos.add(dia)
-                    previsoes.append({
-                        'data': data_hora.strftime('%d/%m'),
-                        'dia_semana': data_hora.strftime('%A').capitalize(),
-                        'temp_min': round(item['main']['temp_min'], 1),
-                        'temp_max': round(item['main']['temp_max'], 1),
-                        'umidade': item['main']['humidity'],
-                        'descricao': item['weather'][0]['description'].capitalize(),
-                        'condition': item['weather'][0]['main'],
-                        'chuva': round(item.get('rain', {}).get('3h', 0), 1),
-                        'vento': round(item['wind']['speed'] * 3.6, 1)
-                    })
-                    if len(previsoes) >= 5:
-                        break
+    velocidade_ms = _numero(vento.get("avgVelocity"))
+    velocidade_kmh = round(velocidade_ms * 3.6, 1) if velocidade_ms is not None else 0.0
+    rajada = _numero(metas.get("gust"))
+    if rajada is None:
+        rajada = _numero(vento.get("maxGust"))
 
-            _CACHE['previsao'] = previsoes
-            _CACHE['timestamp'] = datetime.now()
-            return previsoes
+    descricao = _descricao_dia(hoje) or (metas.get("cmomento") or "").capitalize()
+    atualizacao = _DADOS["timestamp"] or datetime.now()
+
+    clima = {
+        "cidade": CIDADE_NOME,
+        "fonte": FONTE,
+        "temperatura": round(temperatura, 1) if temperatura is not None else 0.0,
+        "sensacao": round(_numero(sensacao_bruta), 1) if _numero(sensacao_bruta) is not None else temperatura,
+        "temp_min": _numero(metas.get("tmin")) or _numero(temperaturas.get("min")) or 0.0,
+        "temp_max": _numero(metas.get("tmax")) or _numero(temperaturas.get("max")) or 0.0,
+        "umidade": int(umidade) if umidade is not None else 0,
+        "umidade_min": int(umidade_min) if umidade_min is not None else None,
+        "umidade_max": int(umidade_max) if umidade_max is not None else None,
+        "pressao": None,
+        "nebulosidade": None,
+        "vento_velocidade": velocidade_kmh,
+        "vento_direcao": _numero(vento.get("direction_degrees")),
+        "vento_cardinal": metas.get("gustDirection") or vento.get("direction") or "-",
+        "vento_rajada": round(rajada, 1) if rajada is not None else None,
+        "descricao": descricao,
+        "condition": _condicao(f"{descricao} {metas.get('cmomento') or ''}"),
+        "codigo": metas.get("iconoi")
+                  or ((hoje.get("textIcon") or {}).get("icon") or {}).get("day")
+                  or "Clouds",
+        "chuva_mm": _numero(metas.get("chuvamm")) or _numero(chuva_dia.get("precipitation")) or 0.0,
+        "probabilidade_chuva": int(_numero(chuva_dia.get("probability")) or 0),
+        "indice_uv": _numero(metas.get("uvmax")),
+        "nascer_sol": str(sol.get("sunshine") or "")[:5] or "-",
+        "por_sol": str(sol.get("sunset") or "")[:5] or "-",
+        "atualizacao": atualizacao.strftime("%H:%M"),
+    }
+    clima["alertas"] = gerar_alertas(clima)
+    return clima
+
+
+def get_previsao(force=False):
+    """Retorna a previsão diária do Climatempo (até 15 dias)."""
+    _, dias = _carregar(force=force)
+    if not dias:
         return None
-    except Exception as e:
-        print(f"Erro ao buscar previsão: {e}")
-        return None
+
+    previsoes = []
+    for dia in dias[:15]:
+        descricao = _descricao_dia(dia)
+        temperaturas = dia.get("temperature") or {}
+        vento = dia.get("wind") or {}
+        chuva = dia.get("rain") or {}
+        sol = dia.get("sun") or {}
+        velocidade_ms = _numero(vento.get("avgVelocity"))
+        umidade = _umidade_dia(dia)
+
+        previsoes.append({
+            "data": dia.get("day") or "",
+            "dia_semana": dia.get("dayWeekFullMin") or dia.get("dayWeek") or "",
+            "temp_min": _numero(temperaturas.get("min")) or 0.0,
+            "temp_max": _numero(temperaturas.get("max")) or 0.0,
+            "umidade": int(umidade) if umidade is not None else 0,
+            "descricao": descricao,
+            "condition": _condicao(descricao),
+            "icone": ((dia.get("textIcon") or {}).get("icon") or {}).get("day"),
+            "chuva": _numero(chuva.get("precipitation")) or 0.0,
+            "probabilidade_chuva": int(_numero(chuva.get("probability")) or 0),
+            "vento": round(velocidade_ms * 3.6, 1) if velocidade_ms is not None else 0.0,
+            "rajada": _numero(vento.get("maxGust")),
+            "nascer_sol": str(sol.get("sunshine") or "")[:5] or "-",
+            "por_sol": str(sol.get("sunset") or "")[:5] or "-",
+        })
+    return previsoes
+
 
 def gerar_alertas(clima):
-    """Gera alertas baseados nas condições climáticas"""
+    """Gera alertas agronômicos baseados nas condições climáticas."""
+    if not clima:
+        return []
     alertas = []
-    
-    # Alerta de frio
-    if clima['temperatura'] < 10:
+    temperatura = clima.get("temperatura") or 0
+    vento = clima.get("vento_velocidade") or 0
+    rajada = clima.get("vento_rajada") or 0
+    umidade = clima.get("umidade") or 0
+
+    if temperatura < 10:
         alertas.append({
-            'tipo': 'frio',
-            'severidade': 'alto',
-            'mensagem': f'Temperatura baixa: {clima["temperatura"]}°C. Proteja as plantas!'
+            "tipo": "frio", "severidade": "alto",
+            "mensagem": f"Temperatura baixa: {temperatura}°C. Proteja as plantas!"
         })
-    elif clima['temperatura'] < 15:
+    elif temperatura < 15:
         alertas.append({
-            'tipo': 'frio',
-            'severidade': 'medio',
-            'mensagem': f'Temperatura amena: {clima["temperatura"]}°C. Fique atento.'
+            "tipo": "frio", "severidade": "medio",
+            "mensagem": f"Temperatura amena: {temperatura}°C. Fique atento."
         })
-    
-    # Alerta de calor extremo
-    if clima['temperatura'] > 35:
+
+    if temperatura > 35:
         alertas.append({
-            'tipo': 'calor',
-            'severidade': 'alto',
-            'mensagem': f'Calor intenso: {clima["temperatura"]}°C. Risco de estresse hídrico!'
+            "tipo": "calor", "severidade": "alto",
+            "mensagem": f"Calor intenso: {temperatura}°C. Risco de estresse hídrico!"
         })
-    elif clima['temperatura'] > 30:
+    elif temperatura > 30:
         alertas.append({
-            'tipo': 'calor',
-            'severidade': 'medio',
-            'mensagem': f'Temperatura elevada: {clima["temperatura"]}°C.'
+            "tipo": "calor", "severidade": "medio",
+            "mensagem": f"Temperatura elevada: {temperatura}°C."
         })
-    
-    # Alerta de chuva
-    if 'chuva' in clima or clima.get('codigo') == 'Rain':
+
+    if clima.get("condition") in ("Rain", "Drizzle", "Thunderstorm") \
+            or (clima.get("probabilidade_chuva") or 0) >= 70:
         alertas.append({
-            'tipo': 'chuva',
-            'severidade': 'medio',
-            'mensagem': 'Chuva prevista. Evite pulverizações.'
+            "tipo": "chuva", "severidade": "medio",
+            "mensagem": f"Chuva prevista ({clima.get('probabilidade_chuva', 0)}%). Evite pulverizações."
         })
-    
-    # Alerta de vento forte
-    if clima['vento_velocidade'] > 40:
+
+    if vento > 40 or rajada > 55:
         alertas.append({
-            'tipo': 'vento',
-            'severidade': 'alto',
-            'mensagem': f'Ventos fortes: {clima["vento_velocidade"]} km/h. Cuidado com aplicações!'
+            "tipo": "vento", "severidade": "alto",
+            "mensagem": f"Ventos fortes: {vento} km/h (rajadas de {rajada or '-'} km/h). Cuidado com aplicações!"
         })
-    elif clima['vento_velocidade'] > 25:
+    elif vento > 25:
         alertas.append({
-            'tipo': 'vento',
-            'severidade': 'medio',
-            'mensagem': f'Ventos moderados: {clima["vento_velocidade"]} km/h.'
+            "tipo": "vento", "severidade": "medio",
+            "mensagem": f"Ventos moderados: {vento} km/h."
         })
-    
-    # Alerta de umidade baixa
-    if clima['umidade'] < 30:
+
+    if umidade and umidade < 30:
         alertas.append({
-            'tipo': 'umidade',
-            'severidade': 'alto',
-            'mensagem': f'Umidade muito baixa: {clima["umidade"]}%. Risco de incêndio!'
+            "tipo": "umidade", "severidade": "alto",
+            "mensagem": f"Umidade muito baixa: {umidade}%. Risco de incêndio!"
         })
-    elif clima['umidade'] < 50:
+    elif umidade and umidade < 50:
         alertas.append({
-            'tipo': 'umidade',
-            'severidade': 'baixo',
-            'mensagem': f'Umidade baixa: {clima["umidade"]}%.'
+            "tipo": "umidade", "severidade": "baixo",
+            "mensagem": f"Umidade baixa: {umidade}%."
         })
-    
+
     return alertas
 
+
+_ICONE_CONDICAO = {
+    "Clear": "bi-sun-fill",
+    "Clouds": "bi-cloud-fill",
+    "Rain": "bi-cloud-rain-fill",
+    "Drizzle": "bi-cloud-drizzle",
+    "Thunderstorm": "bi-cloud-lightning-rain-fill",
+    "Snow": "bi-snow",
+    "Mist": "bi-cloud-fog-fill",
+    "default": "bi-cloud-fill",
+}
+
+# Códigos usados pelo OpenWeather (mantidos para compatibilidade com telas antigas)
+_ICONE_OPENWEATHER = {
+    "01d": "bi-sun-fill", "01n": "bi-moon-stars-fill",
+    "02d": "bi-cloud-sun-fill", "02n": "bi-cloud-moon-fill",
+    "03d": "bi-cloud-fill", "03n": "bi-cloud-fill",
+    "04d": "bi-clouds-fill", "04n": "bi-clouds-fill",
+    "09d": "bi-cloud-rain-heavy-fill", "09n": "bi-cloud-rain-heavy-fill",
+    "10d": "bi-cloud-rain-fill", "10n": "bi-cloud-rain-fill",
+    "11d": "bi-cloud-lightning-rain-fill", "11n": "bi-cloud-lightning-rain-fill",
+    "13d": "bi-snow", "13n": "bi-snow",
+    "50d": "bi-cloud-fog-fill", "50n": "bi-cloud-fog-fill",
+}
+
+# Códigos de ícone do Climatempo (ex.: 6n, 4t)
+_ICONE_CLIMATEMPO = {
+    "1": "bi-sun-fill",
+    "2": "bi-cloud-sun-fill",
+    "3": "bi-cloud-fill",
+    "4": "bi-cloud-sun-fill",
+    "5": "bi-cloud-rain-fill",
+    "6": "bi-clouds-fill",
+    "7": "bi-snow",
+    "8": "bi-cloud-lightning-rain-fill",
+    "9": "bi-cloud-fog-fill",
+}
+
+
 def get_icone_clima(codigo):
-    """Retorna ícone Bootstrap baseado no código do clima"""
-    icones = {
-        'Clear': 'bi-brightness-high',
-        'Clouds': 'bi-cloud',
-        'Rain': 'bi-cloud-rain',
-        'Drizzle': 'bi-cloud-drizzle',
-        'Thunderstorm': 'bi-cloud-lightning-rain',
-        'Snow': 'bi-snow',
-        'Mist': 'bi-cloud-haze',
-        'Fog': 'bi-cloud-haze2',
-        'default': 'bi-cloud'
-    }
-    return icones.get(codigo, icones['default'])
+    """Retorna o ícone Bootstrap para condição ou código do Climatempo."""
+    chave = str(codigo or "").strip().lower()
+    if chave in _ICONE_OPENWEATHER:
+        return _ICONE_OPENWEATHER[chave]
+    if chave in _ICONE_CONDICAO:
+        return _ICONE_CONDICAO[chave]
+    numeros = re.match(r"^(\d+)", chave)
+    if numeros:
+        return _ICONE_CLIMATEMPO.get(numeros.group(1), "bi-cloud-fill")
+    return _ICONE_CONDICAO.get(_condicao(chave), "bi-cloud-fill")

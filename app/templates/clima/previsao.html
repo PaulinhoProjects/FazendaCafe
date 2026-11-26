@@ -3,42 +3,55 @@
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item"><a href="{{ url_for('clima.index') }}">Clima</a></li>
-<li class="breadcrumb-item active">Previsão 5 dias</li>
+<li class="breadcrumb-item active">Previsão 15 dias</li>
 {% endblock %}
 {% block conteudo %}
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-calendar-week me-2"></i>Previsão do Tempo</h1>
-        <p class="page-subtitle">Próximos 5 dias</p>
+        <p class="page-subtitle">Próximos 15 dias em Campos Gerais/MG — dados do Climatempo</p>
     </div>
-    <div>
+    <div class="d-flex gap-2">
+        {% if session.get('tipo') == 'admin' %}
+        <form method="POST" action="{{ url_for('clima.atualizar') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar dados novos do Climatempo"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
+        </form>
+        {% endif %}
         <a href="{{ url_for('clima.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Voltar ao clima atual</a>
     </div>
 </div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}{% endif %}{% endwith %}
+
 {% if previsoes %}
 <div class="row g-3">
     {% for p in previsoes %}
-    <div class="col-6 col-md-4 col-lg mb-3">
+    <div class="col-6 col-md-4 col-xl-2 mb-3">
         <div class="card shadow-sm border-0 text-center h-100">
             <div class="card-body">
                 <div class="fw-semibold">{{ p.dia_semana }}</div>
                 <div class="text-muted small">{{ p.data }}</div>
-                <i class="bi {{ get_icone_clima(p.condition) }} text-primary my-2 d-block" style="font-size:2.2rem"></i>
+                <i class="bi {{ get_icone_clima(p.condition or p.icone) }} text-primary my-2 d-block" style="font-size:2.2rem"></i>
                 <div class="fs-4 fw-bold">{{ p.temp_max|int }}° <small class="fs-6 text-muted">/ {{ p.temp_min|int }}°</small></div>
                 <div class="small text-muted">{{ p.descricao }}</div>
                 <hr class="my-2">
-                <div class="small">
-                    <span class="me-2" title="Umidade"><i class="bi bi-droplet-half text-info"></i> {{ p.umidade }}%</span>
-                    <span class="me-2" title="Vento"><i class="bi bi-wind text-secondary"></i> {{ p.vento }} km/h</span>
-                    <span title="Chuva prevista"><i class="bi bi-cloud-rain text-primary"></i> {{ p.chuva }} mm</span>
+                <div class="small text-start">
+                    <div title="Probabilidade de chuva"><i class="bi bi-umbrella text-primary"></i> {{ p.probabilidade_chuva }}%</div>
+                    <div title="Precipitação"><i class="bi bi-cloud-rain text-info"></i> {{ p.chuva }} mm</div>
+                    <div title="Umidade"><i class="bi bi-droplet-half text-info"></i> {{ p.umidade }}%</div>
+                    <div title="Vento"><i class="bi bi-wind text-secondary"></i> {{ p.vento }} km/h</div>
+                    <div title="Sol"><i class="bi bi-sunrise text-warning"></i> {{ p.nascer_sol }} <i class="bi bi-sunset text-warning"></i> {{ p.por_sol }}</div>
                 </div>
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
+<div class="text-muted mt-2"><small><i class="bi bi-info-circle me-1"></i>Fonte: Climatempo · previsão consultada a cada 3 horas</small></div>
 {% else %}
-<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Não foi possível carregar a previsão do tempo.</div>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Não foi possível carregar a previsão do Climatempo. Verifique a conexão com a internet{% if session.get('tipo') == 'admin' %} ou use o botão Atualizar{% endif %}.</div>
 {% endif %}
 {% endblock %}

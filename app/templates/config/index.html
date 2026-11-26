@@ -38,19 +38,16 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('config.salvar') }}">
                     <div class="row g-4">
-                        {% for chave, info in configs.items() %}
+                        {% for chave, info in configs.items() if chave != 'api_clima_key' %}
                         <div class="col-md-6">
                             <label class="form-label" for="valor_{{ chave }}">{{ info.descricao or chave }}</label>
                             <input type="text" class="form-control" id="valor_{{ chave }}" name="valor_{{ chave }}" value="{{ info.valor or '' }}">
                             <small class="text-muted">Chave: <code>{{ chave }}</code></small>
-                            {% if chave == 'api_clima_key' %}
-                            <small class="text-muted d-block">Chave da API OpenWeatherMap — usada na tela de Clima.</small>
-                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
                     <input type="hidden" name="chaves" value="">
-                    {% for chave, info in configs.items() %}
+                    {% for chave, info in configs.items() if chave != 'api_clima_key' %}
                     <input type="hidden" name="chaves" value="{{ chave }}">
                     {% endfor %}
                     <div class="mt-4">

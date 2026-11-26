@@ -8,10 +8,15 @@
 <div class="page-header mb-4">
     <div>
         <h1 class="page-title"><i class="bi bi-cloud-sun me-2"></i>Clima</h1>
-        <p class="page-subtitle">{{ clima.cidade if clima and clima.cidade else 'Campos Gerais/MG' }} — dados da OpenWeather</p>
+        <p class="page-subtitle">{{ clima.cidade if clima and clima.cidade else 'Campos Gerais/MG' }} — dados do Climatempo</p>
     </div>
-    <div>
-        <a href="{{ url_for('clima.previsao') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week me-1"></i>Previsão 5 dias</a>
+    <div class="d-flex gap-2">
+        {% if session.get('tipo') == 'admin' %}
+        <form method="POST" action="{{ url_for('clima.atualizar') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Buscar dados novos do Climatempo"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('clima.previsao') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week me-1"></i>Previsão 15 dias</a>
     </div>
 </div>
 
@@ -35,11 +40,11 @@
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 h-100 text-white" style="background-color:#0d6efd;background-image:linear-gradient(135deg,#0d6efd,#0dcaf0)">
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-4">
-                <i class="bi {{ get_icone_clima(clima.condition) }}" style="font-size:4rem"></i>
+                <i class="bi {{ get_icone_clima(clima.condition or clima.codigo) }}" style="font-size:4rem"></i>
                 <div class="display-3 fw-bold mt-2">{{ clima.temperatura|int }}°C</div>
                 <div class="fs-5">{{ clima.descricao }}</div>
                 <div class="small opacity-75 mt-1">Sensação de {{ clima.sensacao|int }}°C · Máx {{ clima.temp_max|int }}° / Mín {{ clima.temp_min|int }}°</div>
-                <div class="small opacity-75 mt-2"><i class="bi bi-clock me-1"></i>Atualizado às {{ clima.atualizacao }}</div>
+                <div class="small opacity-75 mt-2"><i class="bi bi-clock me-1"></i>Consultado às {{ clima.atualizacao }}</div>
             </div>
         </div>
     </div>
@@ -51,7 +56,7 @@
                 <div class="card shadow-sm border-0 h-100"><div class="card-body text-center py-3">
                     <i class="bi bi-droplet-half text-primary" style="font-size:1.6rem"></i>
                     <div class="fs-4 fw-bold">{{ clima.umidade }}%</div>
-                    <div class="text-muted small">Umidade</div>
+                    <div class="text-muted small">Umidade{% if clima.umidade_min is not none %} ({{ clima.umidade_min|int }}–{{ clima.umidade_max|int }}%){% endif %}</div>
                 </div></div>
             </div>
             <div class="col-6 col-md-4">
@@ -63,16 +68,16 @@
             </div>
             <div class="col-6 col-md-4">
                 <div class="card shadow-sm border-0 h-100"><div class="card-body text-center py-3">
-                    <i class="bi bi-thermometer-half text-danger" style="font-size:1.6rem"></i>
-                    <div class="fs-4 fw-bold">{{ clima.pressao }} <small class="fs-6">hPa</small></div>
-                    <div class="text-muted small">Pressão</div>
+                    <i class="bi bi-cloud-rain text-primary" style="font-size:1.6rem"></i>
+                    <div class="fs-4 fw-bold">{{ clima.chuva_mm }} <small class="fs-6">mm</small></div>
+                    <div class="text-muted small">Chuva hoje · {{ clima.probabilidade_chuva }}%</div>
                 </div></div>
             </div>
             <div class="col-6 col-md-4">
                 <div class="card shadow-sm border-0 h-100"><div class="card-body text-center py-3">
-                    <i class="bi bi-clouds text-secondary" style="font-size:1.6rem"></i>
-                    <div class="fs-4 fw-bold">{{ clima.nebulosidade }}%</div>
-                    <div class="text-muted small">Nebulosidade</div>
+                    <i class="bi bi-wind text-warning" style="font-size:1.6rem"></i>
+                    <div class="fs-4 fw-bold">{{ clima.vento_rajada if clima.vento_rajada is not none else '-' }} <small class="fs-6">km/h</small></div>
+                    <div class="text-muted small">Rajada máxima</div>
                 </div></div>
             </div>
             <div class="col-6 col-md-4">
@@ -123,6 +128,15 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi {{ 'text-danger' if clima.probabilidade_chuva >= 70 else 'text-success' }} bi-cloud-rain fs-4"></i>
+                    <div>
+                        <div class="fw-semibold">Chuva</div>
+                        <small class="text-muted">{% if clima.probabilidade_chuva >= 70 %}Alta probabilidade — evite aplicar{% else %}Probabilidade de {{ clima.probabilidade_chuva }}%{% endif %}</small>
+                    </div>
+                </div>
+            </div>
             {% if clima.temp_min <= 4 %}
             <div class="col-md-4">
                 <div class="d-flex align-items-center gap-2">
@@ -135,9 +149,10 @@
             </div>
             {% endif %}
         </div>
+        <div class="mt-3"><small class="text-muted"><i class="bi bi-info-circle me-1"></i>Fonte: {{ clima.fonte }} · consulta automática a cada 3 horas{% if clima.indice_uv is not none %} · índice UV {{ clima.indice_uv|int }}{% endif %}</small></div>
     </div>
 </div>
 {% else %}
-<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Não foi possível carregar os dados do clima. Verifique a conexão com a internet e a chave da API em <a href="{{ url_for('config.index') }}">Configurações</a>.</div>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Não foi possível carregar os dados do Climatempo. Verifique a conexão com a internet{% if session.get('tipo') == 'admin' %} ou use o botão Atualizar{% endif %}.</div>
 {% endif %}
 {% endblock %}

@@ -175,7 +175,6 @@ def create_app(config_class=Config):
             ('slogan', 'Tecnologia que Colhe Resultados', 'Slogan do sistema'),
             ('cidade', 'Campos Gerais', 'Cidade para clima'),
             ('estado', 'MG', 'Estado para clima'),
-            ('api_clima_key', '', 'Chave da API OpenWeather'),
             ('itens_por_pagina', '20', 'Itens por pagina nas listagens'),
         ]
         for chave, valor, desc in configs_padrao:

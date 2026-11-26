@@ -1,22 +1,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for
 from app.modules.login_manager import login_required
+from app.modules.clima import get_icone_clima
 from datetime import datetime
 
 dashboard_bp = Blueprint('dashboard', __name__)
-
-def get_icone_clima(codigo):
-    codigos = {
-        '01d': 'bi-sun-fill', '01n': 'bi-moon-stars-fill',
-        '02d': 'bi-cloud-sun-fill', '02n': 'bi-cloud-moon-fill',
-        '03d': 'bi-cloud-fill', '03n': 'bi-cloud-fill',
-        '04d': 'bi-clouds-fill', '04n': 'bi-clouds-fill',
-        '09d': 'bi-cloud-rain-heavy-fill', '09n': 'bi-cloud-rain-heavy-fill',
-        '10d': 'bi-cloud-rain-fill', '10n': 'bi-cloud-rain-fill',
-        '11d': 'bi-cloud-lightning-rain-fill', '11n': 'bi-cloud-lightning-rain-fill',
-        '13d': 'bi-snow', '13n': 'bi-snow',
-        '50d': 'bi-cloud-fog-fill', '50n': 'bi-cloud-fog-fill',
-    }
-    return codigos.get(str(codigo), 'bi-cloud-fill')
 
 @dashboard_bp.route('/')
 @login_required

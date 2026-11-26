@@ -12,7 +12,7 @@ Sistema web completo para gestão agronômica, operacional e financeira de lavou
 - **Análises & Adubação**: Registro de laudos de solo e foliares com geração de recomendações nutricionais.
 - **Estoque de Insumos**: Movimentações (entradas/saídas), estoque mínimo e valorização financeira.
 - **Notas Fiscais & Devolução de Embalagens**: Gestão documental com upload de PDFs e rastreabilidade ambiental.
-- **Clima**: Integração com API OpenWeatherMap.
+- **Clima**: Previsão de 15 dias e condições atuais via Climatempo (sem chave de API, com cache de 3 horas).
 - **Relatórios PDF**: Exportação de dados com layout executivo via ReportLab.
 
 ---
@@ -23,7 +23,7 @@ Sistema web completo para gestão agronômica, operacional e financeira de lavou
 - **Banco de Dados**: PostgreSQL com `psycopg2` (Connection Pool)
 - **Frontend**: HTML5, CSS3, JavaScript, Jinja2 Templates
 - **Relatórios**: ReportLab, Pandas
-- **APIs**: OpenWeatherMap API
+- **Clima**: Climatempo (consulta periódica das páginas públicas)
 
 ---
 
