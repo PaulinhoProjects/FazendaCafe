@@ -166,7 +166,7 @@ def registrar_movimentacao(dados):
                 dados.get('unidade'), dados.get('data_movimento'),
                 dados.get('valor_unitario'), dados.get('observacoes')
             ))
-            mov_id = cur.fetchone()[0]
+            mov_id = cur.fetchone()['id']
 
             if dados['tipo'] == 'entrada':
                 cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
@@ -301,59 +301,33 @@ def atualizar_movimentacao(id, dados_novos):
 
 def excluir_movimentacao(id):
     """Exclui logicamente a movimentação e reverte o saldo na mesma transação."""
-    conn = None
     try:
-        conn = ConexaoBanco.get_conexao()
-        if not conn:
-            return False, "Não foi possível conectar ao banco."
-        try:
-            with conn.cursor() as cur:
+        with transacao() as cur:
+            cur.execute(
+                "SELECT produto_id, tipo, quantidade FROM movimentacoes_estoque "
+                "WHERE id = %s AND ativo = TRUE FOR UPDATE",
+                (id,),
+            )
+            mov = cur.fetchone()
+            if not mov:
+                return False, "Movimentação não encontrada."
+            produto_id = mov['produto_id']
+            tipo = mov['tipo']
+            quantidade = mov['quantidade']
+            if produto_id:
+                sinal = 1 if tipo == 'saida' else -1
                 cur.execute(
-                    "SELECT produto_id, tipo, quantidade FROM movimentacoes_estoque "
-                    "WHERE id = %s AND ativo = TRUE FOR UPDATE",
-                    (id,),
+                    "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
+                    (sinal * quantidade, produto_id),
                 )
-                mov = cur.fetchone()
-                if not mov:
-                    return False, "Movimentação não encontrada."
-                produto_id, tipo, quantidade = mov
-                if produto_id:
-                    sinal = 1 if tipo == 'saida' else -1
-                    cur.execute(
-                        "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                        (sinal * quantidade, produto_id),
-                    )
-                cur.execute(
-                    "UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s",
-                    (id,),
-                )
-            conn.commit()
-            return True, "Movimentação excluída e saldo reajustado."
-        except Exception:
-            conn.rollback()
-            raise
+            cur.execute(
+                "UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s",
+                (id,),
+            )
+        return True, "Movimentação excluída e saldo reajustado."
     except Exception as e:
         print(f"Erro ao excluir movimentação {id}: {e}")
         return False, f"Erro ao excluir: {str(e)}"
-    finally:
-        if conn:
-            ConexaoBanco.liberar_conexao(conn)
-
-    try:
-        resultado = executar_query(query, (data_inicio, data_fim), fetch_all=True, dict_cursor=True)
-        movs = []
-        for r in resultado:
-            movs.append({
-                'id': r['id'], 'produto_nome': r['produto_nome'], 'tipo': r['tipo'],
-                'quantidade': r['quantidade'], 'unidade': r['unidade'],
-                'data_movimento': r['data_movimento'],
-                'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
-                'observacoes': r['observacoes']
-            })
-        return movs
-    except Exception as e:
-        print(f"Erro ao listar movimentações por período: {e}")
-        return []
 
 # =====================================================
 # FUNÇÕES DE RESUMO

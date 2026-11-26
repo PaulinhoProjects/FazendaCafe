@@ -101,8 +101,8 @@ def adicionar_resultado(id):
     return redirect(url_for('analises.detalhe', id=id))
 
 @analises_bp.route('/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir(id):
     try:
         sucesso, msg = analises.excluir_analise(id)

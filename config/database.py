@@ -161,7 +161,8 @@ def executar_transacao(funcao):
         # Garante que a conexão do pool comece sem transação pendente
         conn.rollback()
 
-        cursor = conn.cursor()
+        from psycopg2.extras import RealDictCursor
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         retorno = funcao(cursor)
         conn.commit()
         return retorno

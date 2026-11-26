@@ -84,8 +84,8 @@ def detalhe(id):
         return redirect(url_for('devolucao.listar'))
 
 @devolucao_bp.route('/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir(id):
     try:
         sucesso, msg = devolucao_embalagens.excluir_devolucao(id)

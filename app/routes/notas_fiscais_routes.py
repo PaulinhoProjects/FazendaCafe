@@ -76,8 +76,8 @@ def detalhe(id):
         return redirect(url_for('notas_fiscais.listar'))
 
 @notas_fiscais_bp.route('/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir(id):
     try:
         sucesso, msg = notas_fiscais.excluir_nota_fiscal(id)

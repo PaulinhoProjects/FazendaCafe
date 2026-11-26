@@ -93,8 +93,8 @@ def atualizar_status(id):
     return redirect(url_for('adubacao.detalhe_recomendacao', id=id))
 
 @adubacao_bp.route('/recomendacoes/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir_recomendacao(id):
     try:
         sucesso, msg = adubacao.excluir_recomendacao(id)
@@ -163,8 +163,8 @@ def detalhe_adubacao(id):
         return redirect(url_for('adubacao.listar_adubacoes'))
 
 @adubacao_bp.route('/adubacoes/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir_adubacao(id):
     try:
         sucesso, msg = adubacao.excluir_adubacao(id)

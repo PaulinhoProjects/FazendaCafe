@@ -99,8 +99,8 @@ def editar_produto(id):
         return redirect(url_for('estoque.listar_produtos'))
 
 @estoque_bp.route('/produtos/<int:id>/excluir', methods=['POST'])
-@admin_required
 @login_required
+@admin_required
 def excluir_produto(id):
     try:
         sucesso, mensagem = estoque.excluir_produto(id)

@@ -272,14 +272,14 @@ def adicionar_item_nota(nota_id, dados):
         )
         linha = cursor.fetchone()
         if linha:
-            produto_id = linha[0]
+            produto_id = linha['id']
         else:
             cursor.execute(
                 """INSERT INTO produtos_estoque (nome, unidade, categoria, estoque_minimo, quantidade_atual, ativo)
                    VALUES (%s, %s, %s, 0, 0, TRUE) RETURNING id""",
                 (nome_limpo, unidade, categoria)
             )
-            produto_id = cursor.fetchone()[0]
+            produto_id = cursor.fetchone()['id']
 
         # 2. Registrar movimentacao de entrada vinculada a NF
         obs = f"Entrada via NF - {dados.get('observacoes', '')}"
@@ -289,7 +289,7 @@ def adicionar_item_nota(nota_id, dados):
                VALUES (%s, 'entrada', %s, %s, CURRENT_DATE, %s, %s, %s) RETURNING id""",
             (produto_id, quantidade, unidade, valor_unitario, obs, nota_id)
         )
-        mov_id = cursor.fetchone()[0]
+        mov_id = cursor.fetchone()['id']
 
         # 3. Atualizar saldo do produto
         cursor.execute(
@@ -325,10 +325,10 @@ def remover_item_nota(movimentacao_id):
         if not r:
             raise ValueError("Item nao encontrado")
 
-        produto_id = r[0]
-        quantidade = float(r[1]) if r[1] else 0
-        nota_id = r[2]
-        valor_unit = float(r[3]) if r[3] else 0
+        produto_id = r['produto_id']
+        quantidade = float(r['quantidade']) if r['quantidade'] else 0
+        nota_id = r['nota_fiscal_id']
+        valor_unit = float(r['valor_unitario']) if r['valor_unitario'] else 0
 
         # Reverter o saldo do produto
         cursor.execute(
@@ -343,8 +343,8 @@ def remover_item_nota(movimentacao_id):
                 (quantidade, valor_unit, nota_id)
             )
 
-        # Excluir a movimentacao
-        cursor.execute("DELETE FROM movimentacoes_estoque WHERE id = %s", (movimentacao_id,))
+        # Excluir logicamente a movimentacao
+        cursor.execute("UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s", (movimentacao_id,))
         return True
 
     try:
