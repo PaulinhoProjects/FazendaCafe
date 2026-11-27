@@ -1,16 +1,111 @@
 """
-Módulo de Análises de Solo e Foliares
-Gerencia laboratórios, análises e resultados
+Módulo de Análises de Solo, Folha, Raiz, Água e demais laudos
+Gerencia laboratórios, análises, laudos em PDF e resultados
 """
 
 import sys
 import os
+import re
+import zlib
+import unicodedata
 import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query
+from database import executar_query, executar_transacao
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Ordem de prioridade: um laudo de raiz com "solo" no texto não vira Solo.
+# "Folha" é gravado no banco como "Foliar" (nome já existente no sistema).
+_PADROES_TIPO = (
+    ('Raiz (Nematódeos)', ('nematoid', 'nematode', 'nematodo', 'raiz', 'raizes',
+                           'root', 'meloidogyne', 'pratylenchus')),
+    ('Água', ('agua', 'irrig', 'water', 'hidro', 'hydro')),
+    ('Foliar', ('folha', 'foliar', 'leaf')),
+    ('Solo', ('solo', 'soil', 'terra')),
+    ('Substrato', ('substrato', 'turfa', 'fibra de coco')),
+)
+
+
+def _normalizar_texto(valor):
+    """Remove acentos e caixa para comparar nomes de arquivos e texto do PDF."""
+    return ''.join(
+        c for c in unicodedata.normalize('NFKD', str(valor or '').lower())
+        if not unicodedata.combining(c)
+    )
+
+
+def extrair_dica_texto_pdf(caminho, limite=50000):
+    """
+    Dica opcional de classificação lida do PDF com recursos da biblioteca padrão.
+    Não é extração de resultados: apenas termos para sugerir Solo/Folha/Raiz/Água.
+    Falha silenciosamente (logada) em PDFs com compressão/encoding diferente.
+    """
+    try:
+        with open(caminho, 'rb') as arquivo:
+            dados = arquivo.read(2_000_000)
+        pedacos = [dados]
+        for bloco in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', dados, re.S):
+            bruto = bloco.group(1)
+            try:
+                pedacos.append(zlib.decompress(bruto))
+            except Exception:
+                pedacos.append(bruto)
+        texto = b' '.join(pedacos)
+        trechos = re.findall(rb'[ -~]{4,}', texto)
+        return ' '.join(t.decode('latin-1', 'ignore') for t in trechos)[:limite]
+    except Exception as e:
+        logger.error(f"analises.extrair_dica_texto_pdf: {e}")
+        return ''
+
+
+def classificar_laudo(nome_arquivo, texto=''):
+    """Sugere o tipo de análise pelo nome do arquivo e, se houver, pelo texto do PDF."""
+    nome = _normalizar_texto(nome_arquivo)
+    corpo = _normalizar_texto(texto)
+    sugestao = 'Outros'
+    origem = 'arquivo'
+
+    for tipo, palavras in _PADROES_TIPO:
+        if any(palavra in nome for palavra in palavras):
+            sugestao = tipo
+            break
+    else:
+        origem = 'conteudo'
+        for tipo, palavras in _PADROES_TIPO:
+            if any(palavra in corpo for palavra in palavras):
+                sugestao = tipo
+                break
+
+    tipos = listar_tipos_analise()
+    por_nome = {_normalizar_texto(t['nome']): t for t in tipos}
+    tipo = por_nome.get(_normalizar_texto(sugestao))
+    if not tipo:
+        tipo = por_nome.get('outros') or {'id': None, 'nome': 'Outros'}
+    return {
+        'tipo_id': tipo['id'],
+        'tipo_nome': tipo['nome'],
+        'origem': origem if sugestao != 'Outros' else 'manual',
+    }
+
+
+def contar_por_tipo():
+    """Totais de análises ativas por tipo (para separar Solo/Folha/Raiz/Água)."""
+    query = """
+    SELECT tp.nome AS tipo_nome, tp.id AS tipo_id, COUNT(a.id) AS total
+    FROM tipos_analise tp
+    LEFT JOIN analises a ON a.tipo_analise_id = tp.id AND a.ativo = TRUE
+    WHERE tp.ativo = TRUE
+    GROUP BY tp.id, tp.nome
+    ORDER BY tp.nome
+    """
+    try:
+        resultado = executar_query(query, fetch_all=True, dict_cursor=True) or []
+        return [{'id': r['tipo_id'], 'nome': r['tipo_nome'], 'total': int(r['total'] or 0)}
+                for r in resultado]
+    except Exception as e:
+        logger.error(f"analises.contar_por_tipo: {e}")
+        return []
 
 # =====================================================
 # FUNÇÕES PARA TIPOS DE ANÁLISE
@@ -22,7 +117,7 @@ def listar_tipos_analise():
         resultado = executar_query(query, fetch_all=True, dict_cursor=True)
         return [{'id': r['id'], 'nome': r['nome']} for r in resultado] if resultado else []
     except Exception as e:
-        print(f"Erro ao listar tipos: {e}")
+        logger.error(f"Erro ao listar tipos: {e}")
         return []
 
 # =====================================================
@@ -40,7 +135,7 @@ def listar_parametros_por_tipo(tipo_analise_id):
         resultado = executar_query(query, (tipo_analise_id,), fetch_all=True, dict_cursor=True)
         return [{'id': r['id'], 'nome': r['nome'], 'unidade': r['unidade']} for r in resultado] if resultado else []
     except Exception as e:
-        print(f"Erro ao listar parâmetros: {e}")
+        logger.error(f"Erro ao listar parâmetros: {e}")
         return []
 
 # =====================================================
@@ -67,7 +162,7 @@ def listar_laboratorios():
             })
         return laboratorios
     except Exception as e:
-        print(f"Erro ao listar laboratórios: {e}")
+        logger.error(f"Erro ao listar laboratórios: {e}")
         return []
 
 def inserir_laboratorio(dados):
@@ -82,107 +177,74 @@ def inserir_laboratorio(dados):
             fetch_one=True, dict_cursor=True)
         return resultado['id'] if resultado else None
     except Exception as e:
-        print(f"Erro ao inserir laboratório: {e}")
+        logger.error(f"Erro ao inserir laboratório: {e}")
         return None
 
 # =====================================================
 # FUNÇÕES PARA ANÁLISES
 # =====================================================
 
-def listar_analises(talhao_id=None):
-    """Lista análises, opcionalmente filtradas por talhão"""
+_SQL_ANALISES = """
+SELECT a.id, a.talhao_id, t.nome AS talhao_nome,
+       a.tipo_analise_id, tp.nome AS tipo_nome,
+       a.laboratorio_id, l.nome AS lab_nome,
+       a.data_coleta, a.data_resultado, a.numero_protocolo,
+       a.responsavel_coleta, a.observacoes, a.arquivo_pdf, a.arquivo_original
+FROM analises a
+LEFT JOIN talhoes t ON t.id = a.talhao_id
+JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
+LEFT JOIN laboratorios l ON l.id = a.laboratorio_id
+WHERE a.ativo = TRUE
+"""
+
+
+def _mapear_analise(r):
+    return {
+        'id': r['id'],
+        'talhao_id': r['talhao_id'],
+        'talhao_nome': r['talhao_nome'],
+        'tipo_id': r['tipo_analise_id'],
+        'tipo_nome': r['tipo_nome'],
+        'laboratorio_id': r['laboratorio_id'],
+        'laboratorio_nome': r['lab_nome'],
+        'data_coleta': r['data_coleta'],
+        'data_resultado': r['data_resultado'],
+        'numero_protocolo': r['numero_protocolo'],
+        'responsavel': r['responsavel_coleta'],
+        'observacoes': r['observacoes'],
+        'arquivo_pdf': r['arquivo_pdf'],
+        'arquivo_original': r['arquivo_original'],
+    }
+
+
+def listar_analises(talhao_id=None, tipo_id=None, limite=100):
+    """Lista análises ativas; talhão é opcional (ex.: análise de água)."""
+    query = _SQL_ANALISES
+    params = []
     if talhao_id:
-        query = """
-        SELECT a.id, a.talhao_id, t.nome as talhao_nome,
-               a.tipo_analise_id, tp.nome as tipo_nome,
-               a.laboratorio_id, l.nome as lab_nome,
-               a.data_coleta, a.data_resultado, a.numero_protocolo,
-               a.responsavel_coleta, a.observacoes
-        FROM analises a
-        JOIN talhoes t ON t.id = a.talhao_id
-        JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
-        LEFT JOIN laboratorios l ON l.id = a.laboratorio_id
-        WHERE a.talhao_id = %s AND a.ativo = TRUE
-        ORDER BY a.data_coleta DESC
-        """
-        params = (talhao_id,)
-    else:
-        query = """
-        SELECT a.id, a.talhao_id, t.nome as talhao_nome,
-               a.tipo_analise_id, tp.nome as tipo_nome,
-               a.laboratorio_id, l.nome as lab_nome,
-               a.data_coleta, a.data_resultado, a.numero_protocolo,
-               a.responsavel_coleta, a.observacoes
-        FROM analises a
-        JOIN talhoes t ON t.id = a.talhao_id
-        JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
-        LEFT JOIN laboratorios l ON l.id = a.laboratorio_id
-        WHERE a.ativo = TRUE
-        ORDER BY a.data_coleta DESC
-        LIMIT 100
-        """
-        params = None
+        query += " AND a.talhao_id = %s"
+        params.append(talhao_id)
+    if tipo_id:
+        query += " AND a.tipo_analise_id = %s"
+        params.append(tipo_id)
+    query += " ORDER BY a.data_coleta DESC NULLS LAST, a.id DESC LIMIT %s"
+    params.append(limite)
 
     try:
-        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
-        if not resultado:
-            return []
-
-        analises = []
-        for r in resultado:
-            analises.append({
-                'id': r['id'],
-                'talhao_id': r['talhao_id'],
-                'talhao_nome': r['talhao_nome'],
-                'tipo_id': r['tipo_analise_id'],
-                'tipo_nome': r['tipo_nome'],
-                'laboratorio_id': r['laboratorio_id'],
-                'laboratorio_nome': r['lab_nome'],
-                'data_coleta': r['data_coleta'],
-                'data_resultado': r['data_resultado'],
-                'numero_protocolo': r['numero_protocolo'],
-                'responsavel': r['responsavel_coleta'],
-                'observacoes': r['observacoes']
-            })
-        return analises
+        resultado = executar_query(query, tuple(params), fetch_all=True, dict_cursor=True)
+        return [_mapear_analise(r) for r in resultado] if resultado else []
     except Exception as e:
-        print(f"Erro ao listar análises: {e}")
+        logger.error(f"Erro ao listar análises: {e}")
         return []
 
+
 def buscar_analise_por_id(id):
-    query = """
-    SELECT a.id, a.talhao_id, t.nome as talhao_nome,
-           a.tipo_analise_id, tp.nome as tipo_nome,
-           a.laboratorio_id, l.nome as lab_nome,
-           a.data_coleta, a.data_resultado, a.numero_protocolo,
-           a.responsavel_coleta, a.observacoes, a.arquivo_pdf
-    FROM analises a
-    JOIN talhoes t ON t.id = a.talhao_id
-    JOIN tipos_analise tp ON tp.id = a.tipo_analise_id
-    LEFT JOIN laboratorios l ON l.id = a.laboratorio_id
-    WHERE a.id = %s
-    """
     try:
-        r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
-        if r:
-            return {
-                'id': r['id'],
-                'talhao_id': r['talhao_id'],
-                'talhao_nome': r['talhao_nome'],
-                'tipo_id': r['tipo_analise_id'],
-                'tipo_nome': r['tipo_nome'],
-                'laboratorio_id': r['laboratorio_id'],
-                'laboratorio_nome': r['lab_nome'],
-                'data_coleta': r['data_coleta'],
-                'data_resultado': r['data_resultado'],
-                'numero_protocolo': r['numero_protocolo'],
-                'responsavel': r['responsavel_coleta'],
-                'observacoes': r['observacoes'],
-                'arquivo_pdf': r['arquivo_pdf']
-            }
-        return None
+        r = executar_query(_SQL_ANALISES + " AND a.id = %s", (id,),
+                           fetch_one=True, dict_cursor=True)
+        return _mapear_analise(r) if r else None
     except Exception as e:
-        print(f"Erro ao buscar análise: {e}")
+        logger.error(f"Erro ao buscar análise: {e}")
         return None
 
 # =====================================================
@@ -201,7 +263,7 @@ def inserir_resultado(dados):
             fetch_one=True, dict_cursor=True)
         return resultado['id'] if resultado else None
     except Exception as e:
-        print(f"Erro ao inserir resultado: {e}")
+        logger.error(f"Erro ao inserir resultado: {e}")
         return None
 
 def listar_resultados_por_analise(analise_id):
@@ -226,27 +288,57 @@ def listar_resultados_por_analise(analise_id):
             })
         return resultados
     except Exception as e:
-        print(f"Erro ao listar resultados: {e}")
+        logger.error(f"Erro ao listar resultados: {e}")
         return []
     
+_SQL_INSERIR_ANALISE = """
+INSERT INTO analises
+    (talhao_id, tipo_analise_id, laboratorio_id, data_coleta,
+     data_resultado, numero_protocolo, responsavel_coleta, observacoes,
+     arquivo_pdf, arquivo_original)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+"""
+
+
+def _valores_analise(dados):
+    return (
+        dados.get('talhao_id') or None,
+        dados['tipo_id'],
+        dados.get('laboratorio_id') or None,
+        dados.get('data_coleta') or None,
+        dados.get('data_resultado') or None,
+        dados.get('numero_protocolo') or None,
+        dados.get('responsavel') or None,
+        dados.get('observacoes') or None,
+        dados.get('arquivo_pdf') or None,
+        dados.get('arquivo_original') or None,
+    )
+
+
 def inserir_analise(dados):
-    query = """
-    INSERT INTO analises 
-        (talhao_id, tipo_analise_id, laboratorio_id, data_coleta, 
-         data_resultado, numero_protocolo, responsavel_coleta, observacoes, arquivo_pdf)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-    """
     try:
-        resultado = executar_query(query,
-            (dados['talhao_id'], dados['tipo_id'], dados.get('laboratorio_id'),
-             dados['data_coleta'], dados.get('data_resultado'),
-             dados.get('numero_protocolo'), dados.get('responsavel'),
-             dados.get('observacoes'), dados.get('arquivo_pdf')),  # <-- NOVO
-            fetch_one=True, dict_cursor=True)
+        resultado = executar_query(_SQL_INSERIR_ANALISE, _valores_analise(dados),
+                                   fetch_one=True, dict_cursor=True)
         return resultado['id'] if resultado else None
     except Exception as e:
         logger.error(f"analises.inserir_analise: {e}")
         return None
+
+
+def inserir_analises_lote(lista_dados):
+    """Grava vários laudos em uma única transação; rollback se qualquer um falhar."""
+    def operacao(cur):
+        ids = []
+        for dados in lista_dados:
+            cur.execute(_SQL_INSERIR_ANALISE, _valores_analise(dados))
+            ids.append(cur.fetchone()['id'])
+        return ids
+
+    try:
+        return executar_transacao(operacao)
+    except Exception as e:
+        logger.error(f"analises.inserir_analises_lote: {e}")
+        raise
 
 def atualizar_data_resultado(analise_id):
     """Atualiza a data_resultado para a data atual quando resultados são inseridos"""
@@ -255,7 +347,7 @@ def atualizar_data_resultado(analise_id):
         executar_query(query, (analise_id,))
         return True
     except Exception as e:
-        print(f"Erro ao atualizar data_resultado: {e}")
+        logger.error(f"Erro ao atualizar data_resultado: {e}")
         return False 
 
 def excluir_analise(id):
@@ -265,7 +357,7 @@ def excluir_analise(id):
         executar_query("UPDATE analises SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Análise excluída com sucesso"
     except Exception as e:
-        print(f"Erro ao excluir análise: {e}")
+        logger.error(f"Erro ao excluir análise: {e}")
         return False, f"Erro ao excluir: {str(e)}"
 
 def excluir_laboratorio(id):
@@ -281,7 +373,7 @@ def excluir_laboratorio(id):
         executar_query("UPDATE laboratorios SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Laboratório excluído com sucesso"
     except Exception as e:
-        print(f"Erro ao excluir laboratório: {e}")
+        logger.error(f"Erro ao excluir laboratório: {e}")
         return False, f"Erro ao excluir: {str(e)}"
 
 def excluir_parametro(id):
@@ -296,7 +388,7 @@ def excluir_parametro(id):
         executar_query("UPDATE parametros_analise SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Parâmetro excluído com sucesso"
     except Exception as e:
-        print(f"Erro ao excluir parâmetro: {e}")
+        logger.error(f"Erro ao excluir parâmetro: {e}")
         return False, f"Erro ao excluir: {str(e)}"
 
 def excluir_tipo_analise(id):
@@ -317,7 +409,7 @@ def excluir_tipo_analise(id):
         executar_query("UPDATE tipos_analise SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Tipo de análise excluído com sucesso"
     except Exception as e:
-        print(f"Erro ao excluir tipo de análise: {e}")
+        logger.error(f"Erro ao excluir tipo de análise: {e}")
         return False, f"Erro ao excluir: {str(e)}"
     
     
@@ -337,7 +429,7 @@ def buscar_laboratorio_por_id(id):
             }
         return None
     except Exception as e:
-        print(f"Erro ao buscar laboratório: {e}")
+        logger.error(f"Erro ao buscar laboratório: {e}")
         return None
 
 def atualizar_laboratorio(id, dados):
@@ -352,6 +444,6 @@ def atualizar_laboratorio(id, dados):
              dados['email'], dados['endereco'], dados['observacoes'], id))
         return True
     except Exception as e:
-        print(f"Erro ao atualizar laboratório: {e}")
+        logger.error(f"Erro ao atualizar laboratório: {e}")
         return False
 

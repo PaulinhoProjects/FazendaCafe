@@ -12,13 +12,13 @@
                 <div class="card-header"><h5 class="mb-0">Dados da Análise</h5></div>
                 <div class="card-body">
                     <table class="table table-borderless">
-                        <tr><th style="width:200px">Talhão</th><td>{{ analise.talhao_nome }}</td></tr>
+                        <tr><th style="width:200px">Talhão</th><td>{{ analise.talhao_nome or '—' }}</td></tr>
                         <tr><th>Tipo</th><td>{{ analise.tipo_nome }}</td></tr>
                         <tr><th>Laboratório</th><td>{{ analise.laboratorio_nome or '-' }}</td></tr>
                         <tr><th>Data Coleta</th><td>{{ analise.data_coleta|format_data if analise.data_coleta else '-' }}</td></tr>
                         <tr><th>Data Resultado</th><td>{{ analise.data_resultado|format_data if analise.data_resultado else 'Pendente' }}</td></tr>
                         <tr><th>Protocolo</th><td>{{ analise.numero_protocolo or '-' }}</td></tr>
-                        <tr><th>Responsável</th><td>{{ analise.responsavel_coleta or '-' }}</td></tr>
+                        <tr><th>Responsável</th><td>{{ analise.responsavel or '-' }}</td></tr>
                         <tr>
                             <th>Laudo PDF</th>
                             <td>
@@ -26,6 +26,7 @@
                                 <a href="{{ url_for('analises.arquivo', filename=analise.arquivo_pdf) }}" target="_blank" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-file-earmark-pdf me-1"></i>Abrir laudo
                                 </a>
+                                {% if analise.arquivo_original %}<small class="text-body-secondary d-block mt-1">{{ analise.arquivo_original }}</small>{% endif %}
                                 {% else %}-{% endif %}
                             </td>
                         </tr>

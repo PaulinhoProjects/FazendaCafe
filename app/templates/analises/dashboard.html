@@ -1,18 +1,33 @@
 {% extends "base.html" %}
-{% block titulo %}Análises{% endblock %}
+{% block titulo %}Análises e Laudos{% endblock %}
 {% block conteudo %}
 <div class="container-fluid">
     <div class="page-header">
-        <h1 class="page-title"><i class="bi bi-clipboard-data me-2"></i>Análises de Solo e Foliar</h1>
+        <h1 class="page-title"><i class="bi bi-clipboard-data me-2"></i>Análises e Laudos</h1>
         <div class="btn-group">
+            <a href="{{ url_for('analises.upload') }}" class="btn btn-primary btn-sm"><i class="bi bi-cloud-arrow-up me-1"></i>Enviar laudos PDF</a>
             <a href="{{ url_for('analises.nova') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Análise</a>
             <a href="{{ url_for('analises.listar_laboratorios') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-building me-1"></i>Laboratórios</a>
             <a href="{{ url_for('analises.listar_parametros') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list-check me-1"></i>Tipos e Parâmetros</a>
         </div>
     </div>
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-3"><div class="card text-white bg-success"><div class="card-body"><h6>Total de Análises</h6><h2>{{ total }}</h2></div></div></div>
         <div class="col-md-3"><div class="card text-white bg-info"><div class="card-body"><h6>Laboratórios</h6><h2>{{ total_labs }}</h2></div></div></div>
+    </div>
+    <div class="row mb-4">
+        {% for tipo in por_tipo or [] %}
+        <div class="col-md-2">
+            <a class="text-reset text-decoration-none" href="{{ url_for('analises.listar', tipo_id=tipo.id) }}">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-body-secondary mb-1">{{ tipo.nome }}</h6>
+                        <h3 class="mb-0">{{ tipo.total }}</h3>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
     </div>
     <div class="card shadow-sm">
         <div class="card-header"><h5 class="mb-0">Últimas Análises</h5></div>
@@ -24,7 +39,7 @@
                     {% for a in analises %}
                     <tr>
                         <td>{{ a.data_coleta|format_data if a.data_coleta else '-' }}</td>
-                        <td>{{ a.talhao_nome }}</td>
+                        <td>{{ a.talhao_nome or '—' }}</td>
                         <td><span class="badge bg-info">{{ a.tipo_nome }}</span></td>
                         <td>{{ a.laboratorio_nome or '-' }}</td>
                         <td>{{ a.numero_protocolo or '-' }}</td>

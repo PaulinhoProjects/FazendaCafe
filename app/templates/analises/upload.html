@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block titulo %}Enviar Laudos (PDF) — Análises{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('analises.dashboard') }}">Análises</a></li>
+<li class="breadcrumb-item active">Enviar laudos</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-cloud-arrow-up me-2"></i>Enviar Laudos (PDF)</h1>
+        <p class="page-subtitle">Envie vários laudos de uma vez; o sistema sugere Solo, Folha, Raiz (nematódeos), Água ou Outros</p>
+    </div>
+    <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Os PDFs são <strong>arquivados e classificados</strong>; os valores internos do laudo continuam podendo ser digitados depois no detalhe da análise.
+    A sugestão de tipo usa o nome do arquivo e, quando possível, o texto do PDF. Você poderá corrigir tudo antes de salvar.
+</div>
+
+<form method="POST" enctype="multipart/form-data" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12">
+                <label for="arquivos" class="form-label">Laudos em PDF <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="arquivos" name="arquivos"
+                       accept=".pdf,application/pdf" multiple required>
+                <div class="form-text">Até 20 arquivos por envio, com no máximo 25 MB cada.</div>
+            </div>
+            <div class="col-md-4">
+                <label for="laboratorio_id" class="form-label">Laboratório</label>
+                <select class="form-select" id="laboratorio_id" name="laboratorio_id">
+                    <option value="">Não informar</option>
+                    {% for l in laboratorios %}<option value="{{ l.id }}">{{ l.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="talhao_id" class="form-label">Talhão (opcional)</label>
+                <select class="form-select" id="talhao_id" name="talhao_id">
+                    <option value="">Sem talhão (ex.: análise de água)</option>
+                    {% for t in talhoes %}<option value="{{ t.id }}">{{ t.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="data_coleta" class="form-label">Data da coleta</label>
+                <input type="date" class="form-control" id="data_coleta" name="data_coleta" value="{{ hoje }}">
+                <div class="form-text">Vazio = hoje. Pode ser ajustada por laudo.</div>
+            </div>
+            <div class="col-md-6">
+                <label for="responsavel" class="form-label">Responsável pela coleta</label>
+                <input type="text" class="form-control" id="responsavel" name="responsavel" placeholder="Ex.: João">
+            </div>
+            <div class="col-md-6">
+                <label for="numero_protocolo" class="form-label">Protocolo (se for o mesmo para o lote)</label>
+                <input type="text" class="form-control" id="numero_protocolo" name="numero_protocolo">
+            </div>
+            <div class="col-12">
+                <label for="observacoes" class="form-label">Observações do lote</label>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end gap-2">
+        <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-right me-1"></i>Revisar laudos</button>
+    </div>
+</form>
+{% endblock %}

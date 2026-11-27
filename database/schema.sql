@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS parametros_analise (
 
 CREATE TABLE IF NOT EXISTS analises (
     id SERIAL PRIMARY KEY,
-    talhao_id INTEGER NOT NULL REFERENCES talhoes(id),
+    talhao_id INTEGER REFERENCES talhoes(id),
     tipo_analise_id INTEGER NOT NULL REFERENCES tipos_analise(id),
     laboratorio_id INTEGER REFERENCES laboratorios(id),
     data_coleta DATE DEFAULT CURRENT_DATE,
@@ -199,9 +199,14 @@ CREATE TABLE IF NOT EXISTS analises (
     responsavel_coleta VARCHAR(100),
     observacoes TEXT,
     arquivo_pdf TEXT,
+    arquivo_original VARCHAR(255),
     ativo BOOLEAN DEFAULT TRUE,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Laudos de água, substrato e outros não pertencem necessariamente a um talhão
+ALTER TABLE analises ALTER COLUMN talhao_id DROP NOT NULL;
+ALTER TABLE analises ADD COLUMN IF NOT EXISTS arquivo_original VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS resultados_analise (
     id SERIAL PRIMARY KEY,
@@ -343,7 +348,11 @@ ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO tipos_analise (nome, descricao) VALUES
     ('Solo', 'Análise química e física do solo'),
-    ('Foliar', 'Análise nutricional foliar')
+    ('Foliar', 'Análise nutricional de folhas'),
+    ('Raiz (Nematódeos)', 'Análise de raízes e nematódeos'),
+    ('Água', 'Análise de água de irrigação'),
+    ('Substrato', 'Análise de substrato e insumos'),
+    ('Outros', 'Outros laudos de laboratório')
 ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO tipos_adubacao (nome, descricao) VALUES

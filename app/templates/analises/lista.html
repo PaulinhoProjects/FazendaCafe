@@ -12,6 +12,7 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('relatorios.rel_analises') }}" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-pdf me-1"></i>Relatório</a>
+        <a href="{{ url_for('analises.upload') }}" class="btn btn-outline-primary"><i class="bi bi-cloud-arrow-up me-1"></i>Enviar laudos PDF</a>
         <a href="{{ url_for('analises.nova') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova Análise</a>
     </div>
 </div>
@@ -19,19 +20,28 @@
 <div class="empty-state">
     <i class="bi bi-clipboard-data"></i>
     <h5 class="mt-3">Nenhuma análise registrada ainda.</h5>
-    <a href="{{ url_for('analises.nova') }}" class="btn btn-primary mt-3">Registrar primeira análise</a>
+    <a href="{{ url_for('analises.upload') }}" class="btn btn-primary mt-3"><i class="bi bi-cloud-arrow-up me-1"></i>Enviar laudos PDF</a>
+    <a href="{{ url_for('analises.nova') }}" class="btn btn-outline-secondary mt-3">Registrar análise manualmente</a>
 </div>
 {% else %}
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="row g-2 mb-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <input type="text" id="buscaAnalise" class="form-control" placeholder="Buscar análise...">
+            </div>
+            <div class="col-md-2">
+                <select id="filtroTipo" class="form-select" onchange="filtrarAnalises()">
+                    <option value="">Todos os tipos</option>
+                    {% for tipo in tipos or [] %}
+                    <option value="{{ tipo.id }}" {% if tipo_id == tipo.id %}selected{% endif %}>{{ tipo.nome }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="col-md-3">
                 <input type="date" id="filtroDataInicio" class="form-control" placeholder="Data inicial">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <input type="date" id="filtroDataFim" class="form-control" placeholder="Data final">
             </div>
             <div class="col-md-2">
@@ -39,15 +49,20 @@
             </div>
         </div>
         <table class="table table-hover" id="tabelaAnalises">
-            <thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Laboratório</th><th>Protocolo</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Laboratório</th><th>Protocolo</th><th>Laudo</th><th>Ações</th></tr></thead>
             <tbody>
                 {% for a in analises %}
-                <tr>
+                <tr data-tipo="{{ a.tipo_id }}">
                     <td>{{ a.data_coleta|format_data if a.data_coleta else '-' }}</td>
-                    <td>{{ a.talhao_nome }}</td>
-                    <td>{{ a.tipo_nome }}</td>
+                    <td>{{ a.talhao_nome or '—' }}</td>
+                    <td><span class="badge bg-info text-dark">{{ a.tipo_nome }}</span></td>
                     <td>{{ a.laboratorio_nome or '-' }}</td>
                     <td>{{ a.numero_protocolo or '-' }}</td>
+                    <td>
+                        {% if a.arquivo_pdf %}
+                        <a href="{{ url_for('analises.arquivo', filename=a.arquivo_pdf) }}" target="_blank" title="{{ a.arquivo_original or 'Abrir laudo' }}"><i class="bi bi-file-earmark-pdf text-danger"></i></a>
+                        {% else %}-{% endif %}
+                    </td>
                     <td>
                         <a href="{{ url_for('analises.detalhe', id=a.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         {% if session.get('tipo') == 'admin' %}
@@ -70,24 +85,21 @@
 <script>
     function filtrarAnalises() {
         const busca = document.getElementById('buscaAnalise').value.toLowerCase();
-        const dataInicio = document.getElementById('filtroDataInicio').value;
-        const dataFim = document.getElementById('filtroDataFim').value;
+        const tipo = document.getElementById('filtroTipo').value;
         const linhas = document.querySelectorAll('#tabelaAnalises tbody tr');
         linhas.forEach(linha => {
             const texto = linha.textContent.toLowerCase();
-            let mostrar = texto.includes(busca);
+            const mostrar = texto.includes(busca) && (!tipo || linha.dataset.tipo === tipo);
             linha.style.display = mostrar ? '' : 'none';
         });
     }
     function limparFiltrosAnalise() {
         document.getElementById('buscaAnalise').value = '';
-        document.getElementById('filtroDataInicio').value = '';
-        document.getElementById('filtroDataFim').value = '';
+        document.getElementById('filtroTipo').value = '';
         filtrarAnalises();
     }
     document.getElementById('buscaAnalise').addEventListener('input', filtrarAnalises);
-    document.getElementById('filtroDataInicio').addEventListener('change', filtrarAnalises);
-    document.getElementById('filtroDataFim').addEventListener('change', filtrarAnalises);
+    document.getElementById('filtroTipo').addEventListener('change', filtrarAnalises);
     document.addEventListener('DOMContentLoaded', function() { paginarTabela('tabelaAnalises', 20); });
     document.addEventListener('DOMContentLoaded', function() { habilitarOrdenacao('tabelaAnalises'); });
 </script>
