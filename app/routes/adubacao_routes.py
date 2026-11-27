@@ -13,7 +13,7 @@ def dashboard():
     try:
         resumo = adubacao.resumo_nutricao()
         compras = adubacao.listar_compras(limite=6)
-        formulacoes = adubacao.listar_formulacoes(limite=8)
+        formulacoes = adubacao.listar_formulacoes(disponiveis=True, limite=8)
         aplicacoes = adubacao.listar_aplicacoes(limite=6)
         recomendacoes = adubacao.listar_recomendacoes()
         return render_template('adubacao/dashboard.html',
@@ -24,7 +24,7 @@ def dashboard():
                                recomendacoes=recomendacoes[:5],
                                alertas=adubacao.listar_alertas(),
                                total_recomendacoes=len(recomendacoes),
-                               total_adubacoes=len(aplicacoes))
+                               total_adubacoes=resumo.get('aplicacoes_30d', 0))
     except Exception as e:
         logger.error(f"adubacao_routes.dashboard: {e}")
         flash('Erro ao carregar painel.', 'error')
@@ -137,82 +137,20 @@ def excluir_recomendacao(id):
         flash('Erro ao excluir.', 'error')
     return redirect(url_for('adubacao.listar_recomendacoes'))
 
+# A adubação antiga (produtos digitados sem compra) foi substituída pelas
+# Aplicações da Nutrição, que baixam o saldo da formulação comprada.
 @adubacao_bp.route('/adubacoes')
 @login_required
 def listar_adubacoes():
-    try:
-        adubacoes = adubacao.listar_adubacoes()
-        return render_template('adubacao/adubacoes/lista.html', adubacoes=adubacoes)
-    except Exception as e:
-        logger.error(f"adubacao_routes.listar_adubacoes: {e}")
-        flash('Erro ao carregar adubacoes.', 'error')
-        return render_template('adubacao/adubacoes/lista.html', adubacoes=[])
+    return redirect(url_for('adubacao.listar_aplicacoes'))
+
 
 @adubacao_bp.route('/adubacoes/nova', methods=['GET', 'POST'])
 @login_required
 def nova_adubacao():
-    if request.method == 'POST':
-        try:
-            dados = {
-                'talhao_id': request.form.get('talhao_id'),
-                'recomendacao_id': request.form.get('recomendacao_id') or None,
-                'tipo_adubacao_id': request.form.get('tipo_adubacao_id') or None,
-                'data_aplicacao': request.form.get('data_aplicacao'),
-                'responsavel': request.form.get('responsavel'),
-                'observacoes': request.form.get('observacoes')
-            }
-            adub_id = adubacao.inserir_adubacao(dados)
-            if adub_id:
-                # Produtos utilizados (campos repetiveis no formulario)
-                produtos = request.form.getlist('produto_nome')
-                qtds_produto = request.form.getlist('produto_quantidade')
-                unidades_produto = request.form.getlist('produto_unidade')
-                custos = request.form.getlist('custo_unitario')
-                fornecedores = request.form.getlist('fornecedor')
-                for i, produto_nome in enumerate(produtos):
-                    if not (produto_nome or '').strip():
-                        continue
-                    adubacao.inserir_produto_adubacao({
-                        'adubacao_id': adub_id,
-                        'produto_nome': produto_nome.strip(),
-                        'quantidade': qtds_produto[i] if i < len(qtds_produto) else None,
-                        'unidade': unidades_produto[i] if i < len(unidades_produto) else None,
-                        'custo_unitario': custos[i] if i < len(custos) else None,
-                        'fornecedor': fornecedores[i] if i < len(fornecedores) else None
-                    })
+    flash('O registro de adubação agora é feito em Aplicações, a partir da formulação comprada.', 'info')
+    return redirect(url_for('adubacao.nova_aplicacao'))
 
-                # Nutrientes aplicados (campos repetiveis no formulario)
-                nutrientes = request.form.getlist('nutriente')
-                qtds_nutriente = request.form.getlist('quantidade_aplicada')
-                unidades_nutriente = request.form.getlist('unidade_nutriente')
-                for i, nutriente in enumerate(nutrientes):
-                    if not (nutriente or '').strip():
-                        continue
-                    adubacao.inserir_nutriente_aplicado({
-                        'adubacao_id': adub_id,
-                        'nutriente': nutriente.strip(),
-                        'quantidade_aplicada': qtds_nutriente[i] if i < len(qtds_nutriente) else None,
-                        'unidade': unidades_nutriente[i] if i < len(unidades_nutriente) else None
-                    })
-                flash('Adubacao registrada com sucesso!', 'success')
-                return redirect(url_for('adubacao.detalhe_adubacao', id=adub_id))
-            else:
-                flash('Erro ao registrar adubacao.', 'error')
-        except Exception as e:
-            logger.error(f"adubacao_routes.nova_adubacao: {e}")
-            flash(f'Erro: {e}', 'error')
-
-    try:
-        from app.modules import talhoes
-        talhoes_lista = talhoes.listar_talhoes()
-        tipos = adubacao.listar_tipos_adubacao()
-        recomendacoes = adubacao.listar_recomendacoes()
-        return render_template('adubacao/adubacoes/nova.html',
-                             talhoes=talhoes_lista, tipos=tipos, recomendacoes=recomendacoes)
-    except Exception as e:
-        logger.error(f"adubacao_routes.nova_adubacao: {e}")
-        flash('Erro ao carregar formulario.', 'error')
-        return redirect(url_for('adubacao.listar_adubacoes'))
 
 @adubacao_bp.route('/adubacoes/<int:id>')
 @login_required
@@ -496,6 +434,10 @@ def editar_aplicacao(id):
         formulacao = adubacao.buscar_formulacao(aplicacao['compra_item_id'])
         if formulacao:
             dados['formulacoes'].insert(0, formulacao)
+    # Na edição, a quantidade desta aplicação volta a contar como disponível
+    for f in dados['formulacoes']:
+        if f['id'] == aplicacao['compra_item_id']:
+            f['saldo_kg'] = float(f['saldo_kg'] or 0) + float(aplicacao['total_kg'] or 0)
     return render_template('adubacao/aplicacoes/form.html', aplicacao=aplicacao,
                            talhoes_aplicacao=adubacao.listar_talhoes_aplicacao(id),
                            **dados)

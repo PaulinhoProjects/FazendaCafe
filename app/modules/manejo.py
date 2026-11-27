@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 def get_timeline_manejo(limite=30):
     """Retorna timeline unificada de todas as atividades de manejo."""
@@ -34,27 +34,30 @@ def get_timeline_manejo(limite=30):
     except Exception as e:
         print(f"Erro ao buscar pulverizacoes no manejo: {e}")
 
-    # Adubacoes
+    # Nutrição e correção do solo (aplicações de formulações compradas)
     try:
         query = """
-        SELECT a.id, a.talhao_id, a.data_aplicacao, 'Adubacao' as tipo, t.nome as talhao,
-        ta.nome as detalhe, a.responsavel, NULL as data_retorno, NULL as status_retorno
-        FROM adubacoes a
-        JOIN talhoes t ON t.id = a.talhao_id
-        LEFT JOIN tipos_adubacao ta ON ta.id = a.tipo_adubacao_id
-        ORDER BY a.data_aplicacao DESC LIMIT %s
+        SELECT a.id, atl.talhao_id, a.data_aplicacao, 'Adubacao' as tipo, t.nome as talhao,
+               COALESCE(i.formulacao, i.produto) || ' · ' || atl.quantidade_kg || ' kg' as detalhe,
+               a.responsavel
+        FROM nutri_aplicacoes a
+        JOIN nutri_aplicacao_talhoes atl ON atl.aplicacao_id = a.id AND atl.ativo = TRUE
+        JOIN nutri_compra_itens i ON i.id = a.compra_item_id
+        JOIN talhoes t ON t.id = atl.talhao_id
+        WHERE a.ativo = TRUE
+        ORDER BY a.data_aplicacao DESC, a.id DESC LIMIT %s
         """
-        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True)
+        resultado = executar_query(query, (limite,), fetch_all=True, dict_cursor=True) or []
         for r in resultado:
             timeline.append({
                 'id': r['id'], 'talhao_id': r['talhao_id'], 'data': r['data_aplicacao'], 'tipo': r['tipo'], 'talhao': r['talhao'],
-                'detalhe': r['detalhe'] or 'Sem tipo', 'responsavel': r['responsavel'] or 'Nao informado',
-                'data_retorno': r['data_retorno'], 'status_retorno': r['status_retorno'],
-                'icone': 'bi-droplet-half', 'cor': 'success',
-                'url': '/adubacao/adubacoes/' + str(r['id'])
+                'detalhe': r['detalhe'] or 'Formulação', 'responsavel': r['responsavel'] or 'Nao informado',
+                'data_retorno': None, 'status_retorno': None,
+                'icone': 'bi-tree', 'cor': 'success',
+                'url': '/adubacao/aplicacoes/' + str(r['id'])
             })
     except Exception as e:
-        print(f"Erro ao buscar adubacoes no manejo: {e}")
+        print(f"Erro ao buscar aplicacoes de nutricao no manejo: {e}")
 
 
     # Analises
@@ -82,7 +85,7 @@ def get_timeline_manejo(limite=30):
         print(f"Erro ao buscar analises no manejo: {e}")
 
     # Ordenar por data decrescente
-    timeline.sort(key=lambda x: x['data'] if x['data'] else None, reverse=True)
+    timeline.sort(key=lambda x: x['data'] or date.min, reverse=True)
     return timeline[:limite]
 
 def get_resumo_manejo():
@@ -102,8 +105,9 @@ def get_resumo_manejo():
     # Adubacoes no ano
     try:
         resultado = executar_query("""
-            SELECT COUNT(*) AS total FROM adubacoes
-            WHERE EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
+            SELECT COUNT(*) AS total FROM nutri_aplicacoes
+            WHERE ativo = TRUE
+              AND EXTRACT(YEAR FROM data_aplicacao) = EXTRACT(YEAR FROM CURRENT_DATE)
         """, fetch_one=True, dict_cursor=True)
         resumo['adubacoes_ano'] = resultado['total'] if resultado and resultado['total'] else 0
     except Exception:

@@ -544,6 +544,12 @@ def _data(valor):
     return None
 
 
+def _numero_br(valor, casas=2):
+    """1.234,56 — usado nas mensagens exibidas ao usuário."""
+    texto = f"{float(valor or 0):,.{casas}f}"
+    return texto.replace(',', '#').replace('.', ',').replace('#', '.')
+
+
 def _kg(quantidade, unidade, peso_saco):
     """Converte a compra para kg, base comum de saldo e aplicação."""
     qtd = _decimal(quantidade)
@@ -839,7 +845,7 @@ def _validar_saldo(cur, compra_item_id, quantidade_aplicada, aplicacao_id=None):
     disponivel = float(item['quantidade_kg'] or 0) - usado
     if quantidade_aplicada > disponivel + 0.01:
         raise ValueError(
-            f'Quantidade acima do saldo disponível: {disponivel:,.2f} kg.'
+            f'Quantidade acima do saldo disponível: {_numero_br(disponivel)} kg.'
         )
     return item
 
@@ -948,7 +954,7 @@ def resumo_nutricao():
              'aplicacoes_30d': 0, 'aplicado_30d_kg': 0, 'talhoes_atendidos': 0}
     try:
         compras = executar_query("""
-            SELECT COUNT(*) AS total, COALESCE(SUM(i.valor_total), 0) AS valor
+            SELECT COUNT(DISTINCT c.id) AS total, COALESCE(SUM(i.valor_total), 0) AS valor
             FROM nutri_compras c
             JOIN nutri_compra_itens i ON i.compra_id = c.id AND i.ativo = TRUE
             WHERE c.ativo = TRUE AND c.data_nota >= date_trunc('month', CURRENT_DATE)
@@ -958,7 +964,7 @@ def resumo_nutricao():
             fetch_one=True, dict_cursor=True,
         )
         aplicacoes = executar_query("""
-            SELECT COUNT(*) AS total, COALESCE(SUM(atl.quantidade_kg), 0) AS kg,
+            SELECT COUNT(DISTINCT a.id) AS total, COALESCE(SUM(atl.quantidade_kg), 0) AS kg,
                    COUNT(DISTINCT atl.talhao_id) AS talhoes
             FROM nutri_aplicacoes a
             JOIN nutri_aplicacao_talhoes atl ON atl.aplicacao_id = a.id AND atl.ativo = TRUE
@@ -989,20 +995,25 @@ def listar_alertas():
         for item in baixos:
             alertas.append({
                 'tipo': 'danger', 'titulo': 'Saldo baixo: ' + (item['produto'] or 'formulação'),
-                'detalhe': f"Restam {float(item['saldo_kg'] or 0):,.2f} kg.",
+                'detalhe': f"Restam {_numero_br(item['saldo_kg'])} kg.",
                 'url': 'adubacao.formulacoes',
             })
+        # Só avisa validade de formulações que ainda têm saldo para usar
         vencidos = executar_query("""
-            SELECT i.produto, i.validade
-            FROM nutri_compra_itens i
-            WHERE i.ativo = TRUE AND i.validade IS NOT NULL
-              AND i.validade <= CURRENT_DATE + INTERVAL '30 days'
-            ORDER BY i.validade LIMIT 10
+            SELECT f.produto, f.validade, f.saldo_kg
+            FROM (""" + _SQL_FORMULACOES + """) AS f
+            WHERE f.saldo_kg > 0.009 AND f.validade IS NOT NULL
+              AND f.validade <= CURRENT_DATE + INTERVAL '30 days'
+            ORDER BY f.validade LIMIT 10
         """, fetch_all=True, dict_cursor=True) or []
         for item in vencidos:
+            vencido = item['validade'] < date.today()
             alertas.append({
-                'tipo': 'warning', 'titulo': 'Validade próxima: ' + (item['produto'] or 'formulação'),
-                'detalhe': f"Vence em {item['validade'].strftime('%d/%m/%Y')}.",
+                'tipo': 'danger' if vencido else 'warning',
+                'titulo': ('Vencido: ' if vencido else 'Validade próxima: ') + (item['produto'] or 'formulação'),
+                'detalhe': ('Venceu em ' if vencido else 'Vence em ')
+                + item['validade'].strftime('%d/%m/%Y')
+                + f" · saldo {_numero_br(item['saldo_kg'])} kg.",
                 'url': 'adubacao.formulacoes',
             })
     except Exception as e:
