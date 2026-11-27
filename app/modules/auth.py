@@ -1,9 +1,13 @@
 import hashlib
 import hmac
+import os
 from config.database import executar_query
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from datetime import datetime
+from app.models import get_logger
+
+logger = get_logger(__name__)
 
 class Usuario(UserMixin):
     def __init__(self, id, nome, login, tipo):
@@ -67,11 +71,24 @@ def criar_tabela_usuarios():
         count_res = executar_query("SELECT COUNT(*) AS total FROM usuarios", fetch_one=True, dict_cursor=True)
         count = count_res['total'] if count_res else 0
         if count == 0:
-            criar_usuario("Administrador", "admin", "admin123", "admin")
-            print("Usuario admin padrao criado: admin / admin123")
+            # Nunca gerar uma credencial fixa: cada instalação deve definir a
+            # senha inicial explicitamente. Nada é gravado em log.
+            senha_inicial = os.environ.get('ADMIN_BOOTSTRAP_SENHA', '')
+            if len(senha_inicial) < 12:
+                logger.error(
+                    "auth.criar_tabela_usuarios: banco sem usuários. Defina "
+                    "ADMIN_BOOTSTRAP_SENHA (mínimo 12 caracteres) antes de iniciar "
+                    "o sistema para provisionar o administrador inicial."
+                )
+                return False
+            criar_usuario("Administrador", "admin", senha_inicial, "admin")
+            logger.info(
+                "auth.criar_tabela_usuarios: administrador inicial provisionado "
+                "por ADMIN_BOOTSTRAP_SENHA."
+            )
         return True
     except Exception as e:
-        print(f"Erro ao criar tabela: {e}")
+        logger.error(f"auth.criar_tabela_usuarios: {e}")
         return False
 
 def buscar_usuario_por_id(user_id):

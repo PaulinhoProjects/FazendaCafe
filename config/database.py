@@ -6,86 +6,155 @@ CORRIGIDO - Versão estável com cálculo de pés de café
 import psycopg2
 from psycopg2 import pool
 import os
+import threading
+import logging
 from datetime import datetime
 import time
 from dotenv import load_dotenv
 from contextlib import contextmanager
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 class ConexaoBanco:
     """
-    Gerencia a conexão com o banco de dados usando pool de conexões
+    Pool thread-safe. Cada conexão é devolvida ao pool de origem, mesmo que o
+    pool global tenha sido recriado enquanto a requisição estava em andamento.
     """
     _pool = None
     _inicializado = False
-    
+    _pool_por_conexao = {}
+    _fechar_quando_livre = False
+
+    @classmethod
+    def _limites_pool(cls):
+        def inteiro(chave, padrao):
+            try:
+                return max(1, int(os.getenv(chave, padrao)))
+            except (TypeError, ValueError):
+                return padrao
+        minimo = inteiro('DB_POOL_MIN', 1)
+        maximo = inteiro('DB_POOL_MAX', 10)
+        return min(minimo, maximo), maximo
+
     @classmethod
     def inicializar_pool(cls):
-        """Inicializa o pool de conexões (apenas uma vez)"""
-        if cls._pool is None:
-            try:
-                print(f"[{datetime.now()}] Inicializando pool de conexões...")
-                cls._pool = psycopg2.pool.SimpleConnectionPool(
-                    1,
-                    10,
-                    host=os.getenv("DB_HOST", "localhost"),
-                    port=os.getenv("DB_PORT", "5432"),
-                    database=os.getenv("DB_NAME", "fazenda_cafe"),
-                    user=os.getenv("DB_USER", "postgres"),
-                    password=os.getenv("DB_PASSWORD"),
-                )
-                cls._inicializado = True
-                print(f"[{datetime.now()}] Pool de conexões inicializado com sucesso!")
-                return True
-            except Exception as e:
-                print(f"[{datetime.now()}] ERRO ao inicializar pool: {e}")
-                cls._pool = None
-                cls._inicializado = False
-                return False
-        return True
-    
-    @classmethod
-    def get_conexao(cls):
-        """Pega uma conexão do pool"""
-        if not cls._inicializado or cls._pool is None:
-            print("Pool não inicializado. Inicializando agora...")
-            if not cls.inicializar_pool():
-                return None
-        
+        """Inicializa o pool de conexões (apenas uma vez)."""
+        if cls._pool is not None:
+            return True
         try:
-            conn = cls._pool.getconn()
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            return conn
+            minimo, maximo = cls._limites_pool()
+            print(f"[{datetime.now()}] Inicializando pool de conexões ({minimo}-{maximo})...")
+            cls._pool = psycopg2.pool.ThreadedConnectionPool(
+                minimo,
+                maximo,
+                host=os.getenv("DB_HOST", "localhost"),
+                port=os.getenv("DB_PORT", "5432"),
+                database=os.getenv("DB_NAME", "fazenda_cafe"),
+                user=os.getenv("DB_USER", "postgres"),
+                password=os.getenv("DB_PASSWORD"),
+            )
+            cls._inicializado = True
+            cls._fechar_quando_livre = False
+            print(f"[{datetime.now()}] Pool de conexões inicializado com sucesso!")
+            return True
         except Exception as e:
-            print(f"Erro ao pegar conexão: {e}")
+            logger.error(f"Erro ao inicializar pool: {e}")
             cls._pool = None
             cls._inicializado = False
+            return False
+
+    @classmethod
+    def _descartar_conexao(cls, conn, pool, chave):
+        cls._pool_por_conexao.pop(conn, None)
+        try:
+            pool.putconn(conn, key=chave, close=True)
+        except Exception as e:
+            logger.error(f"Erro ao descartar conexão do pool: {e}")
+
+    @classmethod
+    def get_conexao(cls):
+        """Pega uma conexão válida. Falha de getconn NÃO descarta o pool."""
+        if cls._pool is None and not cls.inicializar_pool():
             return None
-    
+
+        pool = cls._pool
+        chave = threading.get_ident()
+        for tentativa in range(2):
+            try:
+                conn = pool.getconn(chave)
+            except psycopg2.pool.PoolError as e:
+                logger.warning(f"Pool de conexões saturado: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Erro ao pegar conexão: {e}")
+                return None
+
+            cls._pool_por_conexao[conn] = (pool, chave)
+            try:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute("SELECT 1")
+                finally:
+                    cursor.close()
+                return conn
+            except Exception as e:
+                logger.error(f"Conexão inválida no pool (descartada): {e}")
+                cls._descartar_conexao(conn, pool, chave)
+                if tentativa == 0:
+                    continue
+                return None
+        return None
+
     @classmethod
     def liberar_conexao(cls, conn):
-        """Devolve a conexão para o pool"""
+        """Devolve a conexão ao pool que a entregou, não ao pool atual."""
+        if not conn:
+            return
+        origem = cls._pool_por_conexao.pop(conn, None)
+        if origem is None:
+            origem = (cls._pool, threading.get_ident())
+        pool, chave = origem
+        if pool is None:
+            return
         try:
-            if cls._pool and conn:
-                cls._pool.putconn(conn)
+            pool.putconn(conn, key=chave)
         except Exception as e:
-            print(f"Erro ao liberar conexão: {e}")
-    
+            logger.error(f"Erro ao liberar conexão: {e}")
+            try:
+                pool.putconn(conn, key=chave, close=True)
+            except Exception as erro:
+                logger.error(f"Erro ao descartar conexão na liberação: {erro}")
+        finally:
+            if (cls._fechar_quando_livre and not cls._pool_por_conexao
+                    and pool is cls._pool):
+                cls._fechar_pool_atual()
+
+    @classmethod
+    def _fechar_pool_atual(cls):
+        pool = cls._pool
+        if pool is None:
+            return
+        try:
+            print(f"[{datetime.now()}] Fechando pool de conexões...")
+            pool.closeall()
+            print("Pool de conexões fechado.")
+        except Exception as e:
+            logger.error(f"Erro ao fechar pool: {e}")
+        cls._pool = None
+        cls._inicializado = False
+        cls._fechar_quando_livre = False
+
     @classmethod
     def fechar_pool(cls):
-        """Fecha todas as conexões"""
-        try:
-            if cls._pool:
-                print(f"[{datetime.now()}] Fechando pool de conexões...")
-                cls._pool.closeall()
-                cls._pool = None
-                cls._inicializado = False
-                print("Pool de conexões fechado.")
-        except Exception as e:
-            print(f"Erro ao fechar pool: {e}")
+        """Fecha o pool; se houver conexões em uso, espera a devolução."""
+        if cls._pool is None:
+            return
+        if cls._pool_por_conexao:
+            cls._fechar_quando_livre = True
+            logger.warning("Pool será fechado quando as conexões em uso retornarem.")
+            return
+        cls._fechar_pool_atual()
 
 # =====================================================
 # FUNÇÕES AUXILIARES DE QUERY

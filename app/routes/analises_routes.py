@@ -1,5 +1,5 @@
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   flash, current_app, send_from_directory, session)
+                   flash, current_app, send_from_directory, session, abort)
 from app.modules import analises
 from app.modules.login_manager import login_required, admin_required
 from app.models import get_logger
@@ -275,7 +275,10 @@ def upload_cancelar():
 @analises_bp.route('/arquivo/<path:filename>')
 @login_required
 def arquivo(filename):
-    """Serve o laudo PDF da análise."""
+    """Serve o laudo PDF da análise a partir da pasta privada de anexos."""
+    partes = filename.replace('\\', '/').split('/')
+    if not filename.lower().endswith('.pdf') or '..' in partes or '' in partes:
+        abort(404)
     try:
         return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
     except Exception as e:

@@ -26,8 +26,12 @@ def _carregar_chave_secreta():
         with open(_ARQUIVO_CHAVE, 'w', encoding='utf-8') as f:
             f.write(chave)
         return chave, 'arquivo'
-    except OSError:
-        return chave_env or secrets.token_urlsafe(48), 'padrao'
+    except OSError as e:
+        raise RuntimeError(
+            "Não foi possível carregar ou gravar a SECRET_KEY. "
+            "Defina SECRET_KEY com pelo menos 32 caracteres no .env ou permita "
+            "escrita em config/.secret_key."
+        ) from e
 
 
 _CHAVE, _ORIGEM_CHAVE = _carregar_chave_secreta()

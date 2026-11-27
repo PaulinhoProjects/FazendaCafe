@@ -1,14 +1,39 @@
 import os
-from flask import Flask
+import shutil
+import logging
+from flask import Flask, send_from_directory
 from config import Config
+
+logger = logging.getLogger(__name__)
+
+
+def _migrar_uploads(origem, destino):
+    """Move anexos antigos para fora da árvore pública, preservando subpastas."""
+    if not os.path.isdir(origem):
+        return
+    try:
+        for raiz, _, arquivos in os.walk(origem):
+            for nome in arquivos:
+                caminho_antigo = os.path.join(raiz, nome)
+                relativo = os.path.relpath(caminho_antigo, origem)
+                caminho_novo = os.path.join(destino, relativo)
+                os.makedirs(os.path.dirname(caminho_novo), exist_ok=True)
+                if os.path.exists(caminho_novo):
+                    continue
+                shutil.move(caminho_antigo, caminho_novo)
+    except Exception as e:
+        logger.error(f"_migrar_uploads: {e}")
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Pasta de uploads usada por notas fiscais, devoluções e PDFs do dashboard
-    upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+    # Anexos privados ficam fora da árvore servida por /static.
+    upload_dir = os.path.abspath(os.path.join(app.root_path, os.pardir, 'storage', 'uploads'))
+    upload_antigo = os.path.join(app.root_path, 'static', 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
+    _migrar_uploads(upload_antigo, upload_dir)
     app.config['UPLOAD_FOLDER'] = upload_dir
 
     # Jinja filters
@@ -185,9 +210,14 @@ def create_app(config_class=Config):
 
     try:
         from app.modules.auth import criar_tabela_usuarios
-        criar_tabela_usuarios()
+        if not criar_tabela_usuarios():
+            raise RuntimeError(
+                "Provisionamento inicial não concluído: configure ADMIN_BOOTSTRAP_SENHA "
+                "no .env (mínimo 12 caracteres) e reinicie o sistema."
+            )
     except Exception as e:
-        print(f"Aviso: tabela de usuarios nao verificada: {e}")
+        print(f"Erro: tabela de usuarios nao verificada: {e}")
+        raise
 
     # Criar tabela de configuracoes se nao existir
     try:
@@ -247,6 +277,7 @@ def create_app(config_class=Config):
     # Perfil: campos extras na tabela de usuários (foto, contato, preferências)
     try:
         from app.modules import perfil
+        perfil.PASTA_AVATARES = os.path.join(upload_dir, 'avatars')
         perfil.garantir_colunas()
     except Exception as e:
         print(f"Aviso: perfil: {e}")
@@ -265,6 +296,15 @@ def create_app(config_class=Config):
         seguranca.garantir_configs_padrao()
     except Exception as e:
         print(f"Aviso: seguranca: {e}")
+
+    # Links antigos (/static/uploads/...) continuam válidos, mas agora exigem
+    # sessão e são servidos da pasta privada, nunca da árvore pública.
+    from app.modules.login_manager import login_required
+
+    @app.route('/static/uploads/<path:filename>')
+    @login_required
+    def arquivo_upload_protegido(filename):
+        return send_from_directory(upload_dir, filename)
 
     registrar_protecoes_de_sessao(app)
     return app

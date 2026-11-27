@@ -52,8 +52,12 @@ def log(mensagem, tipo="INFO"):
     # Mostrar no console também
     print(linha.strip())
 
-def criar_backup_local():
-    """Cria um backup do banco de dados PostgreSQL"""
+def criar_backup_local(limpar=True):
+    """Cria um backup do banco de dados PostgreSQL.
+
+    'limpar=False' deixa a rotina de retenção para o orquestrador, que só deve
+    remover cópias antigas depois de validar o backup recém-criado.
+    """
     try:
         # Criar pasta de backup se não existir
         BACKUP_DIR.mkdir(exist_ok=True)
@@ -101,9 +105,10 @@ def criar_backup_local():
                 tamanho = arquivo_backup.stat().st_size
                 log(f"✅ Backup criado com sucesso! Tamanho: {tamanho/1024:.2f} KB")
                 
-                # Manter apenas os últimos 7 backups locais
-                limpar_backups_antigos(7)
-                
+                # A retenção é feita pelo orquestrador após a verificação
+                if limpar:
+                    limpar_backups_antigos(7)
+
                 return str(arquivo_backup)
             else:
                 log("❌ Arquivo de backup não foi criado", "ERRO")
@@ -129,16 +134,20 @@ def limpar_backups_antigos(manter=7):
     except Exception as e:
         log(f"Erro ao limpar backups antigos: {e}", "ERRO")
 
-def sincronizar_com_nuvem():
-    """Copia o último backup para a pasta da nuvem"""
+def sincronizar_com_nuvem(arquivo_backup=None):
+    """Copia o backup informado (ou o mais recente) para a pasta da nuvem."""
     try:
-        # Encontrar o backup mais recente
-        backups = sorted(BACKUP_DIR.glob("backup_*.sql"), key=os.path.getmtime)
-        if not backups:
-            log("Nenhum backup local encontrado para sincronizar", "AVISO")
-            return False
-        
-        ultimo_backup = backups[-1]
+        if arquivo_backup:
+            ultimo_backup = Path(arquivo_backup)
+            if not ultimo_backup.exists():
+                log(f"Backup informado para a nuvem não encontrado: {ultimo_backup}", "ERRO")
+                return False
+        else:
+            backups = sorted(BACKUP_DIR.glob("backup_*.sql"), key=os.path.getmtime)
+            if not backups:
+                log("Nenhum backup local encontrado para sincronizar", "AVISO")
+                return False
+            ultimo_backup = backups[-1]
         
         # Verificar se existe pasta do Google Drive
         possiveis_pastas = [
@@ -146,7 +155,7 @@ def sincronizar_com_nuvem():
             Path("C:/Users/paulo/Google Drive/Meu Drive"),
             Path("C:/Users/paulo/Dropbox"),
             Path("C:/Users/paulo/Dropbox (Pessoal)"),
-            Path("G:\Meu Drive"),
+            Path(r"G:\Meu Drive"),
         ]
         
         pasta_nuvem = None
@@ -216,26 +225,49 @@ def verificar_backup(arquivo_backup):
         return False
 
 def criar_backup_completo():
-    """Executa o processo completo de backup"""
+    """Executa o processo completo e retorna True somente se todas as etapas críticas passarem."""
     log("="*50)
     log("INICIANDO PROCESSO DE BACKUP")
     log("="*50)
-    
-    # 1. Backup local
-    arquivo_backup = criar_backup_local()
-    
+
+    etapas = {
+        'backup local': 'FALHA',
+        'verificação': 'NÃO EXECUTADA',
+        'cópia na nuvem': 'NÃO EXECUTADA',
+        'retenção local': 'NÃO EXECUTADA',
+    }
+
+    # 1. Dump local — sem rotacionar cópias antigas ainda
+    arquivo_backup = criar_backup_local(limpar=False)
     if arquivo_backup:
-        # 2. Sincronizar com nuvem
-        sincronizar_com_nuvem()
-        
-        # 3. Verificar integridade
-        verificar_backup(arquivo_backup)
-        
+        etapas['backup local'] = 'OK'
+
+    # 2. Verificar antes de promover ou rotacionar qualquer cópia
+    if arquivo_backup:
+        verificado = verificar_backup(arquivo_backup)
+        etapas['verificação'] = 'OK' if verificado else 'FALHA'
+
+        if verificado:
+            # 3. Promover para a nuvem somente o arquivo validado
+            etapas['cópia na nuvem'] = 'OK' if sincronizar_com_nuvem(arquivo_backup) else 'FALHA'
+
+            # 4. Agora sim remove backups antigos; a cópia nova já é íntegra
+            limpar_backups_antigos(7)
+            etapas['retenção local'] = 'OK'
+
+    log("Resultado por etapa: " + ", ".join(f"{nome}={status}" for nome, status in etapas.items()))
+    falhas = [nome for nome, status in etapas.items()
+              if nome != 'retenção local' and status != 'OK']
+    sucesso = not falhas
+
+    if sucesso:
         log("✅ Processo de backup concluído com sucesso!")
     else:
-        log("❌ Falha no processo de backup", "ERRO")
-    
+        log("❌ Falha no processo de backup: " + ", ".join(falhas), "ERRO")
+
     log("="*50 + "\n")
+    return sucesso
+
 
 if __name__ == "__main__":
-    criar_backup_completo()
+    sys.exit(0 if criar_backup_completo() else 1)
