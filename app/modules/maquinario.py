@@ -14,6 +14,7 @@ import os
 import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
 import requests
@@ -86,6 +87,13 @@ def _decimal(valor, padrao=0.0):
         return float(texto)
     except (TypeError, ValueError):
         return padrao
+
+
+def _decimal_1(valor):
+    """Quantiza na precisão do horímetro NUMERIC(12,1)."""
+    if valor is None or valor == "":
+        return Decimal("0.0")
+    return Decimal(str(valor)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
 def _inteiro(valor, padrao=0):
@@ -523,7 +531,20 @@ def _gravar_manutencao(id, dados):
     horimetro = _decimal(dados.get("horimetro"), None)
 
     def operacao(cursor):
+        anterior = None
+        if id:
+            cursor.execute(
+                "SELECT maquina_id, horimetro FROM maq_manutencoes WHERE id = %s AND ativo = TRUE",
+                (id,),
+            )
+            anterior = cursor.fetchone()
+            if not anterior:
+                raise ValueError("Manutenção não encontrada.")
+
+        horimetro_final = horimetro
         if horimetro is not None:
+            horimetro_dec = _decimal_1(horimetro)
+            horimetro_final = float(horimetro_dec)
             cursor.execute(
                 "SELECT horas_atuais FROM maq_maquinas WHERE id = %s AND ativo = TRUE FOR UPDATE",
                 (maquina_id,),
@@ -531,16 +552,28 @@ def _gravar_manutencao(id, dados):
             maquina = cursor.fetchone()
             if not maquina:
                 raise ValueError("Máquina não encontrada.")
-            if horimetro < float(maquina["horas_atuais"]):
+            horas_atuais = _decimal_1(maquina["horas_atuais"])
+            atualizar_maquina = True
+
+            if anterior and anterior["maquina_id"] == maquina_id:
+                horimetro_anterior = _decimal_1(anterior["horimetro"])
+                if horimetro_dec < horimetro_anterior:
+                    raise ValueError("O horímetro não pode ser menor que o registrado na manutenção.")
+                # Leitura histórica preservada: corrigir texto/valor não altera o horímetro da máquina.
+                if horimetro_dec == horimetro_anterior or horimetro_dec < horas_atuais:
+                    atualizar_maquina = False
+            elif horimetro_dec < horas_atuais:
                 raise ValueError("O horímetro não pode ser menor que o atual.")
-            cursor.execute(
-                "UPDATE maq_maquinas SET horas_atuais = %s WHERE id = %s",
-                (horimetro, maquina_id),
-            )
+
+            if atualizar_maquina:
+                cursor.execute(
+                    "UPDATE maq_maquinas SET horas_atuais = %s WHERE id = %s",
+                    (horimetro_final, maquina_id),
+                )
         campos = ("maquina_id", "tipo", "data_servico", "horimetro", "descricao",
                   "valor", "fornecedor", "proxima_data", "proximas_horas", "observacoes")
         valores = (
-            maquina_id, tipo, data_servico, horimetro, _texto(dados.get("descricao")),
+            maquina_id, tipo, data_servico, horimetro_final, _texto(dados.get("descricao")),
             _decimal(dados.get("valor")), _texto(dados.get("fornecedor")),
             _data(dados.get("proxima_data")),
             _decimal(dados.get("proximas_horas"), None), _texto(dados.get("observacoes")),

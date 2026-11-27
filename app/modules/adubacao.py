@@ -8,9 +8,13 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
 from database import executar_query, executar_transacao
 from datetime import datetime, date
+from decimal import Decimal, ROUND_HALF_UP
 from app.models import get_logger
 
 logger = get_logger(__name__)
+
+# Namespace fixo de advisory locks: compra e aplicação disputam a mesma chave.
+_LOCK_NUTRI_COMPRA = 61027
 
 # =====================================================
 # FUNÇÕES PARA TIPOS DE ADUBAÇÃO
@@ -500,6 +504,13 @@ def _texto(valor):
     return texto or None
 
 
+def _decimal_2(valor):
+    """Quantiza na precisão das colunas NUMERIC(14,2) do banco."""
+    if valor is None or valor == '':
+        return Decimal('0.00')
+    return Decimal(str(valor)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 def _decimal(valor, padrao=0.0):
     if valor is None or valor == '':
         return padrao
@@ -569,11 +580,16 @@ def _normalizar_talhoes(talhoes):
         normalizados.append({
             'talhao_id': talhao_id,
             'recomendacao_id': _inteiro(item.get('recomendacao_id')),
-            'quantidade_kg': quantidade,
+            'quantidade_kg': float(_decimal_2(quantidade)),
             'area_ha': _decimal(item.get('area_ha')) or None,
             'observacoes': _texto(item.get('observacoes')),
         })
     return normalizados
+
+
+def _bloquear_compra(cur, compra_id):
+    """Advisory lock de transação: serialize exclusão e aplicações da mesma nota."""
+    cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", (_LOCK_NUTRI_COMPRA, int(compra_id)))
 
 
 # ---------------------------- Compras --------------------------------------
@@ -698,6 +714,7 @@ def atualizar_compra(id, dados):
 def excluir_compra(id):
     """Exclusão lógica; bloqueia notas com aplicações ativas."""
     def operacao(cur):
+        _bloquear_compra(cur, id)
         cur.execute("""
             SELECT COUNT(*) AS total
             FROM nutri_aplicacoes a
@@ -822,7 +839,15 @@ def listar_aplicacoes_formulacao(compra_item_id):
 
 
 def _validar_saldo(cur, compra_item_id, quantidade_aplicada, aplicacao_id=None):
-    """Trava a linha da formulação e valida o saldo antes de gravar a aplicação."""
+    """Trava a nota e a formulação antes de validar o saldo na precisão do banco."""
+    cur.execute("""
+        SELECT compra_id FROM nutri_compra_itens WHERE id = %s
+    """, (compra_item_id,))
+    linha = cur.fetchone()
+    if not linha:
+        raise ValueError('Formulação comprada não encontrada.')
+    _bloquear_compra(cur, linha['compra_id'])
+
     cur.execute("""
         SELECT quantidade_kg FROM nutri_compra_itens
         WHERE id = %s AND ativo = TRUE FOR UPDATE
@@ -841,9 +866,9 @@ def _validar_saldo(cur, compra_item_id, quantidade_aplicada, aplicacao_id=None):
         sql += " AND a.id <> %s"
         params.append(aplicacao_id)
     cur.execute(sql, tuple(params))
-    usado = float(cur.fetchone()['usado'] or 0)
-    disponivel = float(item['quantidade_kg'] or 0) - usado
-    if quantidade_aplicada > disponivel + 0.01:
+    usado = _decimal_2(cur.fetchone()['usado'])
+    disponivel = _decimal_2(item['quantidade_kg']) - usado
+    if _decimal_2(quantidade_aplicada) > disponivel:
         raise ValueError(
             f'Quantidade acima do saldo disponível: {_numero_br(disponivel)} kg.'
         )
