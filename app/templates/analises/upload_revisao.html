@@ -20,7 +20,8 @@
     A sugestão é automática. Use os campos abaixo para corrigir tipo, talhão e data de cada laudo.
 </div>
 
-<form method="POST" action="{{ url_for('analises.upload_confirmar') }}">
+<form method="POST" action="{{ url_for('analises.upload_confirmar') }}" id="formConfirmarLote">
+    <input type="hidden" name="lote" value="{{ token }}">
     <div class="card shadow-sm">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -73,8 +74,20 @@
             <button type="submit" formaction="{{ url_for('analises.upload_cancelar') }}" class="btn btn-outline-danger">
                 <i class="bi bi-x-circle me-1"></i>Cancelar envio
             </button>
-            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Salvar laudos</button>
+            <button type="submit" class="btn btn-success" id="btnSalvarLote"><i class="bi bi-check-circle me-1"></i>Salvar laudos</button>
         </div>
     </div>
 </form>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+// Evita o duplo clique: o servidor também recusa uma segunda confirmação do mesmo lote
+document.getElementById('formConfirmarLote').addEventListener('submit', function (e) {
+    if (e.submitter && e.submitter.id === 'btnSalvarLote') {
+        var b = e.submitter;
+        setTimeout(function () { b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando…'; }, 0);
+    }
+});
+</script>
 {% endblock %}

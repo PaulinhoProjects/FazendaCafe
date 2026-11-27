@@ -20,14 +20,17 @@
     A sugestão de tipo usa o nome do arquivo e, quando possível, o texto do PDF. Você poderá corrigir tudo antes de salvar.
 </div>
 
-<form method="POST" enctype="multipart/form-data" class="card shadow-sm">
+<form method="POST" enctype="multipart/form-data" class="card shadow-sm" id="formLaudos">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-12">
                 <label for="arquivos" class="form-label">Laudos em PDF <span class="text-danger">*</span></label>
                 <input type="file" class="form-control" id="arquivos" name="arquivos"
                        accept=".pdf,application/pdf" multiple required>
-                <div class="form-text">Até 20 arquivos por envio, com no máximo 25 MB cada.</div>
+                <div class="form-text" id="limitesLaudos">Até {{ limites.quantidade }} PDFs por envio, com no máximo
+                    {{ ('%g'|format(limites.por_arquivo_mb)).replace('.', ',') }} MB cada e
+                    {{ ('%g'|format(limites.total_mb)).replace('.', ',') }} MB somando todos.</div>
+                <div class="form-text text-danger d-none" id="avisoLaudos"></div>
             </div>
             <div class="col-md-4">
                 <label for="laboratorio_id" class="form-label">Laboratório</label>
@@ -67,4 +70,25 @@
         <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-right me-1"></i>Revisar laudos</button>
     </div>
 </form>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    var campo = document.getElementById('arquivos'), aviso = document.getElementById('avisoLaudos');
+    var porArquivo = {{ limites.por_arquivo }}, total = {{ limites.total }}, maximo = {{ limites.quantidade }};
+    function conferir() {
+        var arquivos = Array.from(campo.files || []), soma = 0, grandes = [];
+        arquivos.forEach(function (a) { soma += a.size; if (a.size > porArquivo) grandes.push(a.name); });
+        var msg = '';
+        if (arquivos.length > maximo) msg = 'Selecione no máximo ' + maximo + ' PDFs.';
+        else if (grandes.length) msg = 'Acima do limite por arquivo: ' + grandes.join(', ');
+        else if (soma > total) msg = 'Os arquivos somam ' + (soma / 1048576).toFixed(1).replace('.', ',') + ' MB; envie em mais de uma vez.';
+        aviso.textContent = msg; aviso.classList.toggle('d-none', !msg);
+        return !msg;
+    }
+    campo.addEventListener('change', conferir);
+    document.getElementById('formLaudos').addEventListener('submit', function (e) { if (!conferir()) e.preventDefault(); });
+})();
+</script>
 {% endblock %}

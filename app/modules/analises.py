@@ -35,25 +35,44 @@ def _normalizar_texto(valor):
     )
 
 
-def extrair_dica_texto_pdf(caminho, limite=50000):
+def extrair_dica_texto_pdf(caminho, limite=50000, max_entrada=2_000_000, max_descompactado=4_000_000):
     """
     Dica opcional de classificação lida do PDF com recursos da biblioteca padrão.
     Não é extração de resultados: apenas termos para sugerir Solo/Folha/Raiz/Água.
+    Lê no máximo `max_entrada` bytes do arquivo, descompacta no máximo
+    `max_descompactado` bytes no total e para assim que junta `limite` caracteres.
     Falha silenciosamente (logada) em PDFs com compressão/encoding diferente.
     """
     try:
         with open(caminho, 'rb') as arquivo:
-            dados = arquivo.read(2_000_000)
-        pedacos = [dados]
+            dados = arquivo.read(max_entrada)
+        partes, total = [], 0
+
+        def juntar(bloco):
+            nonlocal total
+            for trecho in re.findall(rb'[ -~]{4,}', bloco):
+                texto = trecho.decode('latin-1', 'ignore')
+                partes.append(texto)
+                total += len(texto) + 1
+                if total >= limite:
+                    return True
+            return False
+
+        if juntar(dados):
+            return ' '.join(partes)[:limite]
+        orcamento = max_descompactado
         for bloco in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', dados, re.S):
-            bruto = bloco.group(1)
+            if orcamento <= 0:
+                break
             try:
-                pedacos.append(zlib.decompress(bruto))
-            except Exception:
-                pedacos.append(bruto)
-        texto = b' '.join(pedacos)
-        trechos = re.findall(rb'[ -~]{4,}', texto)
-        return ' '.join(t.decode('latin-1', 'ignore') for t in trechos)[:limite]
+                descompactador = zlib.decompressobj()
+                saida = descompactador.decompress(bloco.group(1), orcamento)
+            except zlib.error:
+                continue  # bloco sem zlib: o texto cru já foi lido acima
+            orcamento -= len(saida)
+            if juntar(saida):
+                break
+        return ' '.join(partes)[:limite]
     except Exception as e:
         logger.error(f"analises.extrair_dica_texto_pdf: {e}")
         return ''
@@ -87,6 +106,17 @@ def classificar_laudo(nome_arquivo, texto=''):
         'tipo_nome': tipo['nome'],
         'origem': origem if sugestao != 'Outros' else 'manual',
     }
+
+
+def contar_analises():
+    """Total de análises ativas (sem o limite da listagem)."""
+    try:
+        r = executar_query("SELECT COUNT(*) AS total FROM analises WHERE ativo = TRUE",
+                           fetch_one=True, dict_cursor=True)
+        return int(r['total'] or 0) if r else 0
+    except Exception as e:
+        logger.error(f"analises.contar_analises: {e}")
+        return 0
 
 
 def contar_por_tipo():

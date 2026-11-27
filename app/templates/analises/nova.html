@@ -48,7 +48,7 @@
                 <div class="mb-3">
                     <label class="form-label">Laudo PDF (opcional)</label>
                     <input type="file" name="arquivo_pdf" class="form-control" accept=".pdf,application/pdf">
-                    <div class="form-text">Envie somente o laudo em PDF. O arquivo fica ligado a esta análise.</div>
+                    <div class="form-text">Envie somente o laudo em PDF, até {{ ('%g'|format(limites.por_arquivo_mb)).replace('.', ',') if limites else '10' }} MB. O arquivo fica ligado a esta análise.</div>
                 </div>
                 <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Registrar</button>
                 <a href="{{ url_for('analises.listar') }}" class="btn btn-outline-secondary">Cancelar</a>

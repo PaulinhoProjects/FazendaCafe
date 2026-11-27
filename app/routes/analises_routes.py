@@ -3,7 +3,10 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
 from app.modules import analises
 from app.modules.login_manager import login_required, admin_required
 from app.models import get_logger
+import json
 import os
+import re
+import time
 import uuid
 from datetime import date
 
@@ -11,8 +14,10 @@ logger = get_logger(__name__)
 analises_bp = Blueprint('analises', __name__, url_prefix='/analises')
 
 MAX_PDFS_POR_LOTE = 20
-MAX_PDF_BYTES = 25 * 1024 * 1024
-CHAVE_SESSAO_UPLOAD = 'laudos_upload'
+MAX_PDF_BYTES_PADRAO = 10 * 1024 * 1024
+CHAVE_SESSAO_UPLOAD = 'laudos_lote'
+HORAS_TEMPORARIO = 24
+_TOKEN_VALIDO = re.compile(r'^[0-9a-f]{32}$')
 
 
 def _dir_laudos():
@@ -25,25 +30,97 @@ def _dir_temporarios():
     return caminho
 
 
+def limites_upload():
+    """Limites efetivos: por arquivo e por envio (o Flask recusa a requisição acima do total)."""
+    total = int(current_app.config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
+    por_arquivo = min(MAX_PDF_BYTES_PADRAO, total)
+    return {
+        'por_arquivo': por_arquivo,
+        'total': total,
+        'quantidade': MAX_PDFS_POR_LOTE,
+        'por_arquivo_mb': round(por_arquivo / (1024 * 1024), 1),
+        'total_mb': round(total / (1024 * 1024), 1),
+    }
+
+
+def _mb(valor):
+    return f"{valor:g}".replace('.', ',')
+
+
+def _manifesto(token, sufixo='json'):
+    return os.path.join(_dir_temporarios(), f'lote_{token}.{sufixo}')
+
+
+def _gravar_manifesto(token, conteudo, sufixo='json'):
+    caminho = _manifesto(token, sufixo)
+    provisorio = caminho + '.parcial'
+    with open(provisorio, 'w', encoding='utf-8') as arquivo:
+        json.dump(conteudo, arquivo, ensure_ascii=False)
+    os.replace(provisorio, caminho)
+
+
+def _ler_manifesto(token, sufixo='json'):
+    try:
+        with open(_manifesto(token, sufixo), encoding='utf-8') as arquivo:
+            return json.load(arquivo)
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def _remover(caminho):
+    try:
+        if os.path.isfile(caminho):
+            os.remove(caminho)
+    except Exception as e:
+        logger.error(f"analises_routes._remover: {e}")
+
+
 def _limpar_temporarios(itens):
     for item in itens or []:
-        caminho = os.path.join(_dir_temporarios(), item.get('nome_temp') or '')
-        try:
-            if os.path.isfile(caminho):
-                os.remove(caminho)
-        except Exception as e:
-            logger.error(f"analises_routes._limpar_temporarios: {e}")
+        _remover(os.path.join(_dir_temporarios(), os.path.basename(item.get('nome_temp') or '')))
+
+
+def _descartar_lote(token):
+    """Apaga PDFs temporários e o manifesto de um lote que não foi confirmado."""
+    if not token or not _TOKEN_VALIDO.match(token):
+        return
+    lote = _ler_manifesto(token)
+    if lote:
+        _limpar_temporarios(lote.get('itens'))
+    _remover(_manifesto(token))
+
+
+def _limpar_abandonados():
+    """Remove temporários e manifestos com mais de HORAS_TEMPORARIO horas (envios abandonados)."""
+    limite = time.time() - HORAS_TEMPORARIO * 3600
+    try:
+        pasta = _dir_temporarios()
+        for nome in os.listdir(pasta):
+            caminho = os.path.join(pasta, nome)
+            if os.path.isfile(caminho) and os.path.getmtime(caminho) < limite:
+                _remover(caminho)
+    except Exception as e:
+        logger.error(f"analises_routes._limpar_abandonados: {e}")
+
+
+@analises_bp.errorhandler(413)
+def upload_grande_demais(_erro):
+    limites = limites_upload()
+    flash(f"O envio passou do limite de {_mb(limites['total_mb'])} MB no total. "
+          f"Envie menos arquivos por vez.", 'warning')
+    destino = 'analises.nova' if request.endpoint == 'analises.nova' else 'analises.upload'
+    return redirect(url_for(destino))
 
 
 @analises_bp.route('/')
 @login_required
 def dashboard():
     try:
-        lista = analises.listar_analises()
+        lista = analises.listar_analises(limite=10)
         laboratorios = analises.listar_laboratorios()
         tipos = analises.listar_tipos_analise()
         return render_template('analises/dashboard.html',
-                             analises=lista[:10], total=len(lista),
+                             analises=lista, total=analises.contar_analises(),
                              total_labs=len(laboratorios), tipos=tipos,
                              por_tipo=analises.contar_por_tipo())
     except Exception as e:
@@ -65,10 +142,28 @@ def listar():
         flash('Erro ao carregar analises.', 'error')
         return render_template('analises/lista.html', analises=[], tipos=[], tipo_id=None)
 
+
+def _tamanho(arquivo):
+    arquivo.seek(0, 2)
+    tamanho = arquivo.tell()
+    arquivo.seek(0)
+    return tamanho
+
+
+def _form_nova():
+    from app.modules import talhoes
+    return render_template('analises/nova.html',
+                           talhoes=talhoes.listar_talhoes(),
+                           tipos=analises.listar_tipos_analise(),
+                           laboratorios=analises.listar_laboratorios(),
+                           limites=limites_upload())
+
+
 @analises_bp.route('/nova', methods=['GET', 'POST'])
 @login_required
 def nova():
     if request.method == 'POST':
+        caminho_salvo = None
         try:
             dados = {
                 'talhao_id': request.form.get('talhao_id') or None,
@@ -86,32 +181,38 @@ def nova():
             arquivo = request.files.get('arquivo_pdf')
             if arquivo and arquivo.filename:
                 nome_original = os.path.basename(arquivo.filename.replace('\\', '/'))[:255]
+                limites = limites_upload()
+                # Arquivo inválido interrompe o envio: nada é cadastrado sem o anexo escolhido
                 if not nome_original.lower().endswith('.pdf'):
-                    flash('O laudo deve ser um arquivo PDF.', 'error')
-                else:
-                    nome_arquivo = f"laudo_{uuid.uuid4().hex[:12]}.pdf"
-                    os.makedirs(_dir_laudos(), exist_ok=True)
-                    arquivo.save(os.path.join(_dir_laudos(), nome_arquivo))
-                    dados['arquivo_pdf'] = 'laudos/' + nome_arquivo
-                    dados['arquivo_original'] = nome_original
+                    flash('O laudo deve ser um arquivo PDF. Nada foi salvo.', 'error')
+                    return _form_nova()
+                tamanho = _tamanho(arquivo)
+                if tamanho == 0 or tamanho > limites['por_arquivo']:
+                    flash(f"O PDF está vazio ou passa de {_mb(limites['por_arquivo_mb'])} MB. Nada foi salvo.", 'error')
+                    return _form_nova()
+                nome_arquivo = f"laudo_{uuid.uuid4().hex[:12]}.pdf"
+                os.makedirs(_dir_laudos(), exist_ok=True)
+                caminho_salvo = os.path.join(_dir_laudos(), nome_arquivo)
+                arquivo.save(caminho_salvo)
+                dados['arquivo_pdf'] = 'laudos/' + nome_arquivo
+                dados['arquivo_original'] = nome_original
 
             analise_id = analises.inserir_analise(dados)
             if analise_id:
                 flash('Analise registrada!', 'success')
                 return redirect(url_for('analises.detalhe', id=analise_id))
-            else:
-                flash('Erro ao registrar.', 'error')
+            # Falhou a gravação: o PDF salvo não pode ficar órfão
+            if caminho_salvo:
+                _remover(caminho_salvo)
+            flash('Erro ao registrar.', 'error')
         except Exception as e:
             logger.error(f"analises_routes.nova: {e}")
+            if caminho_salvo:
+                _remover(caminho_salvo)
             flash(f'Erro: {e}', 'error')
 
     try:
-        from app.modules import talhoes
-        talhoes_lista = talhoes.listar_talhoes()
-        tipos = analises.listar_tipos_analise()
-        laboratorios = analises.listar_laboratorios()
-        return render_template('analises/nova.html',
-                             talhoes=talhoes_lista, tipos=tipos, laboratorios=laboratorios)
+        return _form_nova()
     except Exception as e:
         logger.error(f"analises_routes.nova: {e}")
         flash('Erro ao carregar formulario.', 'error')
@@ -121,6 +222,8 @@ def nova():
 @login_required
 def upload():
     """Envia vários laudos em PDF e sugere Solo/Folha/Raiz/Água antes de salvar."""
+    _limpar_abandonados()
+    limites = limites_upload()
     if request.method == 'POST':
         from app.modules import talhoes
 
@@ -149,15 +252,13 @@ def upload():
                 erros.append(f'{nome_original}: ignorado — envie apenas PDF.')
                 continue
             try:
-                arquivo.seek(0, 2)
-                tamanho = arquivo.tell()
-                arquivo.seek(0)
+                tamanho = _tamanho(arquivo)
             except Exception as e:
                 logger.error(f"analises_routes.upload (tamanho): {e}")
                 erros.append(f'{nome_original}: não foi possível ler o arquivo.')
                 continue
-            if tamanho == 0 or tamanho > MAX_PDF_BYTES:
-                erros.append(f'{nome_original}: PDF vazio ou maior que 25 MB.')
+            if tamanho == 0 or tamanho > limites['por_arquivo']:
+                erros.append(f"{nome_original}: PDF vazio ou maior que {_mb(limites['por_arquivo_mb'])} MB.")
                 continue
 
             nome_temp = f"temp_{uuid.uuid4().hex}.pdf"
@@ -191,9 +292,12 @@ def upload():
         if not itens:
             return redirect(url_for('analises.upload'))
 
-        _limpar_temporarios(session.pop(CHAVE_SESSAO_UPLOAD, None))
-        session[CHAVE_SESSAO_UPLOAD] = itens
-        return render_template('analises/upload_revisao.html', itens=itens,
+        # O lote fica no servidor; o navegador guarda só o identificador
+        _descartar_lote(session.pop(CHAVE_SESSAO_UPLOAD, None))
+        token = uuid.uuid4().hex
+        _gravar_manifesto(token, {'usuario_id': session.get('user_id'), 'criado_em': time.time(), 'itens': itens})
+        session[CHAVE_SESSAO_UPLOAD] = token
+        return render_template('analises/upload_revisao.html', itens=itens, token=token,
                                tipos=analises.listar_tipos_analise(),
                                talhoes=talhoes.listar_talhoes())
 
@@ -203,24 +307,68 @@ def upload():
                                tipos=analises.listar_tipos_analise(),
                                talhoes=talhoes.listar_talhoes(),
                                laboratorios=analises.listar_laboratorios(),
-                               hoje=date.today().isoformat())
+                               hoje=date.today().isoformat(), limites=limites)
     except Exception as e:
         logger.error(f"analises_routes.upload: {e}")
         flash('Erro ao abrir o envio de laudos.', 'error')
         return redirect(url_for('analises.listar'))
 
 
+def _desfazer_movimentos(movidos):
+    """Devolve à pasta temporária os PDFs já movidos (falha no meio da confirmação)."""
+    for origem, destino in reversed(movidos):
+        try:
+            os.replace(destino, origem)
+        except Exception as e:
+            logger.error(f"analises_routes._desfazer_movimentos: {e}")
+
+
 @analises_bp.route('/upload/confirmar', methods=['POST'])
 @login_required
 def upload_confirmar():
-    itens = session.get(CHAVE_SESSAO_UPLOAD) or []
-    if not itens:
+    token = request.form.get('lote') or session.get(CHAVE_SESSAO_UPLOAD) or ''
+    if not _TOKEN_VALIDO.match(token):
         flash('Nenhum laudo aguardando confirmação.', 'warning')
         return redirect(url_for('analises.upload'))
 
+    concluido = _ler_manifesto(token, 'ok')
+    if concluido:
+        session.pop(CHAVE_SESSAO_UPLOAD, None)
+        flash(f"Este lote já foi salvo ({len(concluido.get('ids', []))} laudos).", 'info')
+        return redirect(url_for('analises.listar'))
+
+    # Trava o lote: só uma confirmação consegue renomear o manifesto
+    em_processo = _manifesto(token, 'processando')
+    try:
+        os.replace(_manifesto(token), em_processo)
+    except FileNotFoundError:
+        if os.path.exists(em_processo):
+            flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
+        else:
+            flash('Nenhum laudo aguardando confirmação.', 'warning')
+        return redirect(url_for('analises.listar' if os.path.exists(em_processo) else 'analises.upload'))
+
+    def liberar():
+        try:
+            os.replace(em_processo, _manifesto(token))
+        except Exception as e:
+            logger.error(f"analises_routes.upload_confirmar (liberar lote): {e}")
+
+    try:
+        with open(em_processo, encoding='utf-8') as arquivo:
+            manifesto = json.load(arquivo)
+    except Exception as e:
+        logger.error(f"analises_routes.upload_confirmar (ler lote): {e}")
+        liberar()
+        flash('Não foi possível ler o lote; envie os laudos de novo.', 'error')
+        return redirect(url_for('analises.upload'))
+    if manifesto.get('usuario_id') != session.get('user_id'):
+        liberar()
+        abort(403)
+
+    itens = manifesto.get('itens') or []
     tipos_validos = {t['id'] for t in analises.listar_tipos_analise()}
-    lote = []
-    movimentos = []
+    lote, planejados = [], []
     for indice, item in enumerate(itens):
         tipo_id = request.form.get(f'tipo_id_{indice}', type=int) or item.get('tipo_id')
         if tipo_id not in tipos_validos:
@@ -237,37 +385,46 @@ def upload_confirmar():
             'arquivo_pdf': 'laudos/' + nome_final,
             'arquivo_original': item.get('nome_original'),
         })
-        movimentos.append((item.get('nome_temp'), nome_final))
+        planejados.append((os.path.join(_dir_temporarios(), os.path.basename(item.get('nome_temp') or '')),
+                           os.path.join(_dir_laudos(), nome_final)))
 
+    # 1) PDFs primeiro: se um falhar, os já movidos voltam e nada vai ao banco
+    movidos = []
+    try:
+        for origem, destino in planejados:
+            os.replace(origem, destino)
+            movidos.append((origem, destino))
+    except Exception as e:
+        logger.error(f"analises_routes.upload_confirmar (mover PDF): {e}")
+        _desfazer_movimentos(movidos)
+        liberar()
+        flash('Não foi possível guardar um dos PDFs. Nada foi salvo; tente confirmar de novo.', 'error')
+        from app.modules import talhoes
+        return render_template('analises/upload_revisao.html', itens=itens, token=token,
+                               tipos=analises.listar_tipos_analise(),
+                               talhoes=talhoes.listar_talhoes())
+
+    # 2) Banco em uma transação; se falhar, os PDFs voltam para a revisão
     try:
         ids = analises.inserir_analises_lote(lote)
     except Exception as e:
-        logger.error(f"analises_routes.upload_confirmar: {e}")
-        flash('Erro ao salvar os laudos; tente novamente.', 'error')
+        logger.error(f"analises_routes.upload_confirmar (gravar): {e}")
+        _desfazer_movimentos(movidos)
+        liberar()
+        flash('Erro ao salvar os laudos. Nada foi gravado; tente confirmar de novo.', 'error')
         return redirect(url_for('analises.upload'))
 
-    falhas = 0
-    os.makedirs(_dir_laudos(), exist_ok=True)
-    for nome_temp, nome_final in movimentos:
-        try:
-            os.replace(os.path.join(_dir_temporarios(), nome_temp or ''),
-                       os.path.join(_dir_laudos(), nome_final))
-        except Exception as e:
-            logger.error(f"analises_routes.upload_confirmar (mover PDF): {e}")
-            falhas += 1
-
+    _gravar_manifesto(token, {'ids': ids, 'concluido_em': time.time()}, 'ok')
+    _remover(em_processo)
     session.pop(CHAVE_SESSAO_UPLOAD, None)
-    if falhas:
-        flash(f'{len(ids)} laudos salvos, mas {falhas} PDF(s) não puderam ser movidos.', 'warning')
-    else:
-        flash(f'{len(ids)} laudos salvos e classificados!', 'success')
+    flash(f'{len(ids)} laudos salvos e classificados!', 'success')
     return redirect(url_for('analises.listar'))
 
 
 @analises_bp.route('/upload/cancelar', methods=['POST'])
 @login_required
 def upload_cancelar():
-    _limpar_temporarios(session.pop(CHAVE_SESSAO_UPLOAD, None))
+    _descartar_lote(session.pop(CHAVE_SESSAO_UPLOAD, None))
     flash('Envio de laudos cancelado.', 'info')
     return redirect(url_for('analises.upload'))
 
