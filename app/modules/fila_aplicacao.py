@@ -362,9 +362,11 @@ def marcar_aplicada(tarefa_id, responsavel, observacoes, usuario, clima_atual=No
             if not produto:
                 raise ValueError(f"Produto {item['produto_nome']} não está ativo no estoque.")
             unidade_estoque = produto['unidade'] or item['unidade']
-            quantidade_estoque = quantidade * _fator_para(item['unidade'], unidade_estoque)
+            quantidade_estoque = round(quantidade * _fator_para(item['unidade'], unidade_estoque), 3)
             if quantidade_estoque <= 0:
-                raise ValueError(f"Quantidade inválida para {item['produto_nome']}.")
+                raise ValueError(
+                    f"Quantidade de {item['produto_nome']} pequena demais para o estoque "
+                    f"(mínimo 0,001 {unidade_estoque}).")
 
             saldo_anterior = float(produto['quantidade_atual'] or 0)
             if saldo_anterior + 0.000001 < quantidade_estoque:
@@ -387,10 +389,17 @@ def marcar_aplicada(tarefa_id, responsavel, observacoes, usuario, clima_atual=No
             cursor.execute("""
                 INSERT INTO movimentacoes_estoque
                     (produto_id, tipo, quantidade, unidade, data_movimento, observacoes)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (item['produto_id'], 'saída', quantidade_estoque, unidade_estoque, hoje,
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+            """, (item['produto_id'], 'saida', quantidade_estoque, unidade_estoque, hoje,
                   f"Consumo da tarefa #{tarefa_id} — {tarefa['receita_nome']} / "
                   f"{tarefa['talhao_nome']}{detalhe_unidade}"))
+            movimento_id = cursor.fetchone()['id']
+            # Mesma baixa de embalagens da saída manual: galões abertos e volume retirado
+            from app.modules import estoque as _estoque
+            embalagens = _estoque._embalagens_para_baixa(cursor, item['produto_id'])
+            if embalagens:
+                _estoque.baixar_embalagens(cursor, item['produto_id'], quantidade_estoque,
+                                           embalagens, movimento_id)
 
             cursor.execute("""
                 UPDATE aplicacao_tarefa_itens

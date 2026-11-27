@@ -226,11 +226,10 @@ def editar_movimentacao(id):
                 'data_movimento': request.form.get('data_movimento'),
                 'observacoes': request.form.get('observacoes')
             }
-            if estoque.atualizar_movimentacao(id, dados):
-                flash('Movimentação atualizada!', 'success')
+            sucesso, mensagem = estoque.atualizar_movimentacao(id, dados)
+            flash(mensagem, 'success' if sucesso else 'warning')
+            if sucesso:
                 return redirect(url_for('estoque.listar_movimentacoes'))
-            else:
-                flash('Erro ao atualizar.', 'error')
         except Exception as e:
             logger.error(f"estoque_routes.editar_movimentacao: {e}")
             flash(f'Erro: {e}', 'error')
@@ -344,19 +343,14 @@ def exportar_pdf_produtos():
 
 def _movimentacoes_do_periodo():
     """Filtra as movimentações pelos parâmetros data_inicio/data_fim da requisição."""
-    movimentacoes = estoque.listar_movimentacoes()
-    inicio = request.args.get('data_inicio')
-    fim = request.args.get('data_fim')
-
-    def _data(m):
-        valor = m.get('data_movimento')
-        return valor.strftime('%Y-%m-%d') if hasattr(valor, 'strftime') else str(valor)[:10]
-
-    if inicio or fim:
-        movimentacoes = [
-            m for m in movimentacoes
-            if (not inicio or _data(m) >= inicio) and (not fim or _data(m) <= fim)
-        ]
+    inicio = request.args.get('data_inicio') or None
+    fim = request.args.get('data_fim') or None
+    for valor in (inicio, fim):
+        if valor:
+            datetime.strptime(valor, '%Y-%m-%d')  # data inválida cai no tratamento de erro da rota
+    # Filtro aplicado no banco, sem o limite de 100 linhas da tela
+    movimentacoes = estoque.listar_movimentacoes(data_inicio=inicio or '1900-01-01',
+                                                 data_fim=fim or datetime.now().strftime('%Y-%m-%d'))
     return movimentacoes, inicio or '1900-01-01', fim or datetime.now().strftime('%Y-%m-%d')
 
 @estoque_bp.route('/movimentacoes/exportar-excel')

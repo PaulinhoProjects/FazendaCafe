@@ -535,6 +535,23 @@ ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS embalagens_abertas IN
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto_data ON movimentacoes_estoque(produto_id, data_movimento DESC);
 CREATE INDEX IF NOT EXISTS idx_embalagens_produto ON produto_embalagens(produto_id);
 
+-- Estoque: 3 casas decimais (doses pequenas), estorno das embalagens e grafia única de saída
+ALTER TABLE movimento_embalagens ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE;
+DO $$
+DECLARE c RECORD;
+BEGIN
+    FOR c IN SELECT * FROM (VALUES
+        ('produtos_estoque', 'quantidade_atual'), ('movimentacoes_estoque', 'quantidade'),
+        ('produto_embalagens', 'volume_aberta'), ('movimento_embalagens', 'litros')) AS t(tabela, coluna)
+    LOOP
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = c.tabela AND column_name = c.coluna AND numeric_scale < 3) THEN
+            EXECUTE 'ALTER TABLE ' || quote_ident(c.tabela) || ' ALTER COLUMN ' || quote_ident(c.coluna) || ' TYPE NUMERIC(14,3)';
+        END IF;
+    END LOOP;
+END $$;
+UPDATE movimentacoes_estoque SET tipo = 'saida' WHERE tipo IN ('saída', 'Saída', 'SAIDA', 'Saida');
+
 -- Cotações externas: uma linha por fonte/cotação a cada coleta (histórico)
 CREATE TABLE IF NOT EXISTS cotacoes_snapshots (
     id SERIAL PRIMARY KEY,

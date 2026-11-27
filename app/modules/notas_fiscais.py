@@ -118,7 +118,7 @@ def inserir_nota_fiscal(dados, arquivo_pdf=None):
     Retorna o ID da nota criada
     """
     query = """
-    INSERT INTO notas_fiscais 
+    INSERT INTO notas_fiscais
         (numero_nota, serie, data_emissao, data_recebimento, fornecedor,
          cnpj_fornecedor, fornecedor_id, valor_total, arquivo_pdf, observacoes)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -418,8 +418,8 @@ def adicionar_item_nota(nota_id, dados):
             dados_emb = registrar_embalagens(cursor, produto_id_final, embalagem)
             quantidade_final = dados_emb['volume_base']
             unidade_final = unidade_base
-            preco_embalagem = float(dados_emb.get('preco') or 0)
-            preco_base = preco_embalagem / quantidade_final if quantidade_final and preco_embalagem else 0
+            # preço da embalagem ÷ capacidade de UMA embalagem (2 galões de 20 L a R$ 120 = R$ 6/L)
+            preco_base = float(dados_emb.get('preco_base') or 0)
             preco_mov = preco_base
             obs_extra = (f"{dados_emb['quantidade']}x {dados_emb['descricao']} "
                          f"de {dados_emb['capacidade']} {dados_emb['unidade']}")
@@ -464,38 +464,43 @@ def adicionar_item_nota(nota_id, dados):
     except Exception as e:
         return None, f"Erro ao adicionar item: {e}"
 
-def remover_item_nota(movimentacao_id):
+def remover_item_nota(movimentacao_id, nota_id=None):
     """Remove um item da nota fiscal e reverte a entrada no estoque.
-    Tudo em UMA transação: ou estorna tudo, ou não estorna nada."""
+    Trava a entrada ativa da nota; um segundo envio não estorna de novo."""
+    from app.modules.estoque import estornar_embalagens_da_entrada
+
     def _operacao(cursor):
         cursor.execute(
-            """SELECT m.produto_id, m.quantidade
-               FROM movimentacoes_estoque m WHERE m.id = %s AND m.tipo = 'entrada'""",
-            (movimentacao_id,)
+            """SELECT m.id, m.produto_id, m.quantidade, m.nota_fiscal_id, m.embalagem_id, m.embalagens_quantidade
+               FROM movimentacoes_estoque m
+               WHERE m.id = %s AND m.tipo = 'entrada' AND m.ativo = TRUE
+                 AND (%s::int IS NULL OR m.nota_fiscal_id = %s::int)
+               FOR UPDATE""",
+            (movimentacao_id, nota_id, nota_id)
         )
         r = cursor.fetchone()
         if not r:
-            raise ValueError("Item nao encontrado")
+            raise ValueError("Item não encontrado nesta nota ou já removido.")
 
         produto_id = r['produto_id']
         quantidade = float(r['quantidade']) if r['quantidade'] else 0
 
         cursor.execute("SELECT quantidade_atual FROM produtos_estoque WHERE id = %s FOR UPDATE", (produto_id,))
         produto = cursor.fetchone()
-        if not produto or float(produto['quantidade_atual'] or 0) < quantidade:
+        if not produto or float(produto['quantidade_atual'] or 0) + 0.0005 < quantidade:
             raise ValueError(
                 f"Não é possível remover: o saldo atual é menor que a entrada de "
-                f"{quantidade:.2f}. Ajuste o estoque antes de estornar."
+                f"{quantidade:.3f}. Ajuste o estoque antes de estornar.".replace('.', ',', 1)
             )
         cursor.execute(
-            "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
+            "UPDATE produtos_estoque SET quantidade_atual = GREATEST(quantidade_atual - %s, 0) WHERE id = %s",
             (quantidade, produto_id)
         )
 
-        # O valor_total da nota é a conferência informada no cadastro e não é alterado aqui.
-        cursor.execute("UPDATE produto_embalagens SET ativo = FALSE WHERE id IN (SELECT embalagem_id FROM movimentacoes_estoque WHERE id = %s)", (movimentacao_id,))
+        # Só as embalagens desta compra saem do controle; as de outras notas continuam
+        estornar_embalagens_da_entrada(cursor, r)
 
-        # Excluir logicamente a movimentacao
+        # O valor_total da nota é a conferência informada no cadastro e não é alterado aqui.
         cursor.execute("UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s", (movimentacao_id,))
         return True
 

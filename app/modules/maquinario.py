@@ -312,7 +312,14 @@ def excluir_movimentacao(id):
         mov = cursor.fetchone()
         if not mov:
             raise ValueError("Movimentação não encontrada.")
+        cursor.execute("SELECT nome, quantidade_atual FROM maq_produtos WHERE id = %s FOR UPDATE",
+                       (mov["produto_id"],))
+        produto = cursor.fetchone()
         sinal = 1 if mov["tipo"] == "saida" else -1
+        if produto and sinal < 0 and float(produto["quantidade_atual"] or 0) + 0.0005 < float(mov["quantidade"]):
+            raise ValueError(
+                f"Não é possível excluir esta entrada: parte dela já foi usada. "
+                f"Saldo de {produto['nome']}: {_numero_br(produto['quantidade_atual'])}.")
         cursor.execute(
             "UPDATE maq_produtos SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
             (sinal * float(mov["quantidade"]), mov["produto_id"]),

@@ -3,6 +3,7 @@ Módulo de Controle de Estoque de Insumos
 Versão completa com categorias e relatórios
 """
 
+import math
 import sys
 import os
 import pandas as pd
@@ -24,12 +25,31 @@ from database import executar_query, executar_query_dict, executar_transacao, tr
 # FUNÇÕES AUXILIARES
 # =====================================================
 
+EPS = 0.0005               # metade da menor quantidade registrável (3 casas)
+TIPOS_MOVIMENTO = ('entrada', 'saida')
+
+
+def _arred(valor):
+    return round(float(valor or 0), 3)
+
+
+def _numero_br(valor, casas=2):
+    texto = f"{float(valor or 0):,.{casas}f}"
+    return texto.replace(',', '#').replace('.', ',').replace('#', '.')
+
+
+def normalizar_tipo(tipo):
+    """'Saída', 'saída' e 'saida' viram 'saida'; 'Entrada' vira 'entrada'."""
+    t = normalizar_nome(tipo)
+    return t if t in TIPOS_MOVIMENTO else (t or '')
+
+
 def get_ultimo_valor_produto(produto_id):
     """Retorna o último valor unitário registrado para o produto"""
     query = """
     SELECT valor_unitario FROM movimentacoes_estoque
-    WHERE produto_id = %s AND valor_unitario IS NOT NULL
-    ORDER BY data_movimento DESC
+    WHERE produto_id = %s AND valor_unitario IS NOT NULL AND ativo = TRUE
+    ORDER BY data_movimento DESC, id DESC
     LIMIT 1
     """
     try:
@@ -130,6 +150,17 @@ def listar_duplicados():
     return [grupos[k] for k in sorted(grupos) if len(grupos[k]) > 1]
 
 
+def _mesma_unidade(a, b):
+    a = (a or '').strip().lower()
+    b = (b or '').strip().lower()
+    if a == b:
+        return True
+    try:
+        return fator_para_base(a, b) == 1
+    except ValueError:
+        return False
+
+
 def mesclar_produtos(principal_id, ids_secundarios):
     """Soma saldo e move movimentações para o produto principal, em uma transação."""
     if not ids_secundarios:
@@ -151,12 +182,19 @@ def mesclar_produtos(principal_id, ids_secundarios):
                 raise ValueError(f'Produto #{secundario} não encontrado.')
             if normalizar_nome(principal['nome']) != normalizar_nome(r['nome']):
                 raise ValueError(f'Os produtos precisam ter o mesmo nome para mesclar.')
+            if not _mesma_unidade(principal['unidade'], r['unidade']):
+                raise ValueError(
+                    f"Unidades diferentes: {r['nome']} está em {r['unidade'] or '—'} e o principal em "
+                    f"{principal['unidade'] or '—'}. Ajuste a unidade antes de mesclar.")
             soma += float(r['quantidade_atual'] or 0)
             nomes.append(r['nome'])
             cursor.execute("UPDATE movimentacoes_estoque SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
             cursor.execute("UPDATE produto_embalagens SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
+            # Receitas e tarefas da fila continuam apontando para um produto ativo
+            cursor.execute("UPDATE receita_itens SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
+            cursor.execute("UPDATE aplicacao_tarefa_itens SET produto_id = %s WHERE produto_id = %s", (principal_id, secundario))
             cursor.execute("UPDATE produtos_estoque SET ativo = FALSE, quantidade_atual = 0 WHERE id = %s", (secundario,))
-        cursor.execute("UPDATE produtos_estoque SET quantidade_atual = %s WHERE id = %s", (soma, principal_id))
+        cursor.execute("UPDATE produtos_estoque SET quantidade_atual = %s WHERE id = %s", (_arred(soma), principal_id))
         return soma, nomes
 
     return executar_transacao(operacao)
@@ -301,18 +339,6 @@ def listar_embalagens(produto_id):
     return executar_query(query, (produto_id, produto_id), fetch_all=True, dict_cursor=True) or []
 
 
-def _listar_embalagens_para_baixa(produto_id):
-    query = """
-    SELECT id, descricao, capacidade, unidade, quantidade_total,
-           quantidade_fechada, volume_aberta,
-           (SELECT unidade FROM produtos_estoque WHERE id = %s) AS unidade_base
-    FROM produto_embalagens
-    WHERE produto_id = %s AND ativo = TRUE
-    ORDER BY descricao, capacidade
-    """
-    return executar_query(query, (produto_id, produto_id), fetch_all=True, dict_cursor=True) or []
-
-
 def registrar_embalagens(cursor, produto_id, dados):
     """Cria ou reaproveita a embalagem e devolve os dados para a movimentação."""
     descricao = (dados.get('descricao') or '').strip()
@@ -374,49 +400,211 @@ def registrar_embalagens(cursor, produto_id, dados):
 
 
 def baixar_embalagens(cursor, produto_id, quantidade_base, embalagens, movimento_id=None):
-    """Abre embalagens para atender a baixa; devolve o volume não coberto."""
-    usadas = []
+    """Retira o volume das embalagens (abertas primeiro) e registra o que saiu de cada uma.
+
+    Grava em movimento_embalagens o volume realmente retirado e quantas embalagens
+    fechadas foram abertas. Devolve o volume que não tinha embalagem controlada.
+    """
     restante = float(quantidade_base)
     for emb in embalagens:
-        if restante <= 0:
+        if restante <= EPS:
             break
-        embalagem_id = emb['id']
-        capacidade = float(emb['capacidade'])
-        unidade = emb['unidade'] or 'L'
-        fator = fator_para_base(unidade, emb['unidade_base'])
-        capacidade_base = capacidade * fator
-        aberta = float(emb['volume_aberta'] or 0)
-        if aberta > 0:
-            retirar = min(restante, aberta)
-            restante -= retirar
-            aberta -= retirar
-        while restante > 0 and emb['quantidade_fechada'] > 0:
-            aberta = capacidade_base
-            emb['quantidade_fechada'] -= 1
-            retirar = min(restante, aberta)
-            restante -= retirar
-            aberta -= retirar
-        retirado = capacidade_base - aberta
-        if retirado <= 0.00001:
+        capacidade_base = float(emb['capacidade']) * fator_para_base(emb['unidade'] or 'L', emb['unidade_base'])
+        if capacidade_base <= 0:
             continue
-        usadas.append({
-            'id': embalagem_id,
-            'abertas': 1 if aberta > 0 else 0,
-            'retirado': retirado,
-            'saldo_aberta': aberta,
-        })
+        aberta = float(emb['volume_aberta'] or 0)
+        fechadas = int(emb['quantidade_fechada'] or 0)
+        retirado, abertas = 0.0, 0
+        if aberta > EPS:
+            parte = min(restante, aberta)
+            aberta -= parte
+            restante -= parte
+            retirado += parte
+        while restante > EPS and fechadas > 0:
+            fechadas -= 1
+            abertas += 1
+            aberta = capacidade_base
+            parte = min(restante, aberta)
+            aberta -= parte
+            restante -= parte
+            retirado += parte
+        if retirado <= EPS:
+            continue
+        aberta = 0 if aberta <= EPS else aberta
+        emb['quantidade_fechada'] = fechadas
+        emb['volume_aberta'] = aberta
         cursor.execute("""
-            UPDATE produto_embalagens
-            SET quantidade_fechada = %s, volume_aberta = %s
+            UPDATE produto_embalagens SET quantidade_fechada = %s, volume_aberta = %s
             WHERE id = %s
-        """, (emb['quantidade_fechada'], aberta, embalagem_id))
+        """, (fechadas, _arred(aberta), emb['id']))
         cursor.execute("""
             INSERT INTO movimento_embalagens
                 (movimento_id, embalagem_id, tipo, quantidade, litros, observacoes)
-            VALUES (%s, %s, 'abertura', 1, %s, %s)
-        """, (movimento_id, embalagem_id, round(retirado, 4),
-              f'Baixa de {round(float(quantidade_base), 4)} da embalagem {emb["descricao"]}'))
-    return round(restante, 4)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (movimento_id, emb['id'], 'abertura' if abertas else 'uso', abertas, _arred(retirado),
+              f'Retirada de {_arred(retirado)} da embalagem {emb["descricao"]}'))
+    return _arred(max(restante, 0))
+
+
+def _embalagens_para_baixa(cursor, produto_id):
+    """Embalagens ativas do produto, travadas para a baixa (abertas primeiro, depois as mais antigas)."""
+    cursor.execute("""
+        SELECT e.id, e.descricao, e.capacidade, e.unidade, e.quantidade_total,
+               e.quantidade_fechada, e.volume_aberta, p.unidade AS unidade_base
+        FROM produto_embalagens e
+        JOIN produtos_estoque p ON p.id = e.produto_id
+        WHERE e.produto_id = %s AND e.ativo = TRUE
+        ORDER BY (COALESCE(e.volume_aberta, 0) > 0) DESC, e.id
+        FOR UPDATE OF e
+    """, (produto_id,))
+    return cursor.fetchall()
+
+
+def _restaurar_embalagens_da_saida(cursor, movimento_id):
+    """Devolve às embalagens o volume que uma saída tinha retirado (estorno ou edição)."""
+    cursor.execute("""
+        SELECT me.id, me.litros, e.id AS embalagem_id, e.capacidade, e.unidade,
+               e.quantidade_total, e.quantidade_fechada, e.volume_aberta, e.ativo,
+               p.unidade AS unidade_base
+        FROM movimento_embalagens me
+        JOIN produto_embalagens e ON e.id = me.embalagem_id
+        JOIN produtos_estoque p ON p.id = e.produto_id
+        WHERE me.movimento_id = %s AND COALESCE(me.ativo, TRUE) = TRUE
+          AND me.tipo IN ('abertura', 'uso')
+        FOR UPDATE OF me, e
+    """, (movimento_id,))
+    for r in cursor.fetchall():
+        if r['ativo']:
+            capacidade_base = float(r['capacidade']) * fator_para_base(r['unidade'] or 'L', r['unidade_base'])
+            aberta = float(r['volume_aberta'] or 0) + float(r['litros'] or 0)
+            fechadas = int(r['quantidade_fechada'] or 0)
+            while capacidade_base > 0 and aberta >= capacidade_base - EPS and fechadas < int(r['quantidade_total'] or 0):
+                aberta -= capacidade_base
+                fechadas += 1
+            aberta = 0 if aberta <= EPS else min(aberta, capacidade_base)
+            cursor.execute("UPDATE produto_embalagens SET quantidade_fechada = %s, volume_aberta = %s WHERE id = %s",
+                           (fechadas, _arred(aberta), r['embalagem_id']))
+        cursor.execute("UPDATE movimento_embalagens SET ativo = FALSE WHERE id = %s", (r['id'],))
+
+
+def estornar_embalagens_da_entrada(cursor, movimentacao):
+    """Tira do controle só as embalagens desta compra, preservando as de outras compras."""
+    embalagem_id = movimentacao.get('embalagem_id')
+    if not embalagem_id:
+        return
+    cursor.execute("""
+        SELECT e.id, e.capacidade, e.unidade, e.quantidade_total, e.quantidade_fechada,
+               e.volume_aberta, e.ativo, p.unidade AS unidade_base
+        FROM produto_embalagens e JOIN produtos_estoque p ON p.id = e.produto_id
+        WHERE e.id = %s FOR UPDATE OF e
+    """, (embalagem_id,))
+    emb = cursor.fetchone()
+    if not emb or not emb['ativo']:
+        return
+    quantidade = movimentacao.get('embalagens_quantidade')
+    if not quantidade:
+        capacidade_base = float(emb['capacidade']) * fator_para_base(emb['unidade'] or 'L', emb['unidade_base'])
+        quantidade = round(float(movimentacao['quantidade'] or 0) / capacidade_base) if capacidade_base else 0
+    quantidade = int(quantidade or 0)
+    if quantidade <= 0:
+        return
+    if int(emb['quantidade_fechada'] or 0) < quantidade:
+        raise ValueError('As embalagens desta compra já foram abertas. Registre uma saída de ajuste '
+                         'em vez de estornar a entrada.')
+    total = int(emb['quantidade_total'] or 0) - quantidade
+    fechadas = int(emb['quantidade_fechada'] or 0) - quantidade
+    ainda_ativa = total > 0 or float(emb['volume_aberta'] or 0) > EPS
+    cursor.execute("""
+        UPDATE produto_embalagens
+        SET quantidade_total = %s, quantidade_fechada = %s, ativo = %s
+        WHERE id = %s
+    """, (max(total, 0), max(fechadas, 0), ainda_ativa, embalagem_id))
+
+
+def _travar_produto(cursor, produto_id, exigir_ativo=True):
+    cursor.execute("SELECT id, nome, unidade, quantidade_atual, ativo FROM produtos_estoque WHERE id = %s FOR UPDATE",
+                   (produto_id,))
+    produto = cursor.fetchone()
+    if not produto or (exigir_ativo and not produto['ativo']):
+        raise ValueError('Produto não encontrado ou inativo.')
+    return produto
+
+
+def _somar_saldo(cursor, produto, delta, motivo):
+    """Aplica o delta ao saldo já travado; nunca deixa o estoque negativo."""
+    novo = float(produto['quantidade_atual'] or 0) + float(delta)
+    if novo < -EPS:
+        raise ValueError(f'{motivo} Saldo de {produto["nome"]}: '
+                         f'{_numero_br(produto["quantidade_atual"])} {produto["unidade"] or ""}.'.strip())
+    novo = 0 if abs(novo) <= EPS else novo
+    cursor.execute("UPDATE produtos_estoque SET quantidade_atual = %s WHERE id = %s", (_arred(novo), produto['id']))
+    produto['quantidade_atual'] = novo
+
+
+def _reverter_efeito(cursor, mov, produtos):
+    """Desfaz no saldo (e nas embalagens) o efeito de uma movimentação ativa e travada."""
+    if not mov['produto_id']:
+        return
+    produto = produtos[mov['produto_id']]
+    quantidade = float(mov['quantidade'] or 0)
+    if normalizar_tipo(mov['tipo']) == 'saida':
+        _restaurar_embalagens_da_saida(cursor, mov['id'])
+        _somar_saldo(cursor, produto, quantidade, '')
+    else:
+        estornar_embalagens_da_entrada(cursor, mov)
+        _somar_saldo(cursor, produto, -quantidade,
+                     'Não é possível desfazer esta entrada: parte dela já foi consumida.')
+
+
+def _aplicar_efeito(cursor, produto, tipo, total, movimento_id):
+    """Aplica uma entrada/saída ao saldo; saídas também baixam as embalagens."""
+    if tipo == 'saida':
+        _somar_saldo(cursor, produto, -total, 'Saldo insuficiente para esta saída.')
+        embalagens = _embalagens_para_baixa(cursor, produto['id'])
+        if embalagens:
+            sem_embalagem = baixar_embalagens(cursor, produto['id'], total, embalagens, movimento_id)
+            if sem_embalagem > EPS:
+                cursor.execute("""
+                    UPDATE movimentacoes_estoque
+                    SET observacoes = COALESCE(observacoes, '') || %s
+                    WHERE id = %s
+                """, (f' | Atenção: {_numero_br(sem_embalagem, 3)} {produto["unidade"] or ""} '
+                      f'sem embalagem controlada', movimento_id))
+    else:
+        _somar_saldo(cursor, produto, total, '')
+
+
+def _validar_dados_movimento(dados):
+    tipo = normalizar_tipo(dados.get('tipo'))
+    if tipo not in TIPOS_MOVIMENTO:
+        raise ValueError('Tipo de movimentação inválido. Use entrada ou saída.')
+    try:
+        quantidade = float(str(dados.get('quantidade') or '').replace(',', '.'))
+    except (TypeError, ValueError):
+        raise ValueError('Informe uma quantidade válida.')
+    if not math.isfinite(quantidade) or quantidade <= 0:
+        raise ValueError('A quantidade deve ser maior que zero.')
+    try:
+        produto_id = int(dados.get('produto_id'))
+    except (TypeError, ValueError):
+        raise ValueError('Selecione o produto.')
+    valor = dados.get('valor_unitario')
+    try:
+        valor = float(str(valor).replace(',', '.')) if valor not in (None, '') else None
+    except ValueError:
+        raise ValueError('Valor unitário inválido.')
+    if valor is not None and (not math.isfinite(valor) or valor < 0):
+        raise ValueError('Valor unitário inválido.')
+    return tipo, quantidade, produto_id, valor
+
+
+def _converter_para_base(quantidade, unidade, produto):
+    fator = fator_para_base(unidade, produto['unidade']) if unidade and produto['unidade'] else 1
+    total = _arred(quantidade * fator)
+    if total <= 0:
+        raise ValueError(f'Quantidade muito pequena: o estoque registra até 0,001 {produto["unidade"] or ""}.'.strip())
+    return total
+
 
 # =====================================================
 # FUNÇÕES DE MOVIMENTAÇÕES
@@ -424,87 +612,60 @@ def baixar_embalagens(cursor, produto_id, quantidade_base, embalagens, movimento
 
 def registrar_movimentacao(dados):
     """Registra entrada/saída, abre embalagens quando preciso e nunca deixa saldo negativo."""
+    tipo, quantidade, produto_id, valor = _validar_dados_movimento(dados)
     try:
         with transacao() as cur:
-            produto_id = int(dados['produto_id'])
-            tipo = dados['tipo']
-            quantidade = float(dados['quantidade'])
-            unidade = dados.get('unidade')
-            valor = float(dados['valor_unitario']) if dados.get('valor_unitario') else None
-            cur.execute("SELECT unidade, quantidade_atual FROM produtos_estoque WHERE id = %s FOR UPDATE", (produto_id,))
-            produto = cur.fetchone()
-            if not produto:
-                raise ValueError('Produto não encontrado.')
-            fator = fator_para_base(unidade, produto['unidade']) if unidade else 1
-            total = quantidade * fator
-            if tipo == 'saida' and float(produto['quantidade_atual'] or 0) < total:
-                raise ValueError(f'Saldo insuficiente. Disponível: {float(produto["quantidade_atual"] or 0):.2f} {produto["unidade"]}.')
-
+            produto = _travar_produto(cur, produto_id)
+            total = _converter_para_base(quantidade, dados.get('unidade'), produto)
             cur.execute("""
             INSERT INTO movimentacoes_estoque
                 (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+            VALUES (%s, %s, %s, %s, COALESCE(%s::date, CURRENT_DATE), %s, %s) RETURNING id
             """, (produto_id, tipo, total, produto['unidade'],
-                  dados.get('data_movimento'), valor, dados.get('observacoes')))
+                  dados.get('data_movimento') or None, valor, dados.get('observacoes')))
             mov_id = cur.fetchone()['id']
-
-            if tipo == 'saida':
-                embalagens = _listar_embalagens_para_baixa(produto_id)
-                if embalagens:
-                    sem_embalagem = baixar_embalagens(cur, produto_id, total, embalagens, mov_id)
-                    if sem_embalagem > 0.00001:
-                        cur.execute("""
-                            UPDATE movimentacoes_estoque
-                            SET observacoes = COALESCE(observacoes, '') || %s
-                            WHERE id = %s
-                        """, (f' | Atenção: {sem_embalagem:.2f} {produto["unidade"]} '
-                              f'sem embalagem controlada', mov_id))
-
-            cur.execute(
-                "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                (total if tipo == 'entrada' else -total, produto_id))
+            _aplicar_efeito(cur, produto, tipo, total, mov_id)
         return mov_id
     except Exception as e:
         print(f"Erro ao registrar movimentação: {e}")
         raise
 
-def listar_movimentacoes(produto_id=None):
-    """Lista movimentações, mostrando produtos removidos como 'Produto removido'"""
+
+def listar_movimentacoes(produto_id=None, data_inicio=None, data_fim=None, limite=100):
+    """Movimentações ativas. Com período, o filtro vai ao banco e não há limite de linhas."""
+    condicoes, params = ['m.ativo = TRUE'], []
     if produto_id:
-        query = """
-        SELECT m.id, 
+        condicoes.append('m.produto_id = %s')
+        params.append(produto_id)
+    if data_inicio:
+        condicoes.append('m.data_movimento >= %s')
+        params.append(data_inicio)
+    if data_fim:
+        condicoes.append('m.data_movimento <= %s')
+        params.append(data_fim)
+    query = f"""
+        SELECT m.id,
                COALESCE(p.nome, '🚫 Produto removido') as produto_nome,
                m.tipo, m.quantidade,
                m.unidade, m.data_movimento, m.valor_unitario, m.observacoes,
-               p.ativo, m.nota_fiscal_id  -- <-- ADICIONADO
+               p.ativo, m.nota_fiscal_id
         FROM movimentacoes_estoque m
         LEFT JOIN produtos_estoque p ON p.id = m.produto_id
-        WHERE m.produto_id = %s
-        ORDER BY m.data_movimento DESC
-        """
-        params = (produto_id,)
-    else:
-        query = """
-        SELECT m.id, 
-               COALESCE(p.nome, '🚫 Produto removido') as produto_nome,
-               m.tipo, m.quantidade,
-               m.unidade, m.data_movimento, m.valor_unitario, m.observacoes,
-               p.ativo, m.nota_fiscal_id  -- <-- ADICIONADO
-        FROM movimentacoes_estoque m
-        LEFT JOIN produtos_estoque p ON p.id = m.produto_id
-        ORDER BY m.data_movimento DESC
-        LIMIT 100
-        """
-        params = None
+        WHERE {' AND '.join(condicoes)}
+        ORDER BY m.data_movimento DESC, m.id DESC
+    """
+    if not produto_id and not data_inicio and not data_fim and limite:
+        query += " LIMIT %s"
+        params.append(limite)
 
     try:
-        resultado = executar_query(query, params, fetch_all=True, dict_cursor=True)
+        resultado = executar_query(query, tuple(params) if params else None, fetch_all=True, dict_cursor=True)
         movs = []
-        for r in resultado:
+        for r in resultado or []:
             movs.append({
                 'id': r['id'],
                 'produto_nome': r['produto_nome'],
-                'tipo': r['tipo'],
+                'tipo': normalizar_tipo(r['tipo']),
                 'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
                 'unidade': r['unidade'],
                 'data_movimento': r['data_movimento'],
@@ -519,16 +680,16 @@ def listar_movimentacoes(produto_id=None):
         return []
 
 def buscar_movimentacao_por_id(id):
-    """Busca uma movimentação pelo ID, incluindo dados do produto (mesmo excluído)"""
+    """Busca uma movimentação ativa pelo ID, incluindo dados do produto (mesmo excluído)"""
     query = """
-    SELECT m.id, m.produto_id, 
+    SELECT m.id, m.produto_id,
            COALESCE(p.nome, '🚫 Produto removido') as produto_nome,
            m.tipo, m.quantidade,
            m.unidade, m.data_movimento, m.valor_unitario, m.observacoes,
-           p.ativo, m.nota_fiscal_id
+           p.ativo, m.nota_fiscal_id, m.embalagem_id
     FROM movimentacoes_estoque m
     LEFT JOIN produtos_estoque p ON p.id = m.produto_id
-    WHERE m.id = %s
+    WHERE m.id = %s AND m.ativo = TRUE
     """
     try:
         r = executar_query(query, (id,), fetch_one=True, dict_cursor=True)
@@ -537,14 +698,15 @@ def buscar_movimentacao_por_id(id):
                 'id': r['id'],
                 'produto_id': r['produto_id'],
                 'produto_nome': r['produto_nome'],
-                'tipo': r['tipo'],
+                'tipo': normalizar_tipo(r['tipo']),
                 'quantidade': float(r['quantidade']) if r['quantidade'] else 0,
                 'unidade': r['unidade'],
                 'data_movimento': r['data_movimento'],
                 'valor_unitario': float(r['valor_unitario']) if r['valor_unitario'] else None,
                 'observacoes': r['observacoes'],
                 'produto_ativo': r['ativo'],
-                'nota_fiscal_id': r['nota_fiscal_id']
+                'nota_fiscal_id': r['nota_fiscal_id'],
+                'vinculada_a_embalagem': bool(r['nota_fiscal_id'] or r['embalagem_id']),
             }
         return None
     except Exception as e:
@@ -552,71 +714,70 @@ def buscar_movimentacao_por_id(id):
         return None
 
 def atualizar_movimentacao(id, dados_novos):
-    """Atualiza uma movimentação e ajusta o saldo do produto (ATÔMICO)"""
+    """Edita a movimentação: lê e trava o registro ativo, desfaz o efeito antigo e aplica o novo
+    com a mesma conversão de unidade e validação de saldo da criação. Retorna (ok, mensagem)."""
     try:
-        mov_antiga = buscar_movimentacao_por_id(id)
-        if not mov_antiga:
-            return False
-
+        tipo, quantidade, produto_novo_id, valor = _validar_dados_movimento(dados_novos)
         with transacao() as cur:
-            # Reverter o efeito da movimentação antiga
-            if mov_antiga['tipo'] == 'entrada':
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                            (mov_antiga['quantidade'], mov_antiga['produto_id']))
-            else:
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                            (mov_antiga['quantidade'], mov_antiga['produto_id']))
+            cur.execute("""
+                SELECT id, produto_id, tipo, quantidade, nota_fiscal_id, embalagem_id, embalagens_quantidade
+                FROM movimentacoes_estoque WHERE id = %s AND ativo = TRUE FOR UPDATE
+            """, (id,))
+            mov = cur.fetchone()
+            if not mov:
+                raise ValueError('Movimentação não encontrada ou já excluída.')
+            produtos = {}
+            for pid in sorted({p for p in (mov['produto_id'], produto_novo_id) if p}):
+                produtos[pid] = _travar_produto(cur, pid, exigir_ativo=(pid == produto_novo_id))
+            produto_novo = produtos[produto_novo_id]
+            total = _converter_para_base(quantidade, dados_novos.get('unidade'), produto_novo)
 
-            # Aplicar o efeito da movimentação nova
-            if dados_novos['tipo'] == 'entrada':
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                            (dados_novos['quantidade'], dados_novos['produto_id']))
-            else:
-                cur.execute("UPDATE produtos_estoque SET quantidade_atual = quantidade_atual - %s WHERE id = %s",
-                            (dados_novos['quantidade'], dados_novos['produto_id']))
+            muda_estoque = (produto_novo_id != mov['produto_id']
+                            or tipo != normalizar_tipo(mov['tipo'])
+                            or abs(total - float(mov['quantidade'] or 0)) > EPS)
+            if muda_estoque:
+                if mov['nota_fiscal_id'] or mov['embalagem_id']:
+                    raise ValueError('Esta entrada veio de nota fiscal/embalagem. Para mudar produto, tipo ou '
+                                     'quantidade, remova o item na nota e lance de novo.')
+                _reverter_efeito(cur, mov, produtos)
+                _aplicar_efeito(cur, produto_novo, tipo, total, id)
 
             cur.execute("""
                 UPDATE movimentacoes_estoque
                 SET produto_id=%s, tipo=%s, quantidade=%s, unidade=%s,
-                    data_movimento=%s, valor_unitario=%s, observacoes=%s
+                    data_movimento=COALESCE(%s::date, data_movimento), valor_unitario=%s, observacoes=%s
                 WHERE id=%s
-            """, (dados_novos['produto_id'], dados_novos['tipo'], dados_novos['quantidade'],
-                  dados_novos.get('unidade'), dados_novos.get('data_movimento'),
-                  dados_novos.get('valor_unitario'), dados_novos.get('observacoes'), id))
-        return True
+            """, (produto_novo_id, tipo, total, produto_novo['unidade'],
+                  dados_novos.get('data_movimento') or None, valor, dados_novos.get('observacoes'), id))
+        return True, 'Movimentação atualizada e saldo reajustado.'
+    except ValueError as e:
+        return False, str(e)
     except Exception as e:
         print(f"Erro ao atualizar movimentação: {e}")
-        return False
+        return False, 'Erro ao atualizar a movimentação.'
 
 def excluir_movimentacao(id):
-    """Exclui logicamente a movimentação e reverte o saldo na mesma transação."""
+    """Exclui logicamente a movimentação e reverte saldo e embalagens na mesma transação."""
     try:
         with transacao() as cur:
-            cur.execute(
-                "SELECT produto_id, tipo, quantidade FROM movimentacoes_estoque "
-                "WHERE id = %s AND ativo = TRUE FOR UPDATE",
-                (id,),
-            )
+            cur.execute("""
+                SELECT id, produto_id, tipo, quantidade, nota_fiscal_id, embalagem_id, embalagens_quantidade
+                FROM movimentacoes_estoque WHERE id = %s AND ativo = TRUE FOR UPDATE
+            """, (id,))
             mov = cur.fetchone()
             if not mov:
-                return False, "Movimentação não encontrada."
-            produto_id = mov['produto_id']
-            tipo = mov['tipo']
-            quantidade = mov['quantidade']
-            if produto_id:
-                sinal = 1 if tipo == 'saida' else -1
-                cur.execute(
-                    "UPDATE produtos_estoque SET quantidade_atual = quantidade_atual + %s WHERE id = %s",
-                    (sinal * quantidade, produto_id),
-                )
-            cur.execute(
-                "UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s",
-                (id,),
-            )
+                return False, "Movimentação não encontrada ou já excluída."
+            produtos = {}
+            if mov['produto_id']:
+                produtos[mov['produto_id']] = _travar_produto(cur, mov['produto_id'], exigir_ativo=False)
+            _reverter_efeito(cur, mov, produtos)
+            cur.execute("UPDATE movimentacoes_estoque SET ativo = FALSE WHERE id = %s", (id,))
         return True, "Movimentação excluída e saldo reajustado."
+    except ValueError as e:
+        return False, str(e)
     except Exception as e:
         print(f"Erro ao excluir movimentação {id}: {e}")
-        return False, f"Erro ao excluir: {str(e)}"
+        return False, "Erro ao excluir a movimentação."
 
 # =====================================================
 # FUNÇÕES DE RESUMO
@@ -628,34 +789,34 @@ def get_resumo_estoque():
         # Total de produtos
         r = executar_query("SELECT COUNT(*) AS total FROM produtos_estoque WHERE ativo = TRUE", fetch_one=True, dict_cursor=True)
         total_produtos = r['total']
-        
+
         # Valor total em estoque
         query_valor = """
         SELECT COALESCE(SUM(p.quantidade_atual * COALESCE((
-            SELECT valor_unitario FROM movimentacoes_estoque 
-            WHERE produto_id = p.id AND valor_unitario IS NOT NULL 
-            ORDER BY data_movimento DESC LIMIT 1
+            SELECT valor_unitario FROM movimentacoes_estoque
+            WHERE produto_id = p.id AND valor_unitario IS NOT NULL AND ativo = TRUE
+            ORDER BY data_movimento DESC, id DESC LIMIT 1
         ), 0)), 0) AS total
         FROM produtos_estoque p
         WHERE p.ativo = TRUE
         """
         r = executar_query(query_valor, fetch_one=True, dict_cursor=True)
         valor_total = r['total']
-        
+
         # Produtos com estoque baixo
         r = executar_query("""
-            SELECT COUNT(*) AS total FROM produtos_estoque 
+            SELECT COUNT(*) AS total FROM produtos_estoque
             WHERE ativo = TRUE AND quantidade_atual <= COALESCE(estoque_minimo, 0)
         """, fetch_one=True, dict_cursor=True)
         estoque_baixo = r['total']
-        
+
         # Movimentações no mês
         r = executar_query("""
-            SELECT COUNT(*) AS total FROM movimentacoes_estoque 
-            WHERE EXTRACT(MONTH FROM data_movimento) = EXTRACT(MONTH FROM CURRENT_DATE)
+            SELECT COUNT(*) AS total FROM movimentacoes_estoque
+            WHERE ativo = TRUE AND date_trunc('month', data_movimento) = date_trunc('month', CURRENT_DATE)
         """, fetch_one=True, dict_cursor=True)
         mov_mes = r['total']
-        
+
         return {
             'total_produtos': total_produtos or 0,
             'valor_total': float(valor_total) if valor_total else 0,
@@ -689,10 +850,10 @@ def gerar_excel_produtos(produtos):
             'Status': 'Baixo' if p.get('estoque_baixo') else 'Normal',
             'Observações': p['observacoes'] or ''
         })
-    
+
     df = pd.DataFrame(data)
     output = BytesIO()
-    
+
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='Produtos', index=False)
         worksheet = writer.sheets['Produtos']
@@ -700,7 +861,7 @@ def gerar_excel_produtos(produtos):
             column_width = max(df[column].astype(str).map(len).max(), len(column)) + 2
             col_idx = df.columns.get_loc(column)
             worksheet.column_dimensions[chr(65 + col_idx)].width = min(column_width, 30)
-    
+
     output.seek(0)
     return output
 
@@ -709,16 +870,16 @@ def gerar_pdf_produtos(produtos):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=2*cm, leftMargin=2*cm,
                            topMargin=2.4*cm, bottomMargin=1.8*cm)
-    
+
     elements = []
     styles = getSampleStyleSheet()
-    
+
     titulo = Paragraph(f"Relatório de Produtos - {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Title'])
     elements.append(titulo)
     elements.append(Spacer(1, 0.5*cm))
-    
+
     data = [['ID', 'Produto', 'Categoria', 'Unidade', 'Quantidade', 'Estoque Mínimo', 'Status']]
-    
+
     for p in produtos:
         status = 'Baixo' if p.get('estoque_baixo') else 'Normal'
         data.append([
@@ -730,7 +891,7 @@ def gerar_pdf_produtos(produtos):
             f"{p['estoque_minimo']:.2f}" if p['estoque_minimo'] else '-',
             status
         ])
-    
+
     table = Table(data, colWidths=[2*cm, 5*cm, 3*cm, 3*cm, 3*cm, 3*cm, 3*cm])
     style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), COR_PRIMARIA),
@@ -742,20 +903,20 @@ def gerar_pdf_produtos(produtos):
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 0.4, COR_LINHA)
     ])
-    
+
     for i, p in enumerate(produtos, start=1):
         if p.get('estoque_baixo'):
             style.add('BACKGROUND', (0, i), (-1, i), colors.lightcoral)
-    
+
     table.setStyle(style)
     elements.append(table)
-    
+
     elements.append(Spacer(1, 1*cm))
     total_produtos = len(produtos)
     total_baixo = sum(1 for p in produtos if p.get('estoque_baixo'))
     rodape = Paragraph(f"Total de produtos: {total_produtos} | Produtos com estoque baixo: {total_baixo}", styles['Normal'])
     elements.append(rodape)
-    
+
     doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
@@ -774,15 +935,15 @@ def gerar_excel_movimentacoes(movimentacoes, data_inicio, data_fim):
             'Valor Total': (m['quantidade'] * m['valor_unitario']) if m['valor_unitario'] else 0,
             'Observações': m['observacoes'] or ''
         })
-    
+
     df = pd.DataFrame(data)
     total_entradas = df[df['Tipo'] == 'Entrada']['Valor Total'].sum()
     total_saidas = df[df['Tipo'] == 'Saída']['Valor Total'].sum()
-    
+
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='Movimentações', index=False)
-        
+
         resumo = pd.DataFrame({
             'Período': [f"{data_inicio} a {data_fim}"],
             'Total Entradas (R$)': [f"{total_entradas:.2f}"],
@@ -790,7 +951,7 @@ def gerar_excel_movimentacoes(movimentacoes, data_inicio, data_fim):
             'Saldo (R$)': [f"{total_entradas - total_saidas:.2f}"]
         })
         resumo.to_excel(writer, sheet_name='Resumo', index=False)
-    
+
     output.seek(0)
     return output
 
@@ -799,29 +960,29 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=1.5*cm, leftMargin=1.5*cm,
                            topMargin=2.4*cm, bottomMargin=1.8*cm)
-    
+
     elements = []
     styles = getSampleStyleSheet()
-    
+
     titulo = Paragraph(f"Relatório de Movimentações - {data_inicio} a {data_fim}", styles['Title'])
     elements.append(titulo)
     elements.append(Spacer(1, 0.5*cm))
-    
+
     data = [['Data', 'Produto', 'Tipo', 'Quantidade', 'Unidade', 'Valor Unit.', 'Valor Total']]
-    
+
     total_entradas = 0
     total_saidas = 0
-    
+
     for m in movimentacoes:
         tipo = 'Entrada' if m['tipo'] == 'entrada' else 'Saída'
         valor_unit = m['valor_unitario'] or 0
         valor_total = m['quantidade'] * valor_unit
-        
+
         if m['tipo'] == 'entrada':
             total_entradas += valor_total
         else:
             total_saidas += valor_total
-        
+
         data.append([
             m['data_movimento'],
             m['produto_nome'],
@@ -831,9 +992,9 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
             f"{valor_unit:.2f}" if valor_unit else '-',
             f"{valor_total:.2f}"
         ])
-    
+
     data.append(['', '', '', '', '', 'TOTAL:', f"{total_entradas - total_saidas:.2f}"])
-    
+
     table = Table(data, colWidths=[2.5*cm, 5*cm, 2.5*cm, 2.5*cm, 2*cm, 2.5*cm, 2.5*cm])
     style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), COR_PRIMARIA),
@@ -846,16 +1007,16 @@ def gerar_pdf_movimentacoes(movimentacoes, data_inicio, data_fim):
         ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ])
-    
+
     for i, m in enumerate(movimentacoes, start=1):
         if m['tipo'] == 'entrada':
             style.add('BACKGROUND', (2, i), (2, i), colors.lightgreen)
         else:
             style.add('BACKGROUND', (2, i), (2, i), colors.lightcoral)
-    
+
     table.setStyle(style)
     elements.append(table)
-    
+
     doc.build(elements, onFirstPage=moldura_kaldi, onLaterPages=moldura_kaldi)
     buffer.seek(0)
     return buffer
@@ -872,12 +1033,12 @@ def listar_categorias():
 def get_valor_por_categoria():
     """Retorna valor total por categoria para grafico."""
     query = """
-    SELECT 
+    SELECT
         COALESCE(p.categoria, 'Sem categoria') as categoria,
         COUNT(*) as produtos,
         COALESCE(SUM(p.quantidade_atual * COALESCE((
-            SELECT valor_unitario FROM movimentacoes_estoque 
-            WHERE produto_id = p.id AND valor_unitario IS NOT NULL 
+            SELECT valor_unitario FROM movimentacoes_estoque
+            WHERE produto_id = p.id AND valor_unitario IS NOT NULL AND ativo = TRUE
             ORDER BY data_movimento DESC, id DESC LIMIT 1
         ), 0)), 0) as valor
     FROM produtos_estoque p
@@ -901,7 +1062,8 @@ def get_consumo_ultimos_6_meses():
     query = """
     SELECT TO_CHAR(data_movimento, 'YYYY-MM') as mes, SUM(quantidade) as total
     FROM movimentacoes_estoque
-    WHERE tipo = 'saida' AND data_movimento >= CURRENT_DATE - INTERVAL '6 months'
+    WHERE tipo IN ('saida', 'saída') AND ativo = TRUE
+      AND data_movimento >= CURRENT_DATE - INTERVAL '6 months'
     GROUP BY TO_CHAR(data_movimento, 'YYYY-MM')
     ORDER BY mes ASC
     """
@@ -923,7 +1085,7 @@ def get_top_produtos_consumo(limite=10):
     SELECT p.nome, SUM(m.quantidade) as total
     FROM movimentacoes_estoque m
     JOIN produtos_estoque p ON p.id = m.produto_id
-    WHERE m.tipo = 'saida'
+    WHERE m.tipo IN ('saida', 'saída') AND m.ativo = TRUE
     GROUP BY p.id, p.nome
     ORDER BY total DESC
     LIMIT %s

@@ -194,7 +194,7 @@ def adicionar_item(id):
 def remover_item(id, item_id):
     """Remove um item da nota fiscal e reverte a entrada no estoque."""
     try:
-        sucesso, msg = notas_fiscais.remover_item_nota(item_id)
+        sucesso, msg = notas_fiscais.remover_item_nota(item_id, nota_id=id)
         flash(msg, 'success' if sucesso else 'error')
     except Exception as e:
         logger.error(f"notas_fiscais_routes.remover_item: {e}")

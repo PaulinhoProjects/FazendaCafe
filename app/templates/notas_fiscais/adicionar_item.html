@@ -186,13 +186,16 @@
         const fatorEmb = fatores[(un.value || '').toLowerCase()] || 1;
         const fatorBase = fatores[(unidade.value || '').toLowerCase()] || 1;
         if (!capacidade || !quantidade) { resumo.textContent = ''; return; }
-        const total = capacidade * quantidade * fatorEmb / fatorBase;
-        qtd.value = total.toFixed(2);
+        const capacidadeBase = capacidade * fatorEmb / fatorBase;
+        const total = capacidadeBase * quantidade;
+        qtd.value = total.toFixed(3);
         if (precoEmb > 0 && total > 0) {
-            valor.value = (precoEmb / total).toFixed(4);
-            resumo.innerHTML = '<span class="text-success">Total: <strong>' + total.toFixed(2) +
+            // preço de UMA embalagem ÷ capacidade dela; o valor da compra é preço × quantidade
+            const precoBase = precoEmb / capacidadeBase;
+            valor.value = precoBase.toFixed(4);
+            resumo.innerHTML = '<span class="text-success">Total: <strong>' + total.toFixed(3) +
                 ' ' + unidade.value + '</strong> — preço por ' + unidade.value + ': R$ ' +
-                (precoEmb / total).toFixed(4) + '</span>';
+                precoBase.toFixed(4) + ' — valor da compra: R$ ' + (precoEmb * quantidade).toFixed(2) + '</span>';
         } else {
             resumo.innerHTML = 'Total: <strong>' + total.toFixed(2) + ' ' + unidade.value + '</strong>';
         }
