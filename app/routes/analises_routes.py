@@ -17,6 +17,7 @@ MAX_PDFS_POR_LOTE = 20
 MAX_PDF_BYTES_PADRAO = 10 * 1024 * 1024
 CHAVE_SESSAO_UPLOAD = 'laudos_lote'
 HORAS_TEMPORARIO = 24
+SEGUNDOS_LOTE_TRAVADO = 120   # lote em processamento há mais tempo que isso é retomado
 _TOKEN_VALIDO = re.compile(r'^[0-9a-f]{32}$')
 
 
@@ -92,11 +93,15 @@ def _descartar_lote(token):
 
 def _limpar_abandonados():
     """Remove temporários e manifestos com mais de HORAS_TEMPORARIO horas (envios abandonados)."""
+    _recuperar_travados()
     limite = time.time() - HORAS_TEMPORARIO * 3600
     try:
         pasta = _dir_temporarios()
         for nome in os.listdir(pasta):
             caminho = os.path.join(pasta, nome)
+            # Lote em processamento nunca é apagado: ele é retomado por _recuperar_travados
+            if nome.endswith('.processando'):
+                continue
             if os.path.isfile(caminho) and os.path.getmtime(caminho) < limite:
                 _remover(caminho)
     except Exception as e:
@@ -318,9 +323,68 @@ def _desfazer_movimentos(movidos):
     """Devolve à pasta temporária os PDFs já movidos (falha no meio da confirmação)."""
     for origem, destino in reversed(movidos):
         try:
-            os.replace(destino, origem)
+            if os.path.exists(destino) and not os.path.exists(origem):
+                os.replace(destino, origem)
         except Exception as e:
             logger.error(f"analises_routes._desfazer_movimentos: {e}")
+
+
+def _recuperar_lote(token):
+    """Retoma um lote que ficou em processamento (queda do processo, erro após o commit).
+
+    O banco decide: se as análises do lote já existem, termina de colocar os PDFs no
+    lugar e marca como concluído; se não existem, devolve os PDFs e o lote volta a
+    aguardar confirmação. Retorna ('gravado', ids), ('pendente', []) ou (None, [])."""
+    em_processo = _manifesto(token, 'processando')
+    manifesto = _ler_manifesto(token, 'processando')
+    if manifesto is None:
+        return None, []
+    planejados = manifesto.get('planejados') or []
+    ids = analises.ids_do_lote(token)
+    if ids:
+        for origem, destino in planejados:
+            try:
+                if not os.path.exists(destino) and os.path.exists(origem):
+                    os.replace(origem, destino)
+            except Exception as e:
+                logger.error(f"analises_routes._recuperar_lote (concluir PDF): {e}")
+        try:
+            _gravar_manifesto(token, {'ids': ids, 'usuario_id': manifesto.get('usuario_id'),
+                                      'concluido_em': time.time()}, 'ok')
+        except Exception as e:
+            logger.error(f"analises_routes._recuperar_lote (marcar concluído): {e}")
+        _remover(em_processo)
+        return 'gravado', ids
+    _desfazer_movimentos([tuple(par) for par in planejados])
+    manifesto.pop('planejados', None)
+    _gravar_manifesto(token, manifesto, 'json')
+    _remover(em_processo)
+    return 'pendente', []
+
+
+def _recuperar_travados(idade_minima=SEGUNDOS_LOTE_TRAVADO):
+    """Recupera lotes em processamento há mais de `idade_minima` segundos."""
+    limite = time.time() - idade_minima
+    try:
+        for nome in os.listdir(_dir_temporarios()):
+            m = re.match(r'^lote_([0-9a-f]{32})\.processando$', nome)
+            if m and os.path.getmtime(os.path.join(_dir_temporarios(), nome)) < limite:
+                _recuperar_lote(m.group(1))
+    except Exception as e:
+        logger.error(f"analises_routes._recuperar_travados: {e}")
+
+
+def _concluir_sessao(ids, ja_existia=False):
+    session.pop(CHAVE_SESSAO_UPLOAD, None)
+    if ja_existia:
+        flash(f'Este lote já foi salvo ({len(ids)} laudos).', 'info')
+    else:
+        flash(f'{len(ids)} laudos salvos e classificados!', 'success')
+    return redirect(url_for('analises.listar'))
+
+
+def _dono(manifesto):
+    return manifesto is None or manifesto.get('usuario_id') in (None, session.get('user_id'))
 
 
 @analises_bp.route('/upload/confirmar', methods=['POST'])
@@ -330,12 +394,20 @@ def upload_confirmar():
     if not _TOKEN_VALIDO.match(token):
         flash('Nenhum laudo aguardando confirmação.', 'warning')
         return redirect(url_for('analises.upload'))
+    for sufixo in ('json', 'processando', 'ok'):
+        if not _dono(_ler_manifesto(token, sufixo)):
+            abort(403)
 
-    concluido = _ler_manifesto(token, 'ok')
-    if concluido:
-        session.pop(CHAVE_SESSAO_UPLOAD, None)
-        flash(f"Este lote já foi salvo ({len(concluido.get('ids', []))} laudos).", 'info')
-        return redirect(url_for('analises.listar'))
+    # O banco é a fonte de verdade: lote já gravado não é gravado de novo
+    try:
+        ja_gravados = analises.ids_do_lote(token)
+    except Exception:
+        flash('Não foi possível conferir o lote agora. Tente de novo.', 'error')
+        return redirect(url_for('analises.upload'))
+    if ja_gravados:
+        if os.path.exists(_manifesto(token, 'processando')):
+            _recuperar_lote(token)
+        return _concluir_sessao(ja_gravados, ja_existia=True)
 
     # Trava o lote: só uma confirmação consegue renomear o manifesto
     em_processo = _manifesto(token, 'processando')
@@ -343,28 +415,36 @@ def upload_confirmar():
         os.replace(_manifesto(token), em_processo)
     except FileNotFoundError:
         if os.path.exists(em_processo):
-            flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
+            parado_ha = time.time() - os.path.getmtime(em_processo)
+            if parado_ha < SEGUNDOS_LOTE_TRAVADO:
+                flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
+                return redirect(url_for('analises.listar'))
+            estado, ids = _recuperar_lote(token)
+            if estado == 'gravado':
+                return _concluir_sessao(ids, ja_existia=True)
+            try:
+                os.replace(_manifesto(token), em_processo)
+            except FileNotFoundError:
+                flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
+                return redirect(url_for('analises.listar'))
         else:
             flash('Nenhum laudo aguardando confirmação.', 'warning')
-        return redirect(url_for('analises.listar' if os.path.exists(em_processo) else 'analises.upload'))
+            return redirect(url_for('analises.upload'))
 
     def liberar():
         try:
-            os.replace(em_processo, _manifesto(token))
+            manifesto_livre = _ler_manifesto(token, 'processando') or {}
+            manifesto_livre.pop('planejados', None)
+            _gravar_manifesto(token, manifesto_livre, 'json')
+            _remover(em_processo)
         except Exception as e:
             logger.error(f"analises_routes.upload_confirmar (liberar lote): {e}")
 
-    try:
-        with open(em_processo, encoding='utf-8') as arquivo:
-            manifesto = json.load(arquivo)
-    except Exception as e:
-        logger.error(f"analises_routes.upload_confirmar (ler lote): {e}")
-        liberar()
+    manifesto = _ler_manifesto(token, 'processando')
+    if manifesto is None:
         flash('Não foi possível ler o lote; envie os laudos de novo.', 'error')
+        _remover(em_processo)
         return redirect(url_for('analises.upload'))
-    if manifesto.get('usuario_id') != session.get('user_id'):
-        liberar()
-        abort(403)
 
     itens = manifesto.get('itens') or []
     tipos_validos = {t['id'] for t in analises.listar_tipos_analise()}
@@ -388,6 +468,10 @@ def upload_confirmar():
         planejados.append((os.path.join(_dir_temporarios(), os.path.basename(item.get('nome_temp') or '')),
                            os.path.join(_dir_laudos(), nome_final)))
 
+    # Registra o plano antes de mexer nos arquivos: permite retomar se o processo parar
+    manifesto['planejados'] = planejados
+    _gravar_manifesto(token, manifesto, 'processando')
+
     # 1) PDFs primeiro: se um falhar, os já movidos voltam e nada vai ao banco
     movidos = []
     try:
@@ -404,9 +488,14 @@ def upload_confirmar():
                                tipos=analises.listar_tipos_analise(),
                                talhoes=talhoes.listar_talhoes())
 
-    # 2) Banco em uma transação; se falhar, os PDFs voltam para a revisão
+    # 2) Banco em uma transação, com o identificador do lote em cada análise
     try:
-        ids = analises.inserir_analises_lote(lote)
+        ids = analises.inserir_analises_lote(lote, lote_token=token)
+    except analises.LoteJaGravado as gravado:
+        # Outra confirmação gravou antes: os PDFs desta tentativa voltam e vale o que está no banco
+        _desfazer_movimentos(movidos)
+        _remover(em_processo)
+        return _concluir_sessao(gravado.ids, ja_existia=True)
     except Exception as e:
         logger.error(f"analises_routes.upload_confirmar (gravar): {e}")
         _desfazer_movimentos(movidos)
@@ -414,11 +503,14 @@ def upload_confirmar():
         flash('Erro ao salvar os laudos. Nada foi gravado; tente confirmar de novo.', 'error')
         return redirect(url_for('analises.upload'))
 
-    _gravar_manifesto(token, {'ids': ids, 'concluido_em': time.time()}, 'ok')
-    _remover(em_processo)
-    session.pop(CHAVE_SESSAO_UPLOAD, None)
-    flash(f'{len(ids)} laudos salvos e classificados!', 'success')
-    return redirect(url_for('analises.listar'))
+    # 3) Marca como concluído; se falhar, o banco já identifica o lote como gravado
+    try:
+        _gravar_manifesto(token, {'ids': ids, 'usuario_id': session.get('user_id'),
+                                  'concluido_em': time.time()}, 'ok')
+        _remover(em_processo)
+    except Exception as e:
+        logger.error(f"analises_routes.upload_confirmar (marcar concluído): {e}")
+    return _concluir_sessao(ids)
 
 
 @analises_bp.route('/upload/cancelar', methods=['POST'])

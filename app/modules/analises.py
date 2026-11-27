@@ -355,18 +355,53 @@ def inserir_analise(dados):
         return None
 
 
-def inserir_analises_lote(lista_dados):
-    """Grava vários laudos em uma única transação; rollback se qualquer um falhar."""
+class LoteJaGravado(Exception):
+    """O lote de laudos já está no banco (confirmação repetida ou interrompida)."""
+    def __init__(self, ids):
+        super().__init__('Lote já gravado.')
+        self.ids = ids
+
+
+def ids_do_lote(lote_token):
+    """Análises gravadas por um lote de upload (o banco é a fonte de verdade do lote)."""
+    if not lote_token:
+        return []
+    try:
+        linhas = executar_query("SELECT id FROM analises WHERE lote_token = %s ORDER BY lote_indice, id",
+                                (lote_token,), fetch_all=True, dict_cursor=True) or []
+        return [r['id'] for r in linhas]
+    except Exception as e:
+        logger.error(f"analises.ids_do_lote: {e}")
+        raise
+
+
+def inserir_analises_lote(lista_dados, lote_token=None):
+    """Grava vários laudos em uma única transação; rollback se qualquer um falhar.
+    Com lote_token, cada análise leva o identificador do lote; um lote já gravado
+    não é gravado de novo (índice único garante isso também sob concorrência)."""
     def operacao(cur):
+        if lote_token:
+            cur.execute("SELECT id FROM analises WHERE lote_token = %s ORDER BY lote_indice", (lote_token,))
+            existentes = [r['id'] for r in cur.fetchall()]
+            if existentes:
+                raise LoteJaGravado(existentes)
         ids = []
-        for dados in lista_dados:
+        for indice, dados in enumerate(lista_dados):
             cur.execute(_SQL_INSERIR_ANALISE, _valores_analise(dados))
-            ids.append(cur.fetchone()['id'])
+            novo_id = cur.fetchone()['id']
+            if lote_token:
+                cur.execute("UPDATE analises SET lote_token = %s, lote_indice = %s WHERE id = %s",
+                            (lote_token, indice, novo_id))
+            ids.append(novo_id)
         return ids
 
     try:
         return executar_transacao(operacao)
+    except LoteJaGravado:
+        raise
     except Exception as e:
+        if lote_token and 'ux_analises_lote' in str(e):
+            raise LoteJaGravado(ids_do_lote(lote_token))
         logger.error(f"analises.inserir_analises_lote: {e}")
         raise
 

@@ -759,3 +759,10 @@ CREATE TABLE IF NOT EXISTS cafe_gastos (
     data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_cafe_gastos_safra ON cafe_gastos(safra, data_gasto DESC);
+
+-- Lote de laudos: cada análise guarda o identificador do envio (confirmação idempotente
+-- e recuperável mesmo se o processo parar entre o banco e os arquivos)
+ALTER TABLE analises ADD COLUMN IF NOT EXISTS lote_token VARCHAR(32);
+ALTER TABLE analises ADD COLUMN IF NOT EXISTS lote_indice INTEGER;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_analises_lote ON analises (lote_token, lote_indice)
+    WHERE lote_token IS NOT NULL;

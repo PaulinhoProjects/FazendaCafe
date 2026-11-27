@@ -25,6 +25,8 @@ class ConexaoBanco:
     _inicializado = False
     _pool_por_conexao = {}
     _fechar_quando_livre = False
+    # Uma só thread cria ou fecha o pool por vez (evita dois pools na primeira requisição)
+    _trava_pool = threading.RLock()
 
     @classmethod
     def _limites_pool(cls):
@@ -39,9 +41,17 @@ class ConexaoBanco:
 
     @classmethod
     def inicializar_pool(cls):
-        """Inicializa o pool de conexões (apenas uma vez)."""
+        """Inicializa o pool de conexões (apenas uma vez, mesmo com requisições simultâneas)."""
         if cls._pool is not None:
             return True
+        with cls._trava_pool:
+            # Confere de novo: outra thread pode ter criado o pool enquanto esta esperava
+            if cls._pool is not None:
+                return True
+            return cls._criar_pool()
+
+    @classmethod
+    def _criar_pool(cls):
         try:
             minimo, maximo = cls._limites_pool()
             print(f"[{datetime.now()}] Inicializando pool de conexões ({minimo}-{maximo})...")
@@ -75,10 +85,13 @@ class ConexaoBanco:
     @classmethod
     def get_conexao(cls):
         """Pega uma conexão válida. Falha de getconn NÃO descarta o pool."""
-        if cls._pool is None and not cls.inicializar_pool():
-            return None
-
         pool = cls._pool
+        if pool is None:
+            if not cls.inicializar_pool():
+                return None
+            pool = cls._pool
+        if pool is None:
+            return None
         chave = threading.get_ident()
         for tentativa in range(2):
             try:
@@ -132,6 +145,11 @@ class ConexaoBanco:
 
     @classmethod
     def _fechar_pool_atual(cls):
+        with cls._trava_pool:
+            cls._fechar_pool_atual_sem_trava()
+
+    @classmethod
+    def _fechar_pool_atual_sem_trava(cls):
         pool = cls._pool
         if pool is None:
             return

@@ -556,22 +556,42 @@ def _reverter_efeito(cursor, mov, produtos):
                      'Não é possível desfazer esta entrada: parte dela já foi consumida.')
 
 
+def _baixar_embalagens_do_movimento(cursor, produto, total, movimento_id):
+    embalagens = _embalagens_para_baixa(cursor, produto['id'])
+    if not embalagens:
+        return
+    sem_embalagem = baixar_embalagens(cursor, produto['id'], total, embalagens, movimento_id)
+    if sem_embalagem > EPS:
+        cursor.execute("""
+            UPDATE movimentacoes_estoque
+            SET observacoes = COALESCE(observacoes, '') || %s
+            WHERE id = %s
+        """, (f' | Atenção: {_numero_br(sem_embalagem, 3)} {produto["unidade"] or ""} '
+              f'sem embalagem controlada', movimento_id))
+
+
 def _aplicar_efeito(cursor, produto, tipo, total, movimento_id):
     """Aplica uma entrada/saída ao saldo; saídas também baixam as embalagens."""
     if tipo == 'saida':
         _somar_saldo(cursor, produto, -total, 'Saldo insuficiente para esta saída.')
-        embalagens = _embalagens_para_baixa(cursor, produto['id'])
-        if embalagens:
-            sem_embalagem = baixar_embalagens(cursor, produto['id'], total, embalagens, movimento_id)
-            if sem_embalagem > EPS:
-                cursor.execute("""
-                    UPDATE movimentacoes_estoque
-                    SET observacoes = COALESCE(observacoes, '') || %s
-                    WHERE id = %s
-                """, (f' | Atenção: {_numero_br(sem_embalagem, 3)} {produto["unidade"] or ""} '
-                      f'sem embalagem controlada', movimento_id))
+        _baixar_embalagens_do_movimento(cursor, produto, total, movimento_id)
     else:
         _somar_saldo(cursor, produto, total, '')
+
+
+def _efeito(tipo, quantidade):
+    return float(quantidade) if tipo == 'entrada' else -float(quantidade)
+
+
+def preco_base(valor_unitario, unidade, unidade_base):
+    """Preço por unidade de estoque: o valor digitado vale para a unidade digitada."""
+    if valor_unitario in (None, ''):
+        return None
+    try:
+        fator = fator_para_base(unidade, unidade_base) if unidade and unidade_base else 1
+    except ValueError:
+        fator = 1
+    return round(float(valor_unitario) / fator, 4) if fator else float(valor_unitario)
 
 
 def _validar_dados_movimento(dados):
@@ -619,10 +639,12 @@ def registrar_movimentacao(dados):
             total = _converter_para_base(quantidade, dados.get('unidade'), produto)
             cur.execute("""
             INSERT INTO movimentacoes_estoque
-                (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario, observacoes)
-            VALUES (%s, %s, %s, %s, COALESCE(%s::date, CURRENT_DATE), %s, %s) RETURNING id
+                (produto_id, tipo, quantidade, unidade, data_movimento, valor_unitario,
+                 preco_unitario_base, observacoes)
+            VALUES (%s, %s, %s, %s, COALESCE(%s::date, CURRENT_DATE), %s, %s, %s) RETURNING id
             """, (produto_id, tipo, total, produto['unidade'],
-                  dados.get('data_movimento') or None, valor, dados.get('observacoes')))
+                  dados.get('data_movimento') or None, valor,
+                  preco_base(valor, dados.get('unidade'), produto['unidade']), dados.get('observacoes')))
             mov_id = cur.fetchone()['id']
             _aplicar_efeito(cur, produto, tipo, total, mov_id)
         return mov_id
@@ -714,8 +736,12 @@ def buscar_movimentacao_por_id(id):
         return None
 
 def atualizar_movimentacao(id, dados_novos):
-    """Edita a movimentação: lê e trava o registro ativo, desfaz o efeito antigo e aplica o novo
-    com a mesma conversão de unidade e validação de saldo da criação. Retorna (ok, mensagem)."""
+    """Edita a movimentação dentro de uma transação, com o registro ativo travado.
+
+    No mesmo produto aplica só a diferença no saldo (entrada de 10 com 8 consumidos
+    pode subir para 12: saldo 2 vira 4). Trocando de produto, desfaz no antigo e
+    aplica no novo. valor_unitario e preco_unitario_base são gravados juntos.
+    Retorna (ok, mensagem)."""
     try:
         tipo, quantidade, produto_novo_id, valor = _validar_dados_movimento(dados_novos)
         with transacao() as cur:
@@ -731,24 +757,39 @@ def atualizar_movimentacao(id, dados_novos):
                 produtos[pid] = _travar_produto(cur, pid, exigir_ativo=(pid == produto_novo_id))
             produto_novo = produtos[produto_novo_id]
             total = _converter_para_base(quantidade, dados_novos.get('unidade'), produto_novo)
+            tipo_antigo = normalizar_tipo(mov['tipo'])
+            quantidade_antiga = float(mov['quantidade'] or 0)
 
-            muda_estoque = (produto_novo_id != mov['produto_id']
-                            or tipo != normalizar_tipo(mov['tipo'])
-                            or abs(total - float(mov['quantidade'] or 0)) > EPS)
+            mesmo_produto = produto_novo_id == mov['produto_id']
+            muda_estoque = (not mesmo_produto or tipo != tipo_antigo
+                            or abs(total - quantidade_antiga) > EPS)
             if muda_estoque:
                 if mov['nota_fiscal_id'] or mov['embalagem_id']:
                     raise ValueError('Esta entrada veio de nota fiscal/embalagem. Para mudar produto, tipo ou '
                                      'quantidade, remova o item na nota e lance de novo.')
-                _reverter_efeito(cur, mov, produtos)
-                _aplicar_efeito(cur, produto_novo, tipo, total, id)
+                if mesmo_produto:
+                    # Diferença líquida no saldo, validada uma única vez
+                    if tipo_antigo == 'saida':
+                        _restaurar_embalagens_da_saida(cur, id)
+                    delta = _efeito(tipo, total) - _efeito(tipo_antigo, quantidade_antiga)
+                    _somar_saldo(cur, produto_novo, delta,
+                                 'A alteração deixaria o estoque negativo.' if delta < 0 else '')
+                    if tipo == 'saida':
+                        _baixar_embalagens_do_movimento(cur, produto_novo, total, id)
+                else:
+                    _reverter_efeito(cur, mov, produtos)
+                    _aplicar_efeito(cur, produto_novo, tipo, total, id)
 
             cur.execute("""
                 UPDATE movimentacoes_estoque
                 SET produto_id=%s, tipo=%s, quantidade=%s, unidade=%s,
-                    data_movimento=COALESCE(%s::date, data_movimento), valor_unitario=%s, observacoes=%s
+                    data_movimento=COALESCE(%s::date, data_movimento),
+                    valor_unitario=%s, preco_unitario_base=%s, observacoes=%s
                 WHERE id=%s
             """, (produto_novo_id, tipo, total, produto_novo['unidade'],
-                  dados_novos.get('data_movimento') or None, valor, dados_novos.get('observacoes'), id))
+                  dados_novos.get('data_movimento') or None, valor,
+                  preco_base(valor, dados_novos.get('unidade'), produto_novo['unidade']),
+                  dados_novos.get('observacoes'), id))
         return True, 'Movimentação atualizada e saldo reajustado.'
     except ValueError as e:
         return False, str(e)
