@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}{{ 'Editar nota' if compra else 'Nova compra' }} — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.listar_compras') }}">Compras</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if compra else 'Nova' }}</li>
+{% endblock %}
+{% block conteudo %}
+{% set catalogo = catalogo or {} %}
+{{ ui.cabecalho_form('bi-receipt', 'Editar nota' if compra else 'Nova compra de formulação',
+                     'Uma nota pode conter duas ou mais formulações; o saldo de cada uma fica disponível para aplicação',
+                     url_for('adubacao.listar_compras')) }}
+
+<form method="POST" class="card maq-form">
+    <div class="card-body p-4">
+        <div class="row g-3">
+            {{ ui.secao('bi-receipt', 'Nota fiscal', primeira=true) }}
+            <div class="col-md-6">
+                <label for="fornecedor" class="form-label">Fornecedor <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="{{ compra.fornecedor if compra else '' }}" placeholder="Ex.: Cooperativa ou distribuidora" required>
+            </div>
+            <div class="col-md-3">
+                <label for="numero_nota" class="form-label">Número da nota</label>
+                <input type="text" class="form-control" id="numero_nota" name="numero_nota" value="{{ compra.numero_nota if compra and compra.numero_nota else '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="data_nota" class="form-label">Data da nota</label>
+                <input type="date" class="form-control" id="data_nota" name="data_nota" value="{{ compra.data_nota if compra and compra.data_nota else '' }}">
+                <div class="form-text">Vazio = hoje.</div>
+            </div>
+            <div class="col-12">
+                <label for="observacoes" class="form-label">Observações da nota</label>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="2">{{ compra.observacoes if compra and compra.observacoes else '' }}</textarea>
+            </div>
+
+            {% if compra %}
+            {{ ui.secao('bi-box-seam', 'Formulações compradas') }}
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead><tr><th>Produto</th><th>Formulação</th><th>Marca</th><th>Tecnologia</th><th class="text-end">Comprado</th><th class="text-end">Saldo</th><th class="text-end">Valor</th></tr></thead>
+                        <tbody>
+                        {% for item in itens %}
+                        <tr>
+                            <td class="fw-semibold">{{ item.produto }}</td>
+                            <td>{{ item.formulacao or '—' }}</td>
+                            <td>{{ item.marca or '—' }}</td>
+                            <td>{{ item.tecnologia or '—' }}</td>
+                            <td class="text-end tabular">{{ ui.num(item.quantidade) }} {{ item.unidade }}</td>
+                            <td class="text-end tabular">{{ ui.num(item.saldo_kg, 0) }} kg</td>
+                            <td class="text-end tabular">{{ ui.brl(item.valor_total) }}</td>
+                        </tr>
+                        {% else %}
+                        {{ ui.linha_vazia(7, 'bi-box-seam', 'Sem formulações nesta nota') }}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-text mt-2">Para corrigir quantidade, marca ou valor, exclua a nota (sem aplicações ativas) e registre-a novamente.</div>
+            </div>
+            {% else %}
+            {{ ui.secao('bi-box-seam', 'Formulações compradas') }}
+            <div class="col-12">
+                <div id="linhas-formulacao">
+                    <div class="linha-formulacao border rounded p-3 mb-3">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Produto <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="produto" placeholder="Ex.: NPK 04-14-08 + Mg" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Formulação</label>
+                                <input type="text" class="form-control" name="formulacao" placeholder="Ex.: 04-14-08">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Marca</label>
+                                <input type="text" class="form-control" name="marca">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tecnologia</label>
+                                <select class="form-select" name="tecnologia">
+                                    <option value="">Selecione...</option>
+                                    {% for tecnologia in catalogo.tecnologias or [] %}
+                                    <option value="{{ tecnologia }}">{{ tecnologia }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Categoria de manejo</label>
+                                <select class="form-select" name="categoria_id">
+                                    <option value="">Selecione...</option>
+                                    {% for categoria in catalogo.categorias or [] %}
+                                    <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Quantidade <span class="text-danger">*</span></label>
+                                <input type="number" step="any" min="0.01" class="form-control" name="quantidade" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Unidade</label>
+                                <select class="form-select" name="unidade">
+                                    {% for unidade in catalogo.unidades or [] %}
+                                    <option value="{{ unidade.valor }}" {% if unidade.valor == 'kg' %}selected{% endif %}>{{ unidade.rotulo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Peso do saco (kg)</label>
+                                <input type="number" step="any" class="form-control" name="peso_saco_kg" value="50">
+                                <div class="form-text">Usado se a unidade for saco.</div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Valor unitário (R$)</label>
+                                <input type="number" step="any" class="form-control" name="valor_unitario">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Valor total (R$)</label>
+                                <input type="number" step="any" class="form-control" name="valor_total">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Lote</label>
+                                <input type="text" class="form-control" name="lote">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Validade</label>
+                                <input type="date" class="form-control" name="validade">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Observações do item</label>
+                                <input type="text" class="form-control" name="observacoes_item">
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerLinha(this)"><i class="bi bi-trash me-1"></i>Remover formulação</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarLinha()"><i class="bi bi-plus-lg me-1"></i>Adicionar formulação</button>
+                <div class="form-text">Quando o valor total for deixado em branco, ele é calculado por quantidade × valor unitário.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-footer">{{ ui.rodape_form(url_for('adubacao.listar_compras'), 'Salvar nota' if compra else 'Registrar compra') }}</div>
+</form>
+
+{% if not compra %}
+<script>
+function adicionarLinha() {
+    const container = document.getElementById('linhas-formulacao');
+    const linha = container.querySelector('.linha-formulacao').cloneNode(true);
+    linha.querySelectorAll('input, textarea').forEach(function (campo) {
+        campo.value = campo.name === 'peso_saco_kg' ? '50' : '';
+    });
+    linha.querySelectorAll('select').forEach(function (campo) {
+        campo.selectedIndex = 0;
+    });
+    container.appendChild(linha);
+}
+function removerLinha(botao) {
+    const linhas = document.querySelectorAll('#linhas-formulacao .linha-formulacao');
+    if (linhas.length > 1) {
+        botao.closest('.linha-formulacao').remove();
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

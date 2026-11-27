@@ -1,57 +1,194 @@
 {% extends "base.html" %}
-{% block titulo %}Adubação{% endblock %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item active">Nutrição e Correção do Solo</li>
+{% endblock %}
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="page-header">
-        <h1 class="page-title"><i class="bi bi-droplet me-2"></i>Adubação</h1>
-        <div class="btn-group">
-            <a href="{{ url_for('adubacao.nova_recomendacao') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Nova Recomendação</a>
-            <a href="{{ url_for('adubacao.nova_adubacao') }}" class="btn btn-primary btn-sm"><i class="bi bi-droplet me-1"></i>Registrar Adubação</a>
-        </div>
+{% set resumo = resumo or {} %}
+
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tree me-2"></i>Nutrição e Correção do Solo</h1>
+        <p class="page-subtitle">Formulação comprada, saldo, recomendação por talhão e aplicações de calcário, gesso e nutrientes</p>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-3"><div class="card text-white bg-success"><div class="card-body"><h6>Recomendações</h6><h2>{{ total_recomendacoes }}</h2></div></div></div>
-        <div class="col-md-3"><div class="card text-white bg-info"><div class="card-body"><h6>Adubações Realizadas</h6><h2>{{ total_adubacoes }}</h2></div></div></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('adubacao.nova_aplicacao') }}" class="btn btn-outline-secondary"><i class="bi bi-tree me-1"></i>Nova aplicação</a>
+        <a href="{{ url_for('adubacao.nova_compra') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Registrar compra</a>
     </div>
-    <div class="card shadow-sm mb-3">
-        <div class="card-header"><h5 class="mb-0">Últimas Recomendações</h5></div>
-        <div class="card-body">
-            {% if recomendacoes %}
-            <table class="table table-hover">
-                <thead><tr><th>Talhão</th><th>Data</th><th>Responsável</th><th>Status</th><th>Ações</th></tr></thead>
-                <tbody>
-                    {% for r in recomendacoes %}
+</div>
+
+{% include 'adubacao/_nav.html' %}
+
+{% if alertas %}
+<div class="card maq-alertas mb-4">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-bell me-2"></i>Precisa de atenção</h6>
+        <span class="badge bg-warning text-dark">{{ alertas|length }}</span>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for alerta in alertas %}
+        <a class="list-group-item list-group-item-action maq-alerta maq-alerta-{{ alerta.tipo }}" href="{{ url_for(alerta.url) }}">
+            <span class="maq-alerta-icone"><i class="bi {{ 'bi-exclamation-octagon' if alerta.tipo == 'danger' else 'bi-exclamation-triangle' }}"></i></span>
+            <span class="flex-grow-1 min-w-0">
+                <strong class="d-block">{{ alerta.titulo }}</strong>
+                <small class="text-body-secondary">{{ alerta.detalhe }}</small>
+            </span>
+            <i class="bi bi-chevron-right text-body-tertiary"></i>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="kpi-grid maq-kpis mb-4">
+    {{ ui.kpi('bi-receipt', 'primary', 'Compras no mês', ui.brl(resumo.valor_compras),
+              (resumo.compras_mes or 0) ~ ' nota(s) registrada(s)', url_for('adubacao.listar_compras')) }}
+    {{ ui.kpi('bi-box-seam', 'success', 'Saldo disponível', ui.num(resumo.saldo_kg, 0) ~ ' kg',
+              'Soma das formulações compradas', url_for('adubacao.formulacoes')) }}
+    {{ ui.kpi('bi-tree', 'accent', 'Aplicações em 30 dias', resumo.aplicacoes_30d or 0,
+              ui.num(resumo.aplicado_30d_kg, 0) ~ ' kg aplicados', url_for('adubacao.listar_aplicacoes')) }}
+    {{ ui.kpi('bi-pin-map', 'warning', 'Talhões atendidos', resumo.talhoes_atendidos or 0,
+              'Nos últimos 30 dias', url_for('adubacao.listar_aplicacoes')) }}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-7">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-receipt me-2"></i>Últimas compras</h6>
+                    <small class="text-body-secondary">Nota, fornecedor e valor das formulações</small>
+                </div>
+                <a href="{{ url_for('adubacao.listar_compras') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            {% if compras %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Nota</th><th>Fornecedor</th><th>Data</th><th class="text-end">Itens</th><th class="text-end">Valor</th></tr></thead>
+                    <tbody>
+                    {% for c in compras %}
                     <tr>
-                        <td>{{ r.talhao_nome }}</td>
-                        <td>{{ r.data_recomendacao|format_data if r.data_recomendacao else '-' }}</td>
-                        <td>{{ r.responsavel or '-' }}</td>
-                        <td><span class="badge bg-{{ 'success' if r.status == 'Aplicada' else 'warning' if r.status == 'Pendente' else 'secondary' }}">{{ r.status }}</span></td>
-                        <td><a href="{{ url_for('adubacao.detalhe_recomendacao', id=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+                        <td class="fw-semibold"><a class="text-reset" href="{{ url_for('adubacao.detalhe_compra', id=c.id) }}">{{ c.numero_nota or '—' }}</a></td>
+                        <td>{{ c.fornecedor }}</td>
+                        <td class="tabular">{{ ui.data(c.data_nota) }}</td>
+                        <td class="text-end tabular">{{ c.total_itens or 0 }}</td>
+                        <td class="text-end tabular fw-semibold">{{ ui.brl(c.valor_total) }}</td>
                     </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-            {% else %}<p class="text-center text-muted py-3">Nenhuma recomendação cadastrada.</p>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-receipt"></i>
+                <h6 class="mb-1">Nenhuma compra registrada</h6>
+                <p>Registre a nota da formulação comprada antes de aplicar.</p>
+                <a href="{{ url_for('adubacao.nova_compra') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Registrar compra</a>
+            </div>
+            {% endif %}
         </div>
     </div>
-    <div class="card shadow-sm">
-        <div class="card-header"><h5 class="mb-0">Últimas Adubações</h5></div>
-        <div class="card-body">
-            {% if adubacoes %}
-            <table class="table table-hover">
-                <thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Responsável</th></tr></thead>
-                <tbody>
-                    {% for a in adubacoes %}
-                    <tr onclick="window.location='{{ url_for('adubacao.detalhe_adubacao', id=a.id) }}'" style="cursor:pointer">
-                        <td>{{ a.data_aplicacao|format_data if a.data_aplicacao else '-' }}</td>
-                        <td>{{ a.talhao_nome }}</td>
-                        <td>{{ a.tipo_nome or '-' }}</td>
-                        <td>{{ a.responsavel or '-' }}</td>
+    <div class="col-xl-5">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-box-seam me-2"></i>Formulações com saldo</h6>
+                    <small class="text-body-secondary">Disponível para aplicação</small>
+                </div>
+                <a href="{{ url_for('adubacao.formulacoes') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            {% if formulacoes %}
+            <div class="list-group list-group-flush">
+                {% for f in formulacoes[:6] %}
+                <a class="list-group-item list-group-item-action" href="{{ url_for('adubacao.detalhe_formulacao', id=f.id) }}">
+                    <div class="d-flex justify-content-between gap-3">
+                        <span class="min-w-0">
+                            <strong class="d-block text-truncate">{{ f.produto }}</strong>
+                            <small class="text-body-secondary">{{ [f.formulacao, f.marca, f.categoria_nome]|select|join(' · ') or 'Sem detalhes' }}</small>
+                        </span>
+                        <span class="text-end text-nowrap">
+                            <strong class="d-block tabular {{ 'text-danger' if f.saldo_kg <= 0 else '' }}">{{ ui.num(f.saldo_kg, 0) }} kg</strong>
+                            <small class="text-body-secondary">{{ f.fornecedor }}</small>
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-box-seam"></i>
+                <h6 class="mb-1">Sem formulações disponíveis</h6>
+                <p>Cadastre a compra para iniciar o controle de saldo.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-tree me-2"></i>Aplicações recentes</h6>
+                    <small class="text-body-secondary">Uma aplicação pode atender vários talhões</small>
+                </div>
+                <a href="{{ url_for('adubacao.listar_aplicacoes') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            {% if aplicacoes %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Data</th><th>Formulação</th><th>Método</th><th class="text-end">Talhões</th><th class="text-end">Kg</th></tr></thead>
+                    <tbody>
+                    {% for a in aplicacoes[:6] %}
+                    <tr>
+                        <td class="tabular"><a class="text-reset" href="{{ url_for('adubacao.detalhe_aplicacao', id=a.id) }}">{{ ui.data(a.data_aplicacao) }}</a></td>
+                        <td class="fw-semibold">{{ a.produto }}</td>
+                        <td>{{ a.metodo or '—' }}</td>
+                        <td class="text-end tabular">{{ a.total_talhoes or 0 }}</td>
+                        <td class="text-end tabular">{{ ui.num(a.total_kg, 0) }}</td>
                     </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-            {% else %}<p class="text-center text-muted py-3">Nenhuma adubação registrada.</p>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-tree"></i>
+                <h6 class="mb-1">Nenhuma aplicação registrada</h6>
+                <p>Aplique a formulação comprada seguindo a recomendação de cada talhão.</p>
+                <a href="{{ url_for('adubacao.nova_aplicacao') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nova aplicação</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-clipboard-data me-2"></i>Recomendações</h6>
+                    <small class="text-body-secondary">Baseadas em análise de solo</small>
+                </div>
+                <a href="{{ url_for('adubacao.listar_recomendacoes') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            {% if recomendacoes %}
+            <div class="list-group list-group-flush">
+                {% for r in recomendacoes[:5] %}
+                <a class="list-group-item list-group-item-action" href="{{ url_for('adubacao.detalhe_recomendacao', id=r.id) }}">
+                    <strong class="d-block">{{ r.talhao_nome }}</strong>
+                    <small class="text-body-secondary">{{ ui.data(r.data_recomendacao) }} · {{ r.status or '—' }}</small>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-clipboard-data"></i>
+                <h6 class="mb-1">Sem recomendações</h6>
+                <p>Crie a recomendação por talhão após a análise de solo.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

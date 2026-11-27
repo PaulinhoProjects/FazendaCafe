@@ -1,0 +1,19 @@
+{% set caminho = request.path.rstrip('/') %}
+{% set abas = [
+    ('adubacao.dashboard', 'bi-grid-1x2', 'Visão geral', caminho == url_for('adubacao.dashboard').rstrip('/')),
+    ('adubacao.listar_compras', 'bi-receipt', 'Compras', '/adubacao/compras' in caminho),
+    ('adubacao.formulacoes', 'bi-box-seam', 'Formulações', '/adubacao/formulacoes' in caminho),
+    ('adubacao.listar_recomendacoes', 'bi-clipboard-data', 'Recomendações', '/adubacao/recomendacoes' in caminho),
+    ('adubacao.listar_aplicacoes', 'bi-tree', 'Aplicações', '/adubacao/aplicacoes' in caminho or '/adubacao/adubacoes' in caminho),
+    ('adubacao.catalogo', 'bi-list-check', 'Catálogo', '/adubacao/catalogo' in caminho),
+] %}
+<nav class="maq-abas mb-4" aria-label="Seções de nutrição e correção do solo">
+    <ul class="nav nav-tabs flex-nowrap">
+        {% for endpoint, icone, rotulo, ativa in abas %}
+        <li class="nav-item">
+            <a class="nav-link text-nowrap {% if ativa %}active{% endif %}" href="{{ url_for(endpoint) }}"
+               {% if ativa %}aria-current="page"{% endif %}><i class="bi {{ icone }} me-1"></i>{{ rotulo }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>

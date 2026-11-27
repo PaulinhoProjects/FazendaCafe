@@ -1,14 +1,21 @@
 {% extends "base.html" %}
-{% block titulo %}Nova Adubação{% endblock %}
+{% block titulo %}Adubação antiga — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.listar_adubacoes') }}">Registros antigos</a></li>
+<li class="breadcrumb-item active">Nova</li>
+{% endblock %}
 {% block conteudo %}
 <div class="container-fluid">
     <div class="page-header mb-4">
     <div>
-        <h1 class="page-title"><i class="bi bi-droplet me-2"></i>Nova Adubação</h1>
-        <p class="page-subtitle">Registrar nova adubação realizada</p>
+        <h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Registro antigo de adubação</h1>
+        <p class="page-subtitle">Para o fluxo atual, use Nova aplicação com formulação comprada e saldo</p>
     </div>
     <a href="{{ url_for('adubacao.listar_adubacoes') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
 </div>
+    {% include 'adubacao/_nav.html' %}
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="POST" action="{{ url_for('adubacao.nova_adubacao') }}">

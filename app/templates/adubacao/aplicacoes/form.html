@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}{{ 'Editar aplicação' if aplicacao else 'Nova aplicação' }} — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.listar_aplicacoes') }}">Aplicações</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if aplicacao else 'Nova' }}</li>
+{% endblock %}
+{% block conteudo %}
+{% set catalogo = catalogo or {} %}
+{% set linhas = talhoes_aplicacao if talhoes_aplicacao else [none] %}
+{{ ui.cabecalho_form('bi-tree', 'Editar aplicação' if aplicacao else 'Nova aplicação',
+                     'Escolha a formulação comprada e informe a dose de cada talhão; o saldo é baixado no salvamento',
+                     url_for('adubacao.listar_aplicacoes')) }}
+
+<form method="POST" class="card maq-form">
+    <div class="card-body p-4">
+        <div class="row g-3">
+            {{ ui.secao('bi-box-seam', 'Formulação comprada', primeira=true) }}
+            <div class="col-md-5">
+                <label for="compra_item_id" class="form-label">Formulação <span class="text-danger">*</span></label>
+                <select class="form-select" id="compra_item_id" name="compra_item_id" required>
+                    <option value="">Selecione...</option>
+                    {% for f in formulacoes %}
+                    <option value="{{ f.id }}" {% if aplicacao and aplicacao.compra_item_id == f.id %}selected{% endif %}>
+                        {{ f.produto }} — {{ ui.num(f.saldo_kg, 0) }} kg disponíveis ({{ f.fornecedor }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="data_aplicacao" class="form-label">Data da aplicação</label>
+                <input type="date" class="form-control" id="data_aplicacao" name="data_aplicacao" value="{{ aplicacao.data_aplicacao if aplicacao and aplicacao.data_aplicacao else '' }}">
+                <div class="form-text">Vazio = hoje.</div>
+            </div>
+            <div class="col-md-2">
+                <label for="metodo" class="form-label">Método</label>
+                <select class="form-select" id="metodo" name="metodo">
+                    {% for metodo in catalogo.metodos or ['Tratorizada'] %}
+                    <option value="{{ metodo }}" {% if aplicacao and aplicacao.metodo == metodo %}selected{% endif %}>{{ metodo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="responsavel" class="form-label">Responsável</label>
+                <input type="text" class="form-control" id="responsavel" name="responsavel" value="{{ aplicacao.responsavel if aplicacao and aplicacao.responsavel else '' }}">
+            </div>
+
+            {{ ui.secao('bi-pin-map', 'Talhões e doses') }}
+            <div class="col-12">
+                <div id="linhas-talhao">
+                {% for item in linhas %}
+                    <div class="linha-talhao border rounded p-3 mb-3">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Talhão <span class="text-danger">*</span></label>
+                                <select class="form-select sel-talhao" name="talhao_id" onchange="filtrarRecomendacoes(this, false)" required>
+                                    <option value="">Selecione...</option>
+                                    {% for t in talhoes %}
+                                    <option value="{{ t.id }}" {% if item and item.talhao_id == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Recomendação (análise de solo)</label>
+                                <select class="form-select sel-recomendacao" name="recomendacao_id">
+                                    <option value="">Sem recomendação</option>
+                                    {% for r in recomendacoes %}
+                                    <option value="{{ r.id }}" data-talhao="{{ r.talhao_id }}" {% if item and item.recomendacao_id == r.id %}selected{% endif %}>
+                                        {{ r.talhao_nome }} · {{ ui.data(r.data_recomendacao) }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Quantidade (kg) <span class="text-danger">*</span></label>
+                                <input type="number" step="any" min="0.01" class="form-control" name="quantidade_kg" value="{{ item.quantidade_kg if item else '' }}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Área (ha)</label>
+                                <input type="number" step="any" class="form-control" name="area_ha" value="{{ item.area_ha if item and item.area_ha else '' }}">
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removerTalhao(this)" title="Remover talhão"><i class="bi bi-trash"></i></button>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações do talhão</label>
+                                <input type="text" class="form-control" name="observacoes_talhao" value="{{ item.observacoes if item and item.observacoes else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarTalhao()"><i class="bi bi-plus-lg me-1"></i>Adicionar talhão</button>
+            </div>
+
+            {{ ui.secao('bi-chat-left-text', 'Observações gerais') }}
+            <div class="col-12">
+                <textarea class="form-control" name="observacoes" rows="2">{{ aplicacao.observacoes if aplicacao and aplicacao.observacoes else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">{{ ui.rodape_form(url_for('adubacao.listar_aplicacoes'), 'Salvar aplicação') }}</div>
+</form>
+
+<script>
+function filtrarRecomendacoes(selectTalhao, manterSelecao) {
+    var linha = selectTalhao.closest('.linha-talhao');
+    var recom = linha.querySelector('.sel-recomendacao');
+    var talhaoId = selectTalhao.value;
+    Array.prototype.forEach.call(recom.options, function (opcao) {
+        if (opcao.value) {
+            opcao.hidden = opcao.getAttribute('data-talhao') !== talhaoId;
+        }
+    });
+    if (!manterSelecao || recom.selectedIndex < 0 || recom.options[recom.selectedIndex].hidden) {
+        recom.selectedIndex = 0;
+    }
+}
+function adicionarTalhao() {
+    var container = document.getElementById('linhas-talhao');
+    var linha = container.querySelector('.linha-talhao').cloneNode(true);
+    linha.querySelectorAll('input').forEach(function (campo) { campo.value = ''; });
+    linha.querySelectorAll('select').forEach(function (campo) { campo.selectedIndex = 0; });
+    container.appendChild(linha);
+    filtrarRecomendacoes(linha.querySelector('.sel-talhao'), false);
+}
+function removerTalhao(botao) {
+    var linhas = document.querySelectorAll('#linhas-talhao .linha-talhao');
+    if (linhas.length > 1) {
+        botao.closest('.linha-talhao').remove();
+    }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#linhas-talhao .sel-talhao').forEach(function (selectTalhao) {
+        filtrarRecomendacoes(selectTalhao, true);
+    });
+});
+</script>
+{% endblock %}

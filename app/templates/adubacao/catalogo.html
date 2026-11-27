@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Catálogo — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item active">Catálogo</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-list-check me-2"></i>Catálogo de Manejos</h1>
+        <p class="page-subtitle">Opções usadas no registro da compra e da aplicação</p>
+    </div>
+</div>
+
+{% include 'adubacao/_nav.html' %}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-tree me-2"></i>Categorias de manejo</h6></div>
+            <div class="list-group list-group-flush">
+                {% for categoria in catalogo.categorias or [] %}
+                <div class="list-group-item">
+                    <strong class="d-block">{{ categoria.nome }}</strong>
+                    <small class="text-body-secondary">{{ categoria.descricao or 'Sem descrição' }}</small>
+                </div>
+                {% else %}
+                {{ ui.linha_vazia(1, 'bi-list-check', 'Nenhuma categoria cadastrada') }}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-stars me-2"></i>Tecnologias</h6></div>
+            <div class="list-group list-group-flush">
+                {% for tecnologia in catalogo.tecnologias or [] %}
+                <div class="list-group-item"><i class="bi bi-check2-circle me-2 text-success"></i>{{ tecnologia }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-truck me-2"></i>Métodos de aplicação</h6></div>
+            <div class="list-group list-group-flush">
+                {% for metodo in catalogo.metodos or [] %}
+                <div class="list-group-item"><i class="bi bi-check2-circle me-2 text-success"></i>{{ metodo }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-box-seam me-2"></i>Unidades de compra</h6></div>
+            <div class="list-group list-group-flush">
+                {% for unidade in catalogo.unidades or [] %}
+                <div class="list-group-item"><i class="bi bi-check2-circle me-2 text-success"></i>{{ unidade.rotulo }}</div>
+                {% endfor %}
+                <div class="list-group-item small text-body-secondary">Sacos são convertidos para kg pelo peso informado. Todo o saldo e toda a dose são controlados em kg.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

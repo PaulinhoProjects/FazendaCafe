@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}{{ formulacao.produto }} — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.formulacoes') }}">Formulações</a></li>
+<li class="breadcrumb-item active">{{ formulacao.produto }}</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>{{ formulacao.produto }}</h1>
+        <p class="page-subtitle">{{ [formulacao.formulacao, formulacao.marca, formulacao.tecnologia, formulacao.categoria_nome]|select|join(' · ') or 'Sem detalhes' }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('adubacao.detalhe_compra', id=formulacao.compra_id) }}" class="btn btn-outline-secondary"><i class="bi bi-receipt me-1"></i>Ver nota</a>
+        <a href="{{ url_for('adubacao.nova_aplicacao') }}" class="btn btn-primary"><i class="bi bi-tree me-1"></i>Aplicar formulação</a>
+    </div>
+</div>
+
+{% include 'adubacao/_nav.html' %}
+
+<div class="kpi-grid maq-kpis mb-4">
+    {{ ui.kpi('bi-box-seam', 'success', 'Saldo disponível', ui.num(formulacao.saldo_kg, 0) ~ ' kg',
+              'De ' ~ ui.num(formulacao.quantidade_kg, 0) ~ ' kg comprados') }}
+    {{ ui.kpi('bi-cash-coin', 'primary', 'Valor da compra', ui.brl(formulacao.valor_total),
+              ui.brl((formulacao.valor_total or 0) / (formulacao.quantidade_kg or 1), 2) ~ '/kg') }}
+    {{ ui.kpi('bi-tree', 'accent', 'Aplicações', aplicacoes|length,
+              'Registros ativos com esta formulação') }}
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Dados da compra</h6></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Fornecedor</dt><dd class="col-sm-7">{{ formulacao.fornecedor }}</dd>
+                    <dt class="col-sm-5">Nota</dt><dd class="col-sm-7">{{ formulacao.numero_nota or '—' }}</dd>
+                    <dt class="col-sm-5">Data da nota</dt><dd class="col-sm-7 tabular">{{ ui.data(formulacao.data_nota) }}</dd>
+                    <dt class="col-sm-5">Quantidade comprada</dt><dd class="col-sm-7 tabular">{{ ui.num(formulacao.quantidade) }} {{ formulacao.unidade }}</dd>
+                    <dt class="col-sm-5">Lote</dt><dd class="col-sm-7">{{ formulacao.lote or '—' }}</dd>
+                    <dt class="col-sm-5">Validade</dt><dd class="col-sm-7 tabular">{{ ui.data(formulacao.validade) }}</dd>
+                </dl>
+                {% if formulacao.observacoes %}<hr><p class="mb-0">{{ formulacao.observacoes }}</p>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header card-header-split">
+                <h6><i class="bi bi-tree me-2"></i>Aplicações desta formulação</h6>
+                <a href="{{ url_for('adubacao.nova_aplicacao') }}" class="btn btn-sm btn-outline-secondary">Nova</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Data</th><th>Método</th><th class="text-end">Talhões</th><th class="text-end">Kg aplicados</th><th></th></tr></thead>
+                    <tbody>
+                    {% for a in aplicacoes %}
+                    <tr>
+                        <td class="tabular"><a class="text-reset" href="{{ url_for('adubacao.detalhe_aplicacao', id=a.id) }}">{{ ui.data(a.data_aplicacao) }}</a></td>
+                        <td>{{ a.metodo or '—' }}</td>
+                        <td class="text-end tabular">{{ a.total_talhoes or 0 }}</td>
+                        <td class="text-end tabular">{{ ui.num(a.total_kg, 0) }}</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('adubacao.detalhe_aplicacao', id=a.id) }}" title="Ver"><i class="bi bi-eye"></i></a></td>
+                    </tr>
+                    {% else %}
+                    {{ ui.linha_vazia(5, 'bi-tree', 'Nenhuma aplicação', 'Esta formulação ainda não foi aplicada.', url_for('adubacao.nova_aplicacao'), 'Nova aplicação') }}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Aplicações — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item active">Aplicações</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-tree me-2"></i>Aplicações</h1>
+        <p class="page-subtitle">Adubação, fertirrigação, calagem, gessagem e micronutrientes por talhão</p>
+    </div>
+    <a href="{{ url_for('adubacao.nova_aplicacao') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova aplicação</a>
+</div>
+
+{% include 'adubacao/_nav.html' %}
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-list-ul me-2"></i>Aplicações registradas</h6>
+        <span class="badge bg-secondary">{{ aplicacoes|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr>
+                <th>Data</th><th>Formulação</th><th>Fornecedor</th><th>Método</th>
+                <th class="text-end">Talhões</th><th class="text-end">Kg aplicados</th><th class="text-end">Custo</th><th class="text-end">Ações</th>
+            </tr></thead>
+            <tbody>
+            {% for a in aplicacoes %}
+            <tr>
+                <td class="tabular"><a class="text-reset" href="{{ url_for('adubacao.detalhe_aplicacao', id=a.id) }}">{{ ui.data(a.data_aplicacao) }}</a></td>
+                <td class="fw-semibold">{{ a.produto }} <small class="text-body-secondary d-block">{{ [a.formulacao, a.tecnologia]|select|join(' · ') }}</small></td>
+                <td>{{ a.fornecedor }}</td>
+                <td>{{ a.metodo or '—' }}</td>
+                <td class="text-end tabular">{{ a.total_talhoes or 0 }}</td>
+                <td class="text-end tabular">{{ ui.num(a.total_kg, 0) }}</td>
+                <td class="text-end tabular fw-semibold">{{ ui.brl(a.custo_total) }}</td>
+                <td class="text-end text-nowrap">
+                    <a href="{{ url_for('adubacao.editar_aplicacao', id=a.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                    {{ ui.botao_excluir(ui.data(a.data_aplicacao), url_for('adubacao.excluir_aplicacao', id=a.id)) }}
+                </td>
+            </tr>
+            {% else %}
+            {{ ui.linha_vazia(8, 'bi-tree', 'Nenhuma aplicação registrada', 'Aplicações baixam o saldo da formulação comprada.', url_for('adubacao.nova_aplicacao'), 'Nova aplicação') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

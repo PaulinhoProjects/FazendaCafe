@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import 'maquinario/_macros.html' as ui with context %}
+{% block titulo %}Compras de Formulações — Nutrição e Correção do Solo{% endblock %}
+{% block breadcrumb %}
+{{ super() }}
+<li class="breadcrumb-item"><a href="{{ url_for('adubacao.dashboard') }}">Nutrição e Correção do Solo</a></li>
+<li class="breadcrumb-item active">Compras</li>
+{% endblock %}
+{% block conteudo %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="bi bi-receipt me-2"></i>Compras de Formulações</h1>
+        <p class="page-subtitle">Nota, fornecedor, valor pago e marca/tecnologia de cada formulação comprada</p>
+    </div>
+    <a href="{{ url_for('adubacao.nova_compra') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Registrar compra</a>
+</div>
+
+{% include 'adubacao/_nav.html' %}
+
+<div class="card">
+    <div class="card-header card-header-split">
+        <h6><i class="bi bi-list-ul me-2"></i>Notas registradas</h6>
+        <span class="badge bg-secondary">{{ compras|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Nota</th><th>Fornecedor</th><th>Data</th><th class="text-end">Formulações</th><th class="text-end">Valor da nota</th><th class="text-end">Ações</th></tr></thead>
+            <tbody>
+            {% for c in compras %}
+            <tr>
+                <td class="fw-semibold"><a class="text-reset" href="{{ url_for('adubacao.detalhe_compra', id=c.id) }}">{{ c.numero_nota or '—' }}</a></td>
+                <td>{{ c.fornecedor }}</td>
+                <td class="tabular">{{ ui.data(c.data_nota) }}</td>
+                <td class="text-end tabular">{{ c.total_itens or 0 }}</td>
+                <td class="text-end tabular fw-semibold">{{ ui.brl(c.valor_total) }}</td>
+                <td class="text-end text-nowrap">
+                    <a href="{{ url_for('adubacao.detalhe_compra', id=c.id) }}" class="btn btn-sm btn-outline-secondary" title="Ver"><i class="bi bi-eye"></i></a>
+                    {{ ui.botao_excluir(c.numero_nota or c.fornecedor, url_for('adubacao.excluir_compra', id=c.id)) }}
+                </td>
+            </tr>
+            {% else %}
+            {{ ui.linha_vazia(6, 'bi-receipt', 'Nenhuma compra registrada', 'Registre a nota para começar a controlar o saldo das formulações.', url_for('adubacao.nova_compra'), 'Registrar compra') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
