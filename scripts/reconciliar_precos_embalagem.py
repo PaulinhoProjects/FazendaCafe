@@ -5,10 +5,12 @@ O cálculo antigo dividia o preço de UMA embalagem pelo volume de TODAS as emba
 nota (2 galões de 20 L a R$ 120 viravam R$ 3/L em vez de R$ 6/L). A assinatura do erro é:
     preco_unitario_base × quantidade ≈ preço de uma embalagem   (com mais de uma embalagem)
 
-Como o campo pode ter recebido o TOTAL das embalagens (e aí o valor antigo está certo), a
-correção só é automática quando o total informado na nota confirma o valor novo e o preço da
-embalagem é desta compra (embalagem usada por uma única entrada). Quando a nota confirma o
-valor antigo, a entrada fica como está. O resto é listado para conferência manual.
+Como o campo pode ter recebido o TOTAL das embalagens (e aí o valor antigo está certo), só há
+correção automática quando a nota PROVA o preço do item: a nota tem só este item, a embalagem é
+desta compra (usada por uma única entrada) e o total da nota bate com o valor corrigido. Se a
+nota prova o valor antigo, a entrada fica como está. Tudo o que for ambíguo (nota com vários
+produtos, sem nota, embalagem compartilhada, total que não bate com nenhum dos dois) vai para
+conferência manual — nunca é corrigido sozinho.
 
 Uso:
     python scripts/reconciliar_precos_embalagem.py            # só lista (nada é alterado)
@@ -48,6 +50,8 @@ def analisar():
                m.embalagens_quantidade, m.data_cadastro, p.nome AS produto, p.unidade AS unidade_base,
                e.id AS embalagem_id, e.descricao, e.capacidade, e.unidade, e.preco AS preco_embalagem,
                n.valor_total AS total_nota,
+               (SELECT COUNT(*) FROM movimentacoes_estoque y
+                 WHERE y.nota_fiscal_id = m.nota_fiscal_id AND y.tipo = 'entrada' AND y.ativo = TRUE) AS itens_nota,
                (SELECT COUNT(*) FROM movimentacoes_estoque x
                  WHERE x.embalagem_id = m.embalagem_id AND x.tipo = 'entrada') AS usos
         FROM movimentacoes_estoque m
@@ -74,14 +78,23 @@ def analisar():
         total_antigo = base_atual * float(r['quantidade'])
         total_correto = correto * float(r['quantidade'])
         total_nota = float(r['total_nota'] or 0)
-        if assinatura and total_nota and total_nota + 0.01 < total_correto:
-            # A nota não comporta o valor corrigido: o preço digitado era o total das embalagens
-            mantidos.append((r, f'nota de R$ {total_nota:.2f} confirma a compra de R$ {total_antigo:.2f}'))
-        elif assinatura and int(r['usos']) == 1 and total_nota:
+        itens_nota = int(r['itens_nota'] or 0)
+        tolerancia = max(0.05, 0.005 * max(total_antigo, total_correto))
+        if not assinatura:
+            revisar.append((r, 'preço diferente do esperado pelo erro antigo: conferir na nota'))
+        elif not r['nota_fiscal_id'] or not total_nota:
+            revisar.append((r, 'sem nota com total para provar o preço'))
+        elif itens_nota != 1:
+            revisar.append((r, f'nota com {itens_nota} itens: o total de R$ {total_nota:.2f} não prova o preço deste item'))
+        elif int(r['usos']) != 1:
+            revisar.append((r, 'embalagem usada por outras compras: o preço dela pode ser de outra nota'))
+        elif abs(total_nota - total_correto) <= tolerancia:
             corrigir.append((r, base_atual, correto))
+        elif abs(total_nota - total_antigo) <= tolerancia:
+            mantidos.append((r, f'nota de R$ {total_nota:.2f} confirma a compra de R$ {total_antigo:.2f}'))
         else:
-            revisar.append((r, 'embalagem usada por outras compras: conferir o preço na nota'
-                            if assinatura else 'preço diferente do esperado: conferir na nota'))
+            revisar.append((r, f'nota de R$ {total_nota:.2f} não bate com R$ {total_antigo:.2f} '
+                               f'(atual) nem com R$ {total_correto:.2f} (corrigido)'))
     return corrigir, revisar, mantidos
 
 
@@ -107,7 +120,7 @@ def main():
               f"{r['capacidade']} {r['unidade']} a R$ {float(r['preco_embalagem']):.2f}: "
               f"R$ {antes:.4f} -> R$ {correto:.4f} por {r['unidade_base']} "
               f"(compra R$ {antes * float(r['quantidade']):.2f} -> R$ {correto * float(r['quantidade']):.2f})")
-    print(f"Entradas conferidas pela nota e mantidas (preço digitado era o total): {len(mantidos)}")
+    print(f"Entradas que a nota prova estarem certas (mantidas): {len(mantidos)}")
     for r, motivo in mantidos:
         print(f"  #{r['id']} {r['produto']}: {motivo}")
     print(f"Entradas para conferência manual: {len(revisar)}")

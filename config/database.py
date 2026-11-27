@@ -178,6 +178,21 @@ class ConexaoBanco:
 # FUNÇÕES AUXILIARES DE QUERY
 # =====================================================
 
+def conexao_dedicada():
+    """Conexão própria, fora do pool, para travas de sessão (pg_advisory_lock).
+    Não deve ir ao pool: a trava ficaria presa à conexão emprestada a outra requisição.
+    Se o processo cair, o PostgreSQL encerra a conexão e solta a trava sozinho."""
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "fazenda_cafe"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD"),
+    )
+    conn.autocommit = True
+    return conn
+
+
 def executar_query(query, parametros=None, fetch_one=False, fetch_all=False, dict_cursor=False):
     """
     Função genérica para executar queries SQL.

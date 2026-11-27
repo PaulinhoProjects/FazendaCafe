@@ -17,7 +17,6 @@ MAX_PDFS_POR_LOTE = 20
 MAX_PDF_BYTES_PADRAO = 10 * 1024 * 1024
 CHAVE_SESSAO_UPLOAD = 'laudos_lote'
 HORAS_TEMPORARIO = 24
-SEGUNDOS_LOTE_TRAVADO = 120   # lote em processamento há mais tempo que isso é retomado
 _TOKEN_VALIDO = re.compile(r'^[0-9a-f]{32}$')
 
 
@@ -362,14 +361,18 @@ def _recuperar_lote(token):
     return 'pendente', []
 
 
-def _recuperar_travados(idade_minima=SEGUNDOS_LOTE_TRAVADO):
-    """Recupera lotes em processamento há mais de `idade_minima` segundos."""
-    limite = time.time() - idade_minima
+def _recuperar_travados():
+    """Retoma lotes em processamento cuja confirmação não está mais ativa.
+    Só age com a trava do lote: se a confirmação original continua trabalhando
+    (mesmo lenta), a trava está com ela e o lote não é tocado."""
     try:
         for nome in os.listdir(_dir_temporarios()):
             m = re.match(r'^lote_([0-9a-f]{32})\.processando$', nome)
-            if m and os.path.getmtime(os.path.join(_dir_temporarios(), nome)) < limite:
-                _recuperar_lote(m.group(1))
+            if not m:
+                continue
+            with analises.trava_lote(m.group(1)) as livre:
+                if livre:
+                    _recuperar_lote(m.group(1))
     except Exception as e:
         logger.error(f"analises_routes._recuperar_travados: {e}")
 
@@ -398,6 +401,21 @@ def upload_confirmar():
         if not _dono(_ler_manifesto(token, sufixo)):
             abort(403)
 
+    # Trava exclusiva do lote durante toda a confirmação (a recuperação usa a mesma)
+    try:
+        with analises.trava_lote(token) as livre:
+            if not livre:
+                flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
+                return redirect(url_for('analises.listar'))
+            return _confirmar_lote_travado(token)
+    except Exception as e:
+        logger.error(f"analises_routes.upload_confirmar (trava): {e}")
+        flash('Não foi possível confirmar o lote agora. Tente de novo.', 'error')
+        return redirect(url_for('analises.upload'))
+
+
+def _confirmar_lote_travado(token):
+    """Confirmação com a trava do lote já obtida."""
     # O banco é a fonte de verdade: lote já gravado não é gravado de novo
     try:
         ja_gravados = analises.ids_do_lote(token)
@@ -409,27 +427,17 @@ def upload_confirmar():
             _recuperar_lote(token)
         return _concluir_sessao(ja_gravados, ja_existia=True)
 
-    # Trava o lote: só uma confirmação consegue renomear o manifesto
+    # Com a trava em mãos, um ".processando" só pode ser de confirmação que parou: retoma
     em_processo = _manifesto(token, 'processando')
+    if os.path.exists(em_processo):
+        estado, ids = _recuperar_lote(token)
+        if estado == 'gravado':
+            return _concluir_sessao(ids, ja_existia=True)
     try:
         os.replace(_manifesto(token), em_processo)
     except FileNotFoundError:
-        if os.path.exists(em_processo):
-            parado_ha = time.time() - os.path.getmtime(em_processo)
-            if parado_ha < SEGUNDOS_LOTE_TRAVADO:
-                flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
-                return redirect(url_for('analises.listar'))
-            estado, ids = _recuperar_lote(token)
-            if estado == 'gravado':
-                return _concluir_sessao(ids, ja_existia=True)
-            try:
-                os.replace(_manifesto(token), em_processo)
-            except FileNotFoundError:
-                flash('Este lote já está sendo salvo. Aguarde alguns segundos.', 'info')
-                return redirect(url_for('analises.listar'))
-        else:
-            flash('Nenhum laudo aguardando confirmação.', 'warning')
-            return redirect(url_for('analises.upload'))
+        flash('Nenhum laudo aguardando confirmação.', 'warning')
+        return redirect(url_for('analises.upload'))
 
     def liberar():
         try:

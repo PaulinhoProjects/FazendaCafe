@@ -10,7 +10,8 @@ import zlib
 import unicodedata
 import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config')))
-from database import executar_query, executar_transacao
+from contextlib import contextmanager
+from database import executar_query, executar_transacao, conexao_dedicada
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -353,6 +354,38 @@ def inserir_analise(dados):
     except Exception as e:
         logger.error(f"analises.inserir_analise: {e}")
         return None
+
+
+NAMESPACE_TRAVA_LOTE = 7201  # separa estas travas de outras travas consultivas do banco
+
+
+@contextmanager
+def trava_lote(lote_token):
+    """Trava exclusiva do lote no PostgreSQL (não bloqueia: devolve False se outro tem a trava).
+
+    A confirmação segura a trava do começo ao fim; a recuperação só mexe no lote se
+    conseguir a mesma trava. Se o processo da confirmação cair, a conexão fecha e a
+    trava é liberada pelo banco, então a recuperação pode agir sem prazo arbitrário."""
+    conn = None
+    obtida = False
+    try:
+        conn = conexao_dedicada()
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(%s, hashtext(%s)) AS ok",
+                        (NAMESPACE_TRAVA_LOTE, lote_token))
+            obtida = bool(cur.fetchone()[0])
+        yield obtida
+    finally:
+        if conn is not None:
+            try:
+                if obtida:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT pg_advisory_unlock(%s, hashtext(%s))",
+                                    (NAMESPACE_TRAVA_LOTE, lote_token))
+            except Exception as e:
+                logger.error(f"analises.trava_lote (liberar): {e}")
+            finally:
+                conn.close()
 
 
 class LoteJaGravado(Exception):
