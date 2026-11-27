@@ -188,7 +188,7 @@ def usuario_ainda_ativo(user_id):
     """Confere no banco se o usuário continua ativo e qual o nível atual."""
     try:
         return executar_query(
-            "SELECT id, nome, login, tipo FROM usuarios WHERE id = %s AND ativo = TRUE",
+            "SELECT id, nome, login, tipo, foto, cor_avatar FROM usuarios WHERE id = %s AND ativo = TRUE",
             (user_id,), fetch_one=True, dict_cursor=True
         )
     except Exception as e:

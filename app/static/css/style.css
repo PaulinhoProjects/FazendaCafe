@@ -2445,3 +2445,69 @@ button.cal-titulo:focus-visible { outline: 2px solid var(--primary); outline-off
 }
 .gasto-total span { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
 .gasto-total strong { font-family: var(--font-display, inherit); font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+
+/* -------------------------------------------------------------------------
+   AVATAR E PERFIL
+   ------------------------------------------------------------------------- */
+.avatar { overflow: hidden; letter-spacing: .02em; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-verde   { background: linear-gradient(140deg, var(--primary-lighter), var(--primary)); }
+.avatar-cereja  { background: linear-gradient(140deg, #E5604A, #B42A16); }
+.avatar-terra   { background: linear-gradient(140deg, #C08A55, #8A5A2B); }
+.avatar-azul    { background: linear-gradient(140deg, #5B8FD6, #2D5FA6); }
+.avatar-roxo    { background: linear-gradient(140deg, #9A84DB, #6447B5); }
+.avatar-grafite { background: linear-gradient(140deg, #6B7280, #374151); }
+.avatar-xl { width: 112px; height: 112px; font-size: 2.3rem; font-weight: 700; box-shadow: 0 0 0 4px var(--surface), var(--shadow-md); }
+
+.perfil-capa {
+    position: relative; overflow: hidden; border-radius: var(--radius-lg);
+    background: var(--marca-gradiente, linear-gradient(135deg, var(--primary), var(--primary-hover)));
+    height: 116px;
+}
+.perfil-capa::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 85% 20%, rgba(255,255,255,.18), transparent 45%),
+                radial-gradient(circle at 10% 120%, rgba(217,56,31,.35), transparent 40%);
+}
+.perfil-topo { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.25rem; padding: 0 1.5rem 1.25rem; margin-top: -56px; position: relative; z-index: 1; }
+.perfil-foto { position: relative; }
+.perfil-foto-btn {
+    position: absolute; right: 2px; bottom: 2px; width: 34px; height: 34px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--surface);
+    background: var(--primary); color: #fff; cursor: pointer; box-shadow: var(--shadow-sm);
+}
+.perfil-foto-btn:hover { background: var(--primary-hover); }
+.perfil-foto-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.perfil-nome { font-family: var(--font-display, inherit); font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+.perfil-meta { display: flex; flex-wrap: wrap; gap: .35rem 1rem; color: var(--text-3); font-size: .82rem; }
+.perfil-meta i { margin-right: .3rem; }
+
+.perfil-nav { position: sticky; top: 76px; }
+.perfil-nav .nav-link {
+    display: flex; align-items: center; gap: .6rem; padding: .55rem .8rem; border-radius: var(--radius-md);
+    color: var(--text-2); font-weight: 500; font-size: .875rem;
+}
+.perfil-nav .nav-link:hover { background: var(--surface-3); color: var(--text); }
+.perfil-nav .nav-link.active { background: var(--primary-50); color: var(--primary-text); }
+.perfil-secao { scroll-margin-top: 84px; }
+
+.cores-avatar { display: flex; flex-wrap: wrap; gap: .75rem; }
+.cor-opcao { display: flex; flex-direction: column; align-items: center; gap: .35rem; cursor: pointer; font-size: .75rem; color: var(--text-2); }
+.cor-opcao .avatar { width: 46px; height: 46px; font-size: 1rem; transition: box-shadow .15s ease, transform .15s ease; }
+.btn-check:checked + .cor-opcao .avatar { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--primary); }
+.btn-check:checked + .cor-opcao { color: var(--text); font-weight: 600; }
+.btn-check:focus-visible + .cor-opcao .avatar { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+.tema-opcoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.tema-opcao {
+    display: flex; flex-direction: column; align-items: center; gap: .4rem; padding: .9rem .5rem;
+    border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
+    color: var(--text-2); font-size: .85rem; font-weight: 500; cursor: pointer;
+}
+.tema-opcao i { font-size: 1.3rem; }
+.tema-opcao.ativo { border-color: var(--primary); background: var(--primary-50); color: var(--primary-text); box-shadow: 0 0 0 1px var(--primary); }
+
+.acesso-item { display: flex; align-items: center; gap: .85rem; padding: .7rem 0; border-bottom: 1px dashed var(--border); }
+.acesso-item:last-child { border-bottom: 0; }
+.acesso-icone { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--success-50); color: var(--success); }
+.acesso-falha .acesso-icone { background: var(--danger-50); color: var(--danger); }

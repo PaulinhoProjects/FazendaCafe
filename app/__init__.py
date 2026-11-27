@@ -244,6 +244,13 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Aviso: mapas_importados: {e}")
 
+    # Perfil: campos extras na tabela de usuários (foto, contato, preferências)
+    try:
+        from app.modules import perfil
+        perfil.garantir_colunas()
+    except Exception as e:
+        print(f"Aviso: perfil: {e}")
+
     # Calendário do café: carrega o modelo do Sul de Minas na primeira vez
     try:
         from app.modules import calendario_cafe
@@ -301,6 +308,8 @@ def registrar_protecoes_de_sessao(app):
             if atual.get('tipo'):
                 session['tipo'] = atual['tipo']
                 session['usuario'] = atual.get('nome') or session.get('usuario')
+                session['foto'] = atual.get('foto')
+                session['cor_avatar'] = atual.get('cor_avatar') or 'verde'
             session['verificado_em'] = agora
         return None
 

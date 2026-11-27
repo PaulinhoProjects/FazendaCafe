@@ -1,0 +1,8 @@
+{# Avatar do usuário: foto quando houver, senão as iniciais na cor escolhida #}
+{% macro avatar(nome, foto=none, cor='verde', classe='') -%}
+{%- set partes = (nome or 'U').split() -%}
+{%- set iniciais = (partes[0][0] ~ (partes[-1][0] if partes|length > 1 else ''))|upper -%}
+<span class="avatar avatar-{{ cor or 'verde' }} {{ classe }}" aria-hidden="true">
+    {%- if foto %}<img src="{{ url_for('static', filename='uploads/avatars/' ~ foto) }}" alt="" loading="lazy">{% else %}{{ iniciais }}{% endif -%}
+</span>
+{%- endmacro %}

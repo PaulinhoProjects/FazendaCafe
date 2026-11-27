@@ -1,77 +1,288 @@
 {% extends "base.html" %}
+{% from '_avatar.html' import avatar %}
 {% block titulo %}Meu Perfil{% endblock %}
 {% block breadcrumb %}
 {{ super() }}
 <li class="breadcrumb-item active">Meu Perfil</li>
 {% endblock %}
 {% block conteudo %}
-<div class="container-fluid">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title"><i class="bi bi-person-circle me-2"></i>Meu Perfil</h1>
-            <p class="page-subtitle">Seus dados e preferências de acesso</p>
-        </div>
-    </div>
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">Dados da conta</h6>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 bg-light mb-3">
-                                <small class="text-muted text-uppercase fw-bold">Nome</small>
-                                <h5 class="mb-0">{{ session.get('usuario') or 'Usuário' }}</h5>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 bg-light mb-3">
-                                <small class="text-muted text-uppercase fw-bold">Login</small>
-                                <h5 class="mb-0">{{ session.get('login') or '-' }}</h5>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 bg-light mb-3">
-                                <small class="text-muted text-uppercase fw-bold">Tipo de Acesso</small>
-                                <h5 class="mb-0">
-                                    <span class="badge bg-{{ 'danger' if session.get('tipo') == 'admin' else 'info' }}">
-                                        {{ session.get('tipo')|title if session.get('tipo') else 'Usuário' }}
-                                    </span>
-                                </h5>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% set rotulos_tipo = {'admin': 'Administrador', 'operador': 'Operador', 'agronomista': 'Agrônomo', 'user': 'Usuário'} %}
+{% set cor = usuario.cor_avatar if usuario.cor_avatar in cores else 'verde' %}
 
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-warning text-white py-3">
-                    <h4 class="mb-0"><i class="bi bi-key me-2"></i>Alterar Senha</h4>
-                </div>
-                <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('auth.alterar_senha') }}">
-                        <div class="mb-3">
-                            <label class="form-label">Senha Atual *</label>
-                            <input type="password" name="senha_atual" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Nova Senha *</label>
-                            <input type="password" name="nova_senha" class="form-control" required minlength="6">
-                            <small class="text-muted">Mínimo de 6 caracteres</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Confirmar Nova Senha *</label>
-                            <input type="password" name="confirmar_senha" class="form-control" required>
-                        </div>
-                        <button type="submit" class="btn btn-warning">
-                            <i class="bi bi-check-circle me-1"></i>Alterar Senha
-                        </button>
-                    </form>
-                </div>
+<div class="card mb-4">
+    <div class="perfil-capa"></div>
+    <div class="perfil-topo">
+        <div class="perfil-foto">
+            {{ avatar(usuario.nome, usuario.foto, cor, 'avatar-xl') }}
+            <label for="campoFoto" class="perfil-foto-btn" title="Trocar foto" tabindex="0"
+                   onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+                <i class="bi bi-camera"></i><span class="visually-hidden">Trocar foto</span>
+            </label>
+        </div>
+        <div class="flex-grow-1 min-w-0 pb-1">
+            <h1 class="perfil-nome text-truncate">{{ usuario.nome }}</h1>
+            <div class="perfil-meta mt-1">
+                <span><i class="bi bi-person-badge"></i>{{ rotulos_tipo.get(usuario.tipo, usuario.tipo|title) }}{% if usuario.cargo %} · {{ usuario.cargo }}{% endif %}</span>
+                <span><i class="bi bi-at"></i>{{ usuario.login }}</span>
+                {% if usuario.data_cadastro %}<span><i class="bi bi-calendar-check"></i>Desde {{ usuario.data_cadastro|format_data }}</span>{% endif %}
+                {% if usuario.ultimo_acesso %}<span><i class="bi bi-clock-history"></i>Último acesso {{ usuario.ultimo_acesso.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}
             </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 pb-1">
+            <form method="POST" action="{{ url_for('auth.perfil_foto') }}" enctype="multipart/form-data" id="formFoto">
+                <input type="file" id="campoFoto" name="foto" accept="image/png,image/jpeg,image/webp,image/gif" class="d-none"
+                       onchange="enviarFoto(this)">
+                <label for="campoFoto" class="btn btn-outline-secondary mb-0"><i class="bi bi-image me-1"></i>{{ 'Trocar foto' if usuario.foto else 'Adicionar foto' }}</label>
+            </form>
+            {% if usuario.foto %}
+            <form method="POST" action="{{ url_for('auth.perfil_foto_remover') }}">
+                <button type="submit" class="btn btn-outline-danger" title="Remover foto"><i class="bi bi-trash"></i><span class="visually-hidden">Remover foto</span></button>
+            </form>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<div class="row g-4">
+    <div class="col-lg-3 d-none d-lg-block">
+        <nav class="perfil-nav nav flex-column" aria-label="Seções do perfil">
+            <a class="nav-link active" href="#dados"><i class="bi bi-person"></i>Dados pessoais</a>
+            <a class="nav-link" href="#preferencias"><i class="bi bi-palette"></i>Aparência e início</a>
+            <a class="nav-link" href="#seguranca"><i class="bi bi-shield-lock"></i>Senha</a>
+            <a class="nav-link" href="#acessos"><i class="bi bi-clock-history"></i>Acessos recentes</a>
+        </nav>
+    </div>
+    <div class="col-lg-9 d-flex flex-column gap-4">
+
+        <section class="card perfil-secao" id="dados">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-person me-2"></i>Dados pessoais</h6>
+                    <small class="text-body-secondary">Como você aparece no sistema e nos registros</small>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('auth.perfil_dados') }}">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nome" class="form-label">Nome <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nome" name="nome" maxlength="100" required value="{{ usuario.nome }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cargo" class="form-label">Função na fazenda</label>
+                            <input type="text" class="form-control" id="cargo" name="cargo" maxlength="80" value="{{ usuario.cargo or '' }}" placeholder="Ex.: Gerente, Agrônomo, Tratorista" list="sugestoesCargo">
+                            <datalist id="sugestoesCargo">
+                                <option value="Produtor"><option value="Gerente"><option value="Agrônomo"><option value="Técnico agrícola">
+                                <option value="Encarregado"><option value="Tratorista"><option value="Administrativo">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" id="email" name="email" maxlength="150" value="{{ usuario.email or '' }}" placeholder="voce@exemplo.com" autocomplete="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="telefone" class="form-label">Telefone / WhatsApp</label>
+                            <input type="tel" class="form-control" id="telefone" name="telefone" maxlength="30" value="{{ usuario.telefone or '' }}" placeholder="(35) 99999-9999" autocomplete="tel">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Login</label>
+                            <input type="text" class="form-control" value="{{ usuario.login }}" disabled>
+                            <div class="form-text">O login só pode ser alterado por um administrador.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nível de acesso</label>
+                            <input type="text" class="form-control" value="{{ rotulos_tipo.get(usuario.tipo, usuario.tipo|title) }}" disabled>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar dados</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card perfil-secao" id="preferencias">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-palette me-2"></i>Aparência e início</h6>
+                    <small class="text-body-secondary">Cor do avatar, tema e a tela que abre ao entrar</small>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('auth.perfil_preferencias') }}">
+                <div class="card-body">
+                    <label class="form-label">Cor do avatar <small class="text-body-secondary fw-normal">(usada quando não há foto)</small></label>
+                    <div class="cores-avatar mb-4" role="radiogroup" aria-label="Cor do avatar">
+                        {% for chave, rotulo in cores.items() %}
+                        <input type="radio" class="btn-check" name="cor_avatar" id="cor_{{ chave }}" value="{{ chave }}" {% if chave == cor %}checked{% endif %}>
+                        <label class="cor-opcao" for="cor_{{ chave }}">{{ avatar(usuario.nome, none, chave) }}{{ rotulo }}</label>
+                        {% endfor %}
+                    </div>
+
+                    <label class="form-label">Tema <small class="text-body-secondary fw-normal">(vale para este navegador)</small></label>
+                    <div class="tema-opcoes mb-4" role="group" aria-label="Tema">
+                        <button type="button" class="tema-opcao" data-tema-perfil="claro" onclick="escolherTema('claro')"><i class="bi bi-sun"></i>Claro</button>
+                        <button type="button" class="tema-opcao" data-tema-perfil="escuro" onclick="escolherTema('escuro')"><i class="bi bi-moon-stars"></i>Escuro</button>
+                        <button type="button" class="tema-opcao" data-tema-perfil="sistema" onclick="escolherTema('sistema')"><i class="bi bi-display"></i>Igual ao sistema</button>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="pagina_inicial" class="form-label">Tela inicial depois de entrar</label>
+                            <select class="form-select" id="pagina_inicial" name="pagina_inicial">
+                                {% for endpoint, rotulo in paginas.items() %}
+                                <option value="{{ endpoint }}" {% if (usuario.pagina_inicial or 'dashboard.index') == endpoint %}selected{% endif %}>{{ rotulo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar preferências</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card perfil-secao" id="seguranca">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-shield-lock me-2"></i>Senha</h6>
+                    <small class="text-body-secondary">Use pelo menos {{ senha_minimo }} caracteres; misture letras e números</small>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('auth.alterar_senha') }}" autocomplete="off">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="senha_atual" class="form-label">Senha atual <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="senha_atual" name="senha_atual" required autocomplete="current-password">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="nova_senha" class="form-label">Nova senha <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="nova_senha" name="nova_senha" required minlength="{{ senha_minimo }}" autocomplete="new-password">
+                            <div class="progress mt-2" style="height: 4px" aria-hidden="true"><div class="progress-bar" id="forcaBarra" style="width: 0"></div></div>
+                            <div class="form-text" id="forcaTexto">&nbsp;</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="confirmar_senha" class="form-label">Confirmar nova senha <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" required autocomplete="new-password">
+                            <div class="form-text" id="confereTexto">&nbsp;</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center gap-2">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="mostrarSenhas" onchange="document.querySelectorAll('#seguranca input[type=password], #seguranca input[data-senha]').forEach(function(i){i.type=this.checked?'text':'password';i.dataset.senha='1';}, this)">
+                        <label class="form-check-label small" for="mostrarSenhas">Mostrar senhas</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-key me-1"></i>Alterar senha</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card perfil-secao" id="acessos">
+            <div class="card-header card-header-split">
+                <div>
+                    <h6><i class="bi bi-clock-history me-2"></i>Acessos recentes</h6>
+                    <small class="text-body-secondary">Entradas na sua conta e tentativas com senha errada no seu login</small>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-right me-1"></i>Sair agora</a>
+            </div>
+            <div class="card-body py-2">
+                {% for a in acessos %}
+                <div class="acesso-item {{ '' if a.sucesso else 'acesso-falha' }}">
+                    <span class="acesso-icone"><i class="bi {{ 'bi-box-arrow-in-right' if a.sucesso else 'bi-shield-exclamation' }}"></i></span>
+                    <div class="flex-grow-1 min-w-0">
+                        <strong class="d-block small">{{ 'Entrada na conta' if a.sucesso else 'Tentativa recusada' ~ (' — ' ~ a.motivo if a.motivo else '') }}</strong>
+                        <small class="text-body-secondary">{{ resumo_navegador(a.navegador) }}{% if a.ip %} · IP {{ a.ip }}{% endif %}</small>
+                    </div>
+                    <small class="text-body-secondary text-nowrap tabular">{{ a.data_hora.strftime('%d/%m/%Y %H:%M') if a.data_hora else '' }}</small>
+                </div>
+                {% else %}
+                <div class="empty-state py-4"><i class="bi bi-clock-history"></i><h6 class="mb-1">Nenhum acesso registrado ainda</h6></div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+function enviarFoto(campo) {
+    var arquivo = campo.files && campo.files[0];
+    if (!arquivo) return;
+    if (arquivo.size > {{ max_foto_mb }} * 1024 * 1024) {
+        alert('A imagem passa de {{ max_foto_mb }} MB. Escolha uma menor.');
+        campo.value = '';
+        return;
+    }
+    // Mostra a prévia na hora e envia
+    var leitor = new FileReader();
+    leitor.onload = function (e) {
+        document.querySelectorAll('.perfil-foto .avatar').forEach(function (el) {
+            el.textContent = '';
+            var img = document.createElement('img');
+            img.src = e.target.result; img.alt = '';
+            el.appendChild(img);
+        });
+    };
+    leitor.readAsDataURL(arquivo);
+    document.getElementById('formFoto').submit();
+}
+
+function marcarTemaPerfil() {
+    var atual = 'claro';
+    try { atual = localStorage.getItem('agrocafe.tema') || 'claro'; } catch (e) {}
+    document.querySelectorAll('[data-tema-perfil]').forEach(function (b) {
+        b.classList.toggle('ativo', b.dataset.temaPerfil === atual);
+        b.setAttribute('aria-pressed', b.dataset.temaPerfil === atual ? 'true' : 'false');
+    });
+}
+function escolherTema(pref) { definirTema(pref); marcarTemaPerfil(); }
+marcarTemaPerfil();
+
+// A cor escolhida já aparece no avatar grande (quando não há foto)
+document.querySelectorAll('input[name="cor_avatar"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+        var grande = document.querySelector('.perfil-foto .avatar');
+        if (grande && !grande.querySelector('img')) {
+            grande.className = grande.className.replace(/avatar-(verde|cereja|terra|azul|roxo|grafite)/, 'avatar-' + r.value);
+        }
+    });
+});
+
+// Força da senha e conferência
+(function () {
+    var nova = document.getElementById('nova_senha'), conf = document.getElementById('confirmar_senha');
+    var barra = document.getElementById('forcaBarra'), texto = document.getElementById('forcaTexto'), confere = document.getElementById('confereTexto');
+    var minimo = {{ senha_minimo }};
+    function avaliar() {
+        var s = nova.value, pontos = 0;
+        if (s.length >= minimo) pontos++;
+        if (s.length >= 10) pontos++;
+        if (/[a-z]/.test(s) && /[A-Z]/.test(s)) pontos++;
+        if (/\d/.test(s)) pontos++;
+        if (/[^A-Za-z0-9]/.test(s)) pontos++;
+        var niveis = [['0%', '', ''], ['25%', 'bg-danger', 'Fraca'], ['50%', 'bg-warning', 'Razoável'], ['75%', 'bg-info', 'Boa'], ['100%', 'bg-success', 'Forte']];
+        var n = !s ? niveis[0] : (s.length < minimo ? niveis[1] : niveis[Math.min(4, Math.max(1, pontos - 1))]);
+        barra.style.width = n[0]; barra.className = 'progress-bar ' + n[1];
+        texto.textContent = s ? (s.length < minimo ? 'Mínimo de ' + minimo + ' caracteres' : 'Força: ' + n[2]) : ' ';
+        confere.textContent = conf.value ? (conf.value === s ? 'As senhas conferem' : 'As senhas não conferem') : ' ';
+        confere.className = 'form-text ' + (conf.value ? (conf.value === s ? 'text-success' : 'text-danger') : '');
+    }
+    nova.addEventListener('input', avaliar); conf.addEventListener('input', avaliar);
+})();
+
+// Destaca a seção visível no menu lateral do perfil
+(function () {
+    var links = document.querySelectorAll('.perfil-nav .nav-link');
+    if (!('IntersectionObserver' in window) || !links.length) return;
+    var obs = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (e) {
+            if (e.isIntersecting) links.forEach(function (l) { l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id); });
+        });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    document.querySelectorAll('.perfil-secao').forEach(function (s) { obs.observe(s); });
+})();
+</script>
 {% endblock %}
