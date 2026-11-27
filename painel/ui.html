@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaldi Servidor</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<style>
+:root {
+  --verde: #1A5A3B; --verde2: #2E8A5C; --verde-fundo: #0F3524; --cereja: #D9381F;
+  --fundo: #F5F4F0; --superficie: #FFFFFF; --superficie2: #F8F7F3; --superficie3: #EFEDE6;
+  --borda: #E4E2DA; --borda-forte: #D2CFC4;
+  --texto: #1C2420; --texto2: #4F5A53; --texto3: #7C877F;
+  --primaria: #1A5A3B; --primaria-texto: #1A5A3B; --primaria-50: #E8F3EC;
+  --sucesso: #1F8A4C; --sucesso-50: #E5F4EA; --alerta: #A86A00; --alerta-50: #FBF1DE;
+  --perigo: #C2341D; --perigo-50: #FBE9E5; --info: #2F5FBF; --info-50: #E8EEFA;
+  --serie-a: #2E8A5C; --serie-b: #3B6FD8; --grade: #ECEAE3;
+  --sombra: 0 1px 2px rgba(15, 30, 22, .05), 0 8px 24px -16px rgba(15, 53, 36, .25);
+  --raio: 14px;
+  --fonte: "Inter", "Segoe UI", system-ui, sans-serif;
+  --fonte-titulo: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+:root[data-tema="escuro"] {
+  --fundo: #0D1310; --superficie: #141C18; --superficie2: #18211C; --superficie3: #1F2A24;
+  --borda: #25302A; --borda-forte: #33413A;
+  --texto: #E6ECE8; --texto2: #B3BFB8; --texto3: #84918A;
+  --primaria: #2E8A5C; --primaria-texto: #6FCB98; --primaria-50: #16271E;
+  --sucesso: #4CC283; --sucesso-50: #15281D; --alerta: #E0A83A; --alerta-50: #2A2213;
+  --perigo: #F07A62; --perigo-50: #2D1915; --info: #86A8F2; --info-50: #172036;
+  --serie-a: #3FA874; --serie-b: #5F8AE6; --grade: #222C27;
+  --sombra: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.6);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fundo); color: var(--texto); font-family: var(--fonte); font-size: 14px; }
+body { min-height: 100vh; }
+button { font: inherit; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* topo */
+.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+        background: color-mix(in srgb, var(--fundo) 88%, transparent); backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--borda); }
+.marca { display: flex; align-items: center; gap: 10px; }
+.marca img { width: 34px; height: 34px; }
+.marca strong { font-family: var(--fonte-titulo); font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
+.marca small { display: block; color: var(--texto3); font-size: .72rem; font-weight: 500; letter-spacing: .02em; }
+.status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-weight: 600;
+          font-size: .82rem; background: var(--superficie3); color: var(--texto2); border: 1px solid var(--borda); }
+.status .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--texto3); }
+.status.online { background: var(--sucesso-50); color: var(--sucesso); border-color: transparent; }
+.status.online .ponto { background: var(--sucesso); box-shadow: 0 0 0 0 var(--sucesso); animation: pulso 2s infinite; }
+.status.manutencao { background: var(--alerta-50); color: var(--alerta); border-color: transparent; }
+.status.manutencao .ponto { background: var(--alerta); }
+.status.iniciando, .status.reiniciando, .status.parando { background: var(--info-50); color: var(--info); border-color: transparent; }
+.status.iniciando .ponto, .status.reiniciando .ponto, .status.parando .ponto { background: var(--info); animation: piscar 1s infinite; }
+.status.falhou { background: var(--perigo-50); color: var(--perigo); border-color: transparent; }
+.status.falhou .ponto { background: var(--perigo); }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sucesso) 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+@keyframes piscar { 50% { opacity: .3; } }
+.uptime { color: var(--texto3); font-size: .82rem; }
+.acoes { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.botao { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px;
+         border: 1px solid var(--borda-forte); background: var(--superficie); color: var(--texto); font-weight: 600;
+         font-size: .85rem; cursor: pointer; transition: background .15s, border-color .15s, transform .1s; }
+.botao:hover:not(:disabled) { background: var(--superficie3); }
+.botao:active:not(:disabled) { transform: translateY(1px); }
+.botao:disabled { opacity: .45; cursor: not-allowed; }
+.botao:focus-visible { outline: 2px solid var(--primaria); outline-offset: 2px; }
+.botao svg { width: 16px; height: 16px; }
+.botao.primario { background: var(--primaria); border-color: var(--primaria); color: #fff; }
+.botao.primario:hover:not(:disabled) { background: var(--verde-fundo); }
+.botao.perigo { color: var(--perigo); }
+.botao.alerta.ativo { background: var(--alerta-50); border-color: var(--alerta); color: var(--alerta); }
+.botao.icone { width: 36px; padding: 0; justify-content: center; }
+
+main { padding: 20px 24px 40px; max-width: 1500px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.aviso { display: none; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--raio); font-weight: 500; }
+.aviso.ver { display: flex; }
+.aviso.perigo { background: var(--perigo-50); color: var(--perigo); }
+.aviso.alerta { background: var(--alerta-50); color: var(--alerta); }
+.aviso.info { background: var(--info-50); color: var(--info); }
+
+/* indicadores */
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.kpi { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px;
+       box-shadow: var(--sombra); min-width: 0; }
+.kpi .rotulo { color: var(--texto3); font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+               display: flex; align-items: center; gap: 6px; }
+.kpi .valor { font-family: var(--fonte-titulo); font-weight: 800; font-size: 1.55rem; letter-spacing: -.03em; margin-top: 6px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.kpi .valor small { font-size: .85rem; font-weight: 600; color: var(--texto3); margin-left: 3px; letter-spacing: 0; }
+.kpi .meta { color: var(--texto3); font-size: .78rem; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi.bom .valor { color: var(--sucesso); } .kpi.ruim .valor { color: var(--perigo); }
+
+/* grade principal */
+.grade { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
+.cartao { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra);
+          display: flex; flex-direction: column; min-width: 0; }
+.cartao > header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 8px; }
+.cartao > header h2 { margin: 0; font-family: var(--fonte-titulo); font-size: .95rem; font-weight: 700; }
+.cartao > header .sub { color: var(--texto3); font-size: .76rem; }
+.cartao > header .dir { margin-left: auto; color: var(--texto3); font-size: .78rem; }
+.c6 { grid-column: span 6; } .c4 { grid-column: span 4; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; } .c3 { grid-column: span 3; }
+.legenda { display: flex; gap: 12px; font-size: .76rem; color: var(--texto2); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.grafico { position: relative; height: 150px; margin: 0 12px 12px; }
+.grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.grafico .dica { position: absolute; pointer-events: none; background: var(--superficie); border: 1px solid var(--borda-forte);
+                 border-radius: 8px; padding: 6px 9px; font-size: .76rem; box-shadow: var(--sombra); white-space: nowrap; display: none; z-index: 2; }
+.grafico .dica strong { display: block; color: var(--texto); font-variant-numeric: tabular-nums; }
+.grafico .dica span { color: var(--texto3); }
+
+/* listas técnicas */
+.info { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 4px 16px 14px; }
+.info div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--borda); font-size: .82rem; min-width: 0; }
+.info dt { color: var(--texto3); white-space: nowrap; }
+.info dd { margin: 0; font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.info .largo { grid-column: 1 / -1; }
+.lista { list-style: none; margin: 0; padding: 0 16px 12px; }
+.lista li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--borda); font-size: .82rem; }
+.lista li:last-child { border-bottom: 0; }
+.lista .vazio { color: var(--texto3); justify-content: center; border: 0; }
+.barra { height: 6px; border-radius: 99px; background: var(--superficie3); overflow: hidden; margin-top: 4px; }
+.barra span { display: block; height: 100%; background: var(--serie-a); border-radius: 99px; }
+.eventos { list-style: none; margin: 0; padding: 0 16px 12px; max-height: 300px; overflow: auto; }
+.eventos li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--borda); font-size: .82rem; }
+.eventos .ic { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: .72rem; font-weight: 800;
+               background: var(--superficie3); color: var(--texto2); }
+.eventos .ic.online, .eventos .ic.inicio { background: var(--sucesso-50); color: var(--sucesso); }
+.eventos .ic.alerta, .eventos .ic.manutencao { background: var(--alerta-50); color: var(--alerta); }
+.eventos .ic.erro { background: var(--perigo-50); color: var(--perigo); }
+.eventos small { display: block; color: var(--texto3); font-size: .72rem; margin-top: 2px; }
+.console { margin: 0 12px 12px; padding: 12px; border-radius: 10px; background: #0E1512; color: #C9D6CE; font-family: var(--mono);
+           font-size: .75rem; line-height: 1.55; height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.console .err { color: #F49C89; } .console .pn { color: #8FD3AE; }
+
+/* diálogos */
+dialog { border: 1px solid var(--borda-forte); border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 32px));
+         background: var(--superficie); color: var(--texto); box-shadow: 0 30px 80px -20px rgba(0,0,0,.45); }
+dialog::backdrop { background: rgba(10, 20, 15, .45); backdrop-filter: blur(2px); }
+dialog form { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+dialog h3 { margin: 0; font-family: var(--fonte-titulo); font-size: 1.1rem; }
+dialog p { margin: 0; color: var(--texto2); line-height: 1.5; font-size: .86rem; }
+label.campo { display: flex; flex-direction: column; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--texto2); }
+input[type=text], input[type=number], textarea, select { font: inherit; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--borda-forte);
+         background: var(--superficie2); color: var(--texto); }
+textarea { min-height: 70px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--primaria); outline-offset: 1px; }
+.linha { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; align-items: center; gap: 9px; font-size: .85rem; color: var(--texto); font-weight: 500; }
+.rodape { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.toast { position: fixed; right: 20px; bottom: 20px; padding: 12px 16px; border-radius: 12px; background: var(--texto); color: var(--fundo);
+         font-weight: 600; font-size: .85rem; box-shadow: var(--sombra); transform: translateY(20px); opacity: 0; transition: .2s; z-index: 20; max-width: 420px; }
+.toast.ver { transform: none; opacity: 1; }
+.toast.erro { background: var(--perigo); color: #fff; }
+@media (max-width: 1200px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .c6, .c4, .c8, .c3 { grid-column: span 12; } }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="marca">
+    <img src="/logo.svg" alt="">
+    <div><strong>kaldi <span style="font-weight:600;color:var(--texto3)">servidor</span></strong><small>Painel de controle · v{{VERSAO}}</small></div>
+  </div>
+  <span class="status" id="status" role="status" aria-live="polite"><span class="ponto"></span><span id="statusTexto">Carregando…</span></span>
+  <span class="uptime tabular" id="uptime"></span>
+  <div class="acoes">
+    <button class="botao primario" id="btIniciar" onclick="acao('iniciar')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Iniciar</button>
+    <button class="botao perigo" id="btParar" onclick="confirmar('Parar o servidor?', 'Ninguém conseguirá acessar o sistema até ele ser iniciado de novo.', () => acao('parar'))"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Parar</button>
+    <button class="botao" id="btReiniciar" onclick="confirmar('Reiniciar o servidor?', 'O sistema fica fora do ar por alguns segundos.', () => acao('reiniciar'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Reiniciar</button>
+    <button class="botao alerta" id="btManutencao" onclick="abrirManutencao()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span id="txtManutencao">Manutenção</span></button>
+    <button class="botao" onclick="acao('abrir_sistema')" title="Abrir o sistema no navegador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>Abrir sistema</button>
+    <button class="botao icone" onclick="abrirConfig()" title="Configurações" aria-label="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button class="botao icone" onclick="alternarTema()" title="Tema claro/escuro" aria-label="Tema claro/escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    <button class="botao icone" onclick="confirmar('Fechar o painel?', 'O servidor também será desligado.', () => acao('sair'))" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <div class="aviso" id="aviso"></div>
+
+  <section class="kpis" aria-label="Indicadores">
+    <div class="kpi"><div class="rotulo">Requisições</div><div class="valor tabular" id="kRps">—</div><div class="meta" id="kRpsMeta">por segundo</div></div>
+    <div class="kpi"><div class="rotulo">Tempo de resposta</div><div class="valor tabular" id="kLat">—</div><div class="meta" id="kLatMeta">média do último minuto</div></div>
+    <div class="kpi"><div class="rotulo">Banda do sistema</div><div class="valor tabular" id="kBanda">—</div><div class="meta" id="kBandaMeta">recebido · enviado</div></div>
+    <div class="kpi"><div class="rotulo">CPU do servidor</div><div class="valor tabular" id="kCpu">—</div><div class="meta" id="kCpuMeta">computador</div></div>
+    <div class="kpi"><div class="rotulo">Memória</div><div class="valor tabular" id="kMem">—</div><div class="meta" id="kMemMeta">limite</div></div>
+    <div class="kpi" id="kBancoBox"><div class="rotulo">Banco de dados</div><div class="valor tabular" id="kBanco">—</div><div class="meta" id="kBancoMeta">PostgreSQL</div></div>
+  </section>
+
+  <section class="grade">
+    <article class="cartao c6"><header><h2>Requisições por segundo</h2><span class="dir" id="gRpsTotal"></span></header><div class="grafico" id="gRps"></div></article>
+    <article class="cartao c6"><header><h2>Tempo de resposta</h2><span class="sub">ms, média móvel</span><span class="dir" id="gLatP95"></span></header><div class="grafico" id="gLat"></div></article>
+    <article class="cartao c4"><header><h2>Banda do sistema</h2>
+      <div class="legenda dir"><span><i style="background:var(--serie-a)"></i>Recebido</span><span><i style="background:var(--serie-b)"></i>Enviado</span></div></header>
+      <div class="grafico" id="gBanda"></div></article>
+    <article class="cartao c4"><header><h2>CPU do servidor</h2><span class="sub">% do computador</span></header>
+      <div class="grafico" id="gCpu"></div></article>
+    <article class="cartao c4"><header><h2>Memória do servidor</h2><span class="sub">MB</span><span class="dir" id="gMemLimite"></span></header>
+      <div class="grafico" id="gMem"></div></article>
+
+    <article class="cartao c8"><header><h2>Informações técnicas</h2><span class="sub" id="infoSub"></span></header>
+      <dl class="info" id="info"></dl></article>
+    <article class="cartao c4"><header><h2>Vigia anti-travamento</h2><span class="dir" id="vigiaEstado"></span></header>
+      <dl class="info" id="vigia" style="grid-template-columns:1fr"></dl></article>
+
+    <article class="cartao c4"><header><h2>Rotas mais acessadas</h2><span class="sub">desde o início</span></header><ul class="lista" id="rotas"></ul></article>
+    <article class="cartao c4"><header><h2>Respostas</h2><span class="sub">por tipo</span></header><ul class="lista" id="statusLista"></ul></article>
+    <article class="cartao c4"><header><h2>Últimos erros do sistema</h2><span class="sub">respostas 5xx</span></header><ul class="lista" id="erros"></ul></article>
+
+    <article class="cartao c4"><header><h2>Eventos</h2></header><ul class="eventos" id="eventos"></ul></article>
+    <article class="cartao c8"><header><h2>Registro do servidor</h2><span class="sub">logs/servidor.log</span>
+      <div class="dir"><button class="botao" style="height:28px;font-size:.76rem" onclick="acao('abrir_logs')">Abrir pasta</button></div></header>
+      <pre class="console" id="console" tabindex="0" aria-label="Registro do servidor"></pre></article>
+  </section>
+</main>
+
+<dialog id="dlgManutencao">
+  <form method="dialog" onsubmit="return false">
+    <h3 id="mTitulo">Modo manutenção</h3>
+    <p id="mTexto">Os usuários verão uma tela de manutenção no lugar do sistema. O servidor continua ligado.</p>
+    <label class="campo">Mensagem para os usuários
+      <textarea id="mMensagem" maxlength="300" placeholder="Estamos fazendo melhorias no sistema."></textarea></label>
+    <label class="campo">Previsão de volta (opcional)
+      <input type="text" id="mPrevisao" maxlength="60" placeholder="Ex.: hoje às 14h"></label>
+    <label class="check"><input type="checkbox" id="mLocal" checked> Permitir acesso normal neste computador (para testar)</label>
+    <div class="rodape">
+      <button class="botao" value="cancelar" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="botao" id="mDesligar" onclick="definirManutencao(false)">Desligar manutenção</button>
+      <button class="botao primario" id="mLigar" onclick="definirManutencao(true)">Ligar manutenção</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgConfig">
+  <form method="dialog" onsubmit="return false">
+    <h3>Configurações do servidor</h3>
+    <div class="linha">
+      <label class="campo">Porta<input type="number" id="cPorta" min="1" max="65535"></label>
+      <label class="campo">Acesso<select id="cHost"><option value="0.0.0.0">Toda a rede (outros computadores e celulares)</option><option value="127.0.0.1">Só este computador</option></select></label>
+      <label class="campo">Atendimentos simultâneos (threads)<input type="number" id="cThreads" min="2" max="64"></label>
+      <label class="campo">Limite de memória (MB)<input type="number" id="cMemoria" min="200" max="16000"></label>
+      <label class="campo">Esperar resposta por (s)<input type="number" id="cTempo" min="2" max="60"></label>
+      <label class="campo">Falhas seguidas para reiniciar<input type="number" id="cFalhas" min="1" max="20"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="cAuto"> Reiniciar automaticamente se travar ou cair</label>
+    <label class="check"><input type="checkbox" id="cAbrir"> Iniciar o servidor ao abrir o painel</label>
+    <p>Porta, acesso e threads valem no próximo início do servidor.</p>
+    <div class="rodape">
+      <button class="botao" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="botao primario" onclick="salvarConfig()">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgConfirmar">
+  <form method="dialog" onsubmit="return false">
+    <h3 id="cfTitulo"></h3><p id="cfTexto"></p>
+    <div class="rodape"><button class="botao" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="botao primario" id="cfOk">Confirmar</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const TOKEN = '{{TOKEN}}';
+const ROTULOS = { parado: 'Parado', iniciando: 'Iniciando…', online: 'Online', manutencao: 'Em manutenção',
+                  reiniciando: 'Reiniciando…', parando: 'Parando…', falhou: 'Com falha' };
+let ultimo = null;
+
+// ---------- tema
+function aplicarTema(t) { document.documentElement.dataset.tema = t; try { localStorage.setItem('kaldi.painel.tema', t); } catch (e) {} desenharTudo(); }
+function alternarTema() { aplicarTema(document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro'); }
+(function () { let t = null; try { t = localStorage.getItem('kaldi.painel.tema'); } catch (e) {}
+  document.documentElement.dataset.tema = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'); })();
+
+// ---------- formato
+const nf = (v, c = 0) => (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
+function bytes(v) { v = v || 0; if (v < 1024) return nf(v) + ' B'; if (v < 1048576) return nf(v / 1024, 1) + ' KB'; if (v < 1073741824) return nf(v / 1048576, 1) + ' MB'; return nf(v / 1073741824, 2) + ' GB'; }
+const taxa = v => bytes(v) + '/s';
+function duracao(s) { s = Math.floor(s || 0); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return d ? `${d}d ${h}h ${m}min` : h ? `${h}h ${m}min` : m ? `${m}min ${x}s` : `${x}s`; }
+function hora(t) { return new Date(t * 1000).toLocaleTimeString('pt-BR'); }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- gráfico de área com dica (crosshair)
+const cor = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function grafico(id, pontos, series, fmt) {
+  const el = document.getElementById(id); if (!el) return;
+  const w = el.clientWidth || 600, h = el.clientHeight || 150, pe = 40, pd = 8, pt = 8, pb = 18;
+  const max = Math.max(1e-9, ...pontos.flatMap(p => series.map(s => p[s.chave] || 0))) * 1.15;
+  const x = i => pe + (pontos.length < 2 ? 0 : i * (w - pe - pd) / (pontos.length - 1));
+  const y = v => pt + (h - pt - pb) * (1 - (v || 0) / max);
+  let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(series.map(s => s.nome).join(' e '))}">`;
+  for (let k = 0; k <= 3; k++) { const v = max * k / 3, yy = y(v);
+    svg += `<line x1="${pe}" x2="${w - pd}" y1="${yy}" y2="${yy}" stroke="${cor('--grade')}" stroke-width="1"/>`;
+    svg += `<text x="${pe - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="${cor('--texto3')}">${esc(fmt(v, true))}</text>`; }
+  if (pontos.length > 1) {
+    series.forEach(s => {
+      const c = cor(s.cor), linha = pontos.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[s.chave]).toFixed(1)}`).join('');
+      svg += `<path d="${linha}L${x(pontos.length - 1)},${y(0)}L${x(0)},${y(0)}Z" fill="${c}" opacity="${series.length > 1 ? .1 : .14}"/>`;
+      svg += `<path d="${linha}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;
+    });
+    svg += `<text x="${pe}" y="${h - 3}" font-size="10" fill="${cor('--texto3')}">${hora(pontos[0].t)}</text>`;
+    svg += `<text x="${w - pd}" y="${h - 3}" font-size="10" text-anchor="end" fill="${cor('--texto3')}">agora</text>`;
+  } else {
+    svg += `<text x="${w / 2}" y="${h / 2}" text-anchor="middle" font-size="12" fill="${cor('--texto3')}">Aguardando dados…</text>`;
+  }
+  svg += `<line class="mira" x1="0" x2="0" y1="${pt}" y2="${h - pb}" stroke="${cor('--borda-forte')}" stroke-dasharray="3 3" style="display:none"/>`;
+  svg += series.map((s, k) => `<circle class="m${k}" r="4.5" fill="${cor(s.cor)}" stroke="${cor('--superficie')}" stroke-width="2" style="display:none"/>`).join('');
+  svg += `<rect x="${pe}" y="0" width="${w - pe - pd}" height="${h}" fill="transparent"/></svg><div class="dica"></div>`;
+  el.innerHTML = svg;
+  if (pontos.length < 2) return;
+  const raiz = el.querySelector('svg'), mira = el.querySelector('.mira'), dica = el.querySelector('.dica');
+  raiz.onmousemove = ev => {
+    const r = raiz.getBoundingClientRect(), mx = (ev.clientX - r.left) * w / r.width;
+    const i = Math.max(0, Math.min(pontos.length - 1, Math.round((mx - pe) / (w - pe - pd) * (pontos.length - 1))));
+    const p = pontos[i], xx = x(i);
+    mira.setAttribute('x1', xx); mira.setAttribute('x2', xx); mira.style.display = '';
+    series.forEach((s, k) => { const c = el.querySelector('.m' + k); c.setAttribute('cx', xx); c.setAttribute('cy', y(p[s.chave])); c.style.display = ''; });
+    dica.innerHTML = `<span>${hora(p.t)}</span>` + series.map(s => `<strong>${esc(s.nome)}: ${esc(fmt(p[s.chave]))}</strong>`).join('');
+    dica.style.display = 'block';
+    const px = xx * r.width / w; dica.style.left = Math.min(px + 12, r.width - dica.offsetWidth - 4) + 'px'; dica.style.top = '4px';
+  };
+  raiz.onmouseleave = () => { mira.style.display = 'none'; dica.style.display = 'none'; el.querySelectorAll('circle').forEach(c => c.style.display = 'none'); };
+}
+
+function desenharTudo() {
+  if (!ultimo) return;
+  const h = ultimo.historico || [];
+  grafico('gRps', h, [{ chave: 'rps', nome: 'Requisições/s', cor: '--serie-a' }], (v, eixo) => nf(v, eixo ? 1 : 2) + (eixo ? '' : '/s'));
+  grafico('gLat', h, [{ chave: 'lat', nome: 'Tempo médio', cor: '--serie-a' }], v => nf(v, 0) + ' ms');
+  grafico('gBanda', h, [{ chave: 'down', nome: 'Recebido', cor: '--serie-a' }, { chave: 'up', nome: 'Enviado', cor: '--serie-b' }], v => taxa(v));
+  grafico('gCpu', h, [{ chave: 'cpu', nome: 'CPU', cor: '--serie-a' }], v => nf(v, 1) + '%');
+  grafico('gMem', h, [{ chave: 'mem', nome: 'Memória', cor: '--serie-a' }], v => nf(v, 0) + ' MB');
+}
+
+// ---------- atualização
+async function atualizar() {
+  try {
+    const r = await fetch('/api/estado', { headers: { 'X-Painel-Token': TOKEN }, cache: 'no-store' });
+    if (!r.ok) throw new Error('painel');
+    ultimo = await r.json(); render(ultimo);
+  } catch (e) {
+    document.getElementById('statusTexto').textContent = 'Painel sem conexão';
+  }
+}
+
+function render(d) {
+  const st = d.estado, s = d.saude || {}, m = s.metricas || {}, b = s.banco || {}, h = d.historico || [], p = h[h.length - 1] || {};
+  const status = document.getElementById('status');
+  status.className = 'status ' + st; document.getElementById('statusTexto').textContent = ROTULOS[st] || st;
+  document.getElementById('uptime').textContent = d.uptime_s ? 'no ar há ' + duracao(d.uptime_s) : '';
+  const rodando = ['online', 'manutencao', 'iniciando'].includes(st), ocupado = ['parando', 'reiniciando', 'iniciando'].includes(st);
+  document.getElementById('btIniciar').disabled = rodando || ocupado;
+  document.getElementById('btParar').disabled = !rodando || ocupado;
+  document.getElementById('btReiniciar').disabled = !rodando || ocupado;
+  const emManutencao = !!(d.manutencao && d.manutencao.ativo);
+  document.getElementById('btManutencao').classList.toggle('ativo', emManutencao);
+  document.getElementById('txtManutencao').textContent = emManutencao ? 'Em manutenção' : 'Manutenção';
+
+  const aviso = document.getElementById('aviso');
+  if (st === 'falhou') { aviso.className = 'aviso perigo ver'; aviso.textContent = (d.eventos[0] && d.eventos[0].texto) || 'O servidor falhou. Veja o registro.'; }
+  else if (emManutencao) { aviso.className = 'aviso alerta ver'; aviso.textContent = `Modo manutenção ligado desde ${d.manutencao.desde || '—'}: os usuários veem a tela de manutenção${d.manutencao.permitir_local ? ' (este computador continua acessando normalmente)' : ''}.`; }
+  else if (d.reinicios_10min) { aviso.className = 'aviso info ver'; aviso.textContent = `O vigia reiniciou o servidor ${d.reinicios_10min}x nos últimos 10 minutos. Último motivo: ${d.ultimo_motivo || '—'}.`; }
+  else aviso.className = 'aviso';
+
+  const ultMin = m.requisicoes_ultimo_minuto || 0;
+  document.getElementById('kRps').innerHTML = rodando ? nf(p.rps, 1) + '<small>/s</small>' : '—';
+  document.getElementById('kRpsMeta').textContent = `${nf(ultMin)} no último minuto · ${nf(m.total)} no total`;
+  document.getElementById('kLat').innerHTML = rodando && ultMin ? nf(m.tempo_medio_ms, 0) + '<small>ms</small>' : '—';
+  document.getElementById('kLatMeta').textContent = ultMin ? `95% em até ${nf(m.tempo_p95_ms, 0)} ms` : 'sem requisições no último minuto';
+  document.getElementById('kBanda').textContent = rodando ? taxa((p.down || 0) + (p.up || 0)) : '—';
+  document.getElementById('kBandaMeta').textContent = `↓ ${taxa(p.down)} · ↑ ${taxa(p.up)} · rede ${taxa((p.rede_down || 0) + (p.rede_up || 0))}`;
+  document.getElementById('kCpu').innerHTML = rodando ? nf(p.cpu, 1) + '<small>%</small>' : '—';
+  document.getElementById('kCpuMeta').textContent = `computador ${nf(p.cpu_sistema, 0)}% · ${d.sistema.cpu_nucleos} núcleos`;
+  const memo = d.processo ? d.processo.memoria_mb : 0;
+  document.getElementById('kMem').innerHTML = rodando && memo ? nf(memo, 0) + '<small>MB</small>' : '—';
+  document.getElementById('kMemMeta').textContent = `reinicia acima de ${nf(d.config.limite_memoria_mb)} MB · PC ${nf(d.sistema.memoria_uso_pct, 0)}% em uso`;
+  const bancoBox = document.getElementById('kBancoBox');
+  bancoBox.className = 'kpi ' + (b.ok === true ? 'bom' : b.ok === false ? 'ruim' : '');
+  document.getElementById('kBanco').innerHTML = b.ok === true ? nf(b.latencia_ms, 0) + '<small>ms</small>' : b.ok === false ? 'Sem conexão' : '—';
+  document.getElementById('kBancoMeta').textContent = b.ok === true ? `${b.tamanho} · ${b.conexoes} conexões` : (b.erro || 'PostgreSQL');
+
+  document.getElementById('gRpsTotal').textContent = h.length ? `últimos ${duracao((p.t || 0) - h[0].t)}` : '';
+  document.getElementById('gMemLimite').textContent = `limite ${nf(d.config.limite_memoria_mb)} MB`;
+  document.getElementById('gLatP95').textContent = ultMin ? `p95 ${nf(m.tempo_p95_ms, 0)} ms` : '';
+  desenharTudo();
+
+  const sis = d.sistema, pr = d.processo || {}, porta = d.config.porta;
+  const enderecos = d.config.host === '0.0.0.0' ? sis.ips.map(ip => `http://${ip}:${porta}`).join(' · ') : `http://127.0.0.1:${porta}`;
+  const info = [
+    ['Endereço na rede', enderecos || `http://127.0.0.1:${porta}`, 'largo'],
+    ['Processo (PID)', pr.pid || '—'], ['Threads', pr.threads || '—'],
+    ['Conexões abertas', pr.conexoes ?? '—'], ['Em atendimento agora', m.em_andamento ?? '—'],
+    ['Dados recebidos', bytes(m.bytes_recebidos)], ['Dados enviados', bytes(m.bytes_enviados)],
+    ['Servidor web', `waitress · ${d.config.threads} threads`], ['Versão do sistema', sis.versao || '—'],
+    ['Computador', sis.host_nome], ['Windows ligado há', nf(sis.iniciado_windows_ha_h, 1) + ' h'],
+    ['Memória do computador', `${nf(sis.memoria_total_gb, 1)} GB · ${nf(sis.memoria_uso_pct, 0)}% em uso`],
+    ['Disco livre', `${nf(sis.disco_livre_gb, 1)} GB (${nf(100 - sis.disco_uso_pct, 0)}% livre)`],
+    ['Banco de dados', b.ok ? `OK · ${b.tamanho} · ${nf(b.latencia_ms, 0)} ms` : (b.ok === false ? 'Sem conexão' : '—')],
+    ['Bloqueados pela manutenção', nf(m.manutencao_bloqueadas)],
+    ['Python', sis.python, 'largo'], ['Pasta do sistema', sis.pasta, 'largo'],
+  ];
+  document.getElementById('info').innerHTML = info.map(([k, v, c]) => `<div class="${c || ''}"><dt>${esc(k)}</dt><dd title="${esc(v)}">${esc(v)}</dd></div>`).join('');
+  document.getElementById('infoSub').textContent = pr.pid ? `atualizado ${new Date().toLocaleTimeString('pt-BR')}` : 'servidor parado';
+
+  const vigia = [
+    ['Reinício automático', d.config.reiniciar_automatico ? 'Ligado' : 'Desligado'],
+    ['Checagem de saúde', `a cada 2 s · espera ${d.config.tempo_resposta_max_s} s`],
+    ['Última resposta', d.ultima_saude_ha_s == null ? '—' : `há ${nf(d.ultima_saude_ha_s, 0)} s`],
+    ['Falhas seguidas', `${d.falhas_seguidas} de ${d.config.falhas_para_reiniciar}`],
+    ['Reinícios automáticos', `${d.reinicios_auto} no total · ${d.reinicios_10min} em 10 min`],
+    ['Último motivo', d.ultimo_motivo || 'nenhum'],
+  ];
+  document.getElementById('vigia').innerHTML = vigia.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd title="${esc(v)}">${esc(v)}</dd></div>`).join('');
+  document.getElementById('vigiaEstado').textContent = d.config.reiniciar_automatico ? 'protegendo' : 'desligado';
+
+  const rotas = m.rotas || [], maxRota = Math.max(1, ...rotas.map(r => r[1]));
+  document.getElementById('rotas').innerHTML = rotas.length ? rotas.map(([rota, n]) =>
+    `<li style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rota)}</span><strong class="tabular">${nf(n)}</strong></div><div class="barra"><span style="width:${n / maxRota * 100}%"></span></div></li>`).join('')
+    : '<li class="vazio">Sem acessos ainda</li>';
+  const ps = m.por_status || {}, rot = { '2xx': 'Sucesso (2xx)', '3xx': 'Redirecionamento (3xx)', '4xx': 'Não encontrado/negado (4xx)', '5xx': 'Erro do sistema (5xx)' };
+  document.getElementById('statusLista').innerHTML = Object.keys(rot).map(k =>
+    `<li><span>${rot[k]}</span><strong class="tabular" style="color:${k === '5xx' && ps[k] ? 'var(--perigo)' : 'inherit'}">${nf(ps[k] || 0)}</strong></li>`).join('');
+  const erros = (m.erros || []).slice().reverse();
+  document.getElementById('erros').innerHTML = erros.length ? erros.map(e => `<li><span>${esc(e.rota)}</span><span class="tabular" style="color:var(--texto3)">${hora(e.quando)} · ${e.status}</span></li>`).join('')
+    : '<li class="vazio">Nenhum erro registrado</li>';
+
+  const icones = { inicio: '▶', online: '✓', parada: '■', alerta: '!', erro: '×', manutencao: '⚒', config: '⚙' };
+  document.getElementById('eventos').innerHTML = (d.eventos || []).length ? d.eventos.map(e =>
+    `<li><span class="ic ${e.tipo}">${icones[e.tipo] || '•'}</span><div>${esc(e.texto)}<small>${esc(e.quando)}</small></div></li>`).join('')
+    : '<li class="vazio" style="display:block;text-align:center;color:var(--texto3)">Nenhum evento</li>';
+
+  const con = document.getElementById('console'), noFim = con.scrollTop + con.clientHeight >= con.scrollHeight - 30;
+  con.innerHTML = (d.logs || []).map(l => {
+    const c = /error|erro|traceback|exception|falh/i.test(l) ? 'err' : /\[painel\]/.test(l) ? 'pn' : '';
+    return c ? `<span class="${c}">${esc(l)}</span>` : esc(l);
+  }).join('\n');
+  if (noFim) con.scrollTop = con.scrollHeight;
+}
+
+// ---------- ações
+function toast(msg, erro) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast ver' + (erro ? ' erro' : ''); clearTimeout(t._t); t._t = setTimeout(() => t.className = 'toast', 3500); }
+async function acao(nome, extra = {}) {
+  try {
+    const r = await fetch('/api/acao', { method: 'POST', headers: { 'X-Painel-Token': TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: nome, ...extra }) });
+    const j = await r.json(); toast(j.mensagem, !j.ok); setTimeout(atualizar, 300);
+  } catch (e) { toast('O painel não respondeu.', true); }
+}
+function confirmar(titulo, texto, fn) {
+  const d = document.getElementById('dlgConfirmar');
+  document.getElementById('cfTitulo').textContent = titulo; document.getElementById('cfTexto').textContent = texto;
+  document.getElementById('cfOk').onclick = () => { d.close(); fn(); }; d.showModal();
+}
+function abrirManutencao() {
+  const m = (ultimo && ultimo.manutencao) || {}, ativo = !!m.ativo;
+  document.getElementById('mMensagem').value = m.mensagem || ''; document.getElementById('mPrevisao').value = m.previsao || '';
+  document.getElementById('mLocal').checked = m.permitir_local !== false;
+  document.getElementById('mDesligar').style.display = ativo ? '' : 'none';
+  document.getElementById('mLigar').textContent = ativo ? 'Atualizar mensagem' : 'Ligar manutenção';
+  document.getElementById('mTitulo').textContent = ativo ? 'Sistema em manutenção' : 'Modo manutenção';
+  document.getElementById('dlgManutencao').showModal();
+}
+function definirManutencao(ativar) {
+  document.getElementById('dlgManutencao').close();
+  acao('manutencao', { ativar, mensagem: document.getElementById('mMensagem').value, previsao: document.getElementById('mPrevisao').value,
+                       permitir_local: document.getElementById('mLocal').checked });
+}
+function abrirConfig() {
+  const c = (ultimo && ultimo.config) || {};
+  document.getElementById('cPorta').value = c.porta; document.getElementById('cHost').value = c.host;
+  document.getElementById('cThreads').value = c.threads; document.getElementById('cMemoria').value = c.limite_memoria_mb;
+  document.getElementById('cTempo').value = c.tempo_resposta_max_s; document.getElementById('cFalhas').value = c.falhas_para_reiniciar;
+  document.getElementById('cAuto').checked = !!c.reiniciar_automatico; document.getElementById('cAbrir').checked = !!c.iniciar_ao_abrir;
+  document.getElementById('dlgConfig').showModal();
+}
+function salvarConfig() {
+  document.getElementById('dlgConfig').close();
+  acao('config', { config: { porta: +cPorta.value, host: cHost.value, threads: +cThreads.value, limite_memoria_mb: +cMemoria.value,
+    tempo_resposta_max_s: +cTempo.value, falhas_para_reiniciar: +cFalhas.value, reiniciar_automatico: cAuto.checked, iniciar_ao_abrir: cAbrir.checked } });
+}
+addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(desenharTudo, 150); });
+atualizar(); setInterval(atualizar, 2000);
+</script>
+</body>
+</html>

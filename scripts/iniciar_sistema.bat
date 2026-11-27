@@ -8,4 +8,9 @@ echo Iniciando PostgreSQL...
 
 echo Iniciando Kaldi...
 cd /d "%~dp0.."
-python run.py
+rem Painel com vigia anti-travamento; sem o executável, usa o servidor de desenvolvimento
+if exist "Kaldi Servidor.exe" (
+    start "" "Kaldi Servidor.exe"
+) else (
+    python run.py
+)

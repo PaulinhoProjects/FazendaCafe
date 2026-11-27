@@ -5,3 +5,11 @@ logs/
 database/backups/
 app/static/uploads/
 config/.secret_key
+
+# Painel Kaldi Servidor: executável gerado, build e arquivos locais
+build/
+Kaldi Servidor.exe
+painel/config.json
+painel/.sessao
+storage/manutencao.json
+storage/manutencao.json.tmp
